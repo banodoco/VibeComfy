@@ -3,6 +3,26 @@
   "description": "Required VibeComfy workflow coverage corpus for major current ComfyUI image, edit, and video model families.",
   "workflows": [
     {
+      "id": "qwen_image_2_1_turbo",
+      "path": "ready_templates/sources/official/image/qwen_image_2_1_turbo.json",
+      "source": "Comfy-Org/workflow_templates@c067929d7e9cc0f3fd15be348fa1a1d85da15946",
+      "model_family": "qwen-image-2.1-turbo",
+      "task": "text_to_image",
+      "media": "image",
+      "coverage_tier": "required",
+      "ready_template": "image/qwen_image_2_1_turbo"
+    },
+    {
+      "id": "qwen_image_2_1_turbo_edit",
+      "path": "ready_templates/sources/official/edit/qwen_image_2_1_turbo_edit.json",
+      "source": "Comfy-Org/workflow_templates@c067929d7e9cc0f3fd15be348fa1a1d85da15946",
+      "model_family": "qwen-image-2.1-turbo",
+      "task": "image_edit",
+      "media": "image",
+      "coverage_tier": "required",
+      "ready_template": "edit/qwen_image_2_1_turbo_edit"
+    },
+    {
       "id": "qwen_image_edit",
       "path": "ready_templates/sources/official/edit/qwen_image_edit.json",
       "source": "Comfy-Org/workflow_templates",
