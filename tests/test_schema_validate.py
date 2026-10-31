@@ -1094,7 +1094,7 @@ def test_advisory_validation_for_precedent_empty_issues() -> None:
 
 def test_advisory_validation_for_precedent_does_not_block_structural_gates() -> None:
     """precedent semantic checks are advisory only and do not alter structural gating.
-    
+
     When route is precedent_research, issues are downgraded to advisory entries
     but the original validation issues list is unchanged — the caller still owns
     the structural gate decision.
@@ -1110,3 +1110,19 @@ def test_advisory_validation_for_precedent_does_not_block_structural_gates() -> 
     assert len(result) == original_count
     # But the original issues list length is unchanged (caller still owns gating)
     assert len(issues) == original_count
+
+
+def test_fresh_target_rejects_corrupted_model_choice_before_queue() -> None:
+    provider = FakeSchemaProvider(
+        {"VAELoader": _schema("VAELoader", {"vae_name": InputSpec("STRING", choices=[r"FLUX1\ae.safetensors"])})}
+    )
+    provider.requires_fresh_target = True
+    workflow = _workflow(VibeNode("3", "VAELoader", inputs={"vae_name": "FLUX1\x07e.safetensors"}))
+
+    report = workflow.validate(schema_provider=provider)
+
+    assert not report.ok
+    issue = next(issue for issue in report.issues if issue.code == "value_not_in_enum")
+    assert issue.severity == "error"
+    assert issue.detail["input"] == "vae_name"
+    assert issue.detail["choice_scope"] == "environment_asset"
