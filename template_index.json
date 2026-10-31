@@ -3,7 +3,7 @@
   "generated_from": "repo-only ready template discovery",
   "include_rule": "find ready_templates -type f -name '*.py' ! -name '_*' | sort",
   "exclude_rule": "exclude __init__.py and files whose basename starts with '_' to match vibecomfy.registry.ready._template_paths",
-  "template_count": 65,
+  "template_count": 67,
   "templates": [
     {
       "id": "audio/ace_step_1_5_t2a_song",
@@ -897,6 +897,215 @@
       "source_sha256": null
     },
     {
+      "id": "edit/qwen_image_2_1_turbo_edit",
+      "path": "ready_templates/edit/qwen_image_2_1_turbo_edit.py",
+      "source_scope": "repo",
+      "indexed": true,
+      "capability": "image",
+      "coverage_tier": "required",
+      "custom_nodes": [],
+      "model_count": 3,
+      "public_inputs": [
+        {
+          "name": "diffusion_model",
+          "target": {
+            "node_id": "1",
+            "field": "unet_name"
+          },
+          "node_id": "1",
+          "field": "unet_name",
+          "value": "qwen_image_2.1_turbo_int8_convrot.safetensors",
+          "type": "CHOICE",
+          "default": "qwen_image_2.1_turbo_int8_convrot.safetensors",
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "text_encoder",
+          "target": {
+            "node_id": "2",
+            "field": "clip_name"
+          },
+          "node_id": "2",
+          "field": "clip_name",
+          "value": "qwen3vl_8b_int8_convrot.safetensors",
+          "type": "CHOICE",
+          "default": "qwen3vl_8b_int8_convrot.safetensors",
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "vae",
+          "target": {
+            "node_id": "3",
+            "field": "vae_name"
+          },
+          "node_id": "3",
+          "field": "vae_name",
+          "value": "qwen_image_2.1_vae_bf16.safetensors",
+          "type": "CHOICE",
+          "default": "qwen_image_2.1_vae_bf16.safetensors",
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "prompt",
+          "target": {
+            "node_id": "5",
+            "field": "prompt"
+          },
+          "node_id": "5",
+          "field": "prompt",
+          "value": "",
+          "type": "STRING",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "text",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "negative_prompt",
+          "target": {
+            "node_id": "5",
+            "field": "negative_prompt"
+          },
+          "node_id": "5",
+          "field": "negative_prompt",
+          "value": "",
+          "type": "STRING",
+          "default": "",
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "text",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "seed",
+          "target": {
+            "node_id": "8",
+            "field": "noise_seed"
+          },
+          "node_id": "8",
+          "field": "noise_seed",
+          "value": 0,
+          "type": "INT",
+          "default": 0,
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "image",
+          "target": {
+            "node_id": "4",
+            "field": "image"
+          },
+          "node_id": "4",
+          "field": "image",
+          "value": "input.png",
+          "type": "IMAGE",
+          "default": "input.png",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "model",
+          "target": {
+            "node_id": "1",
+            "field": "unet_name"
+          },
+          "node_id": "1",
+          "field": "unet_name",
+          "value": "qwen_image_2.1_turbo_int8_convrot.safetensors",
+          "type": null,
+          "default": null,
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "finalize_metadata"
+        }
+      ],
+      "public_outputs": [
+        {
+          "name": "image",
+          "node_id": "13",
+          "output_type": "SaveImage",
+          "artifact_kind": "image",
+          "mime_type": "image/png",
+          "filename_prefix": "Qwen_image_2.1",
+          "expected_cardinality": "one",
+          "status": "static",
+          "source": "finalize"
+        }
+      ],
+      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+      "artifact_expectations": [
+        {
+          "name": "image",
+          "node_id": "13",
+          "output_type": "SaveImage",
+          "artifact_kind": "image",
+          "mime_type": "image/png",
+          "filename_prefix": "Qwen_image_2.1",
+          "expected_cardinality": "one",
+          "status": "static",
+          "source": "finalize"
+        }
+      ],
+      "static_diagnostics": [
+        {
+          "code": "static_dynamic_value",
+          "severity": "warning",
+          "message": "finalize has dynamic 'output_node'"
+        }
+      ],
+      "public_input_status": "declared",
+      "public_output_status": "declared",
+      "custom_node_count": 0,
+      "strict_ready_diagnostic_counts": {},
+      "readiness_class": "ready",
+      "marker": "unmarked",
+      "app_active": true,
+      "blocked": false,
+      "reference": false,
+      "supplemental": false,
+      "vibecomfy_version": "2.8.0",
+      "comfy_core": {
+        "commit": "unknown",
+        "status": "unavailable",
+        "tested_at": "2026-07-09T09:32:35.945439+00:00",
+        "version": "unknown"
+      },
+      "source_workflow": "ready_templates/sources/official/edit/qwen_image_2_1_turbo_edit.json",
+      "source_sha256": "5a9622d550866800414afcb9c70523ec5c6965eb171476e401e243a7fe8d5a4e"
+    },
+    {
       "id": "edit/qwen_image_edit",
       "path": "ready_templates/edit/qwen_image_edit.py",
       "source_scope": "repo",
@@ -1595,6 +1804,233 @@
       },
       "source_workflow": "ready_templates/sources/official/image/qwen_image_2512.json",
       "source_sha256": null
+    },
+    {
+      "id": "image/qwen_image_2_1_turbo",
+      "path": "ready_templates/image/qwen_image_2_1_turbo.py",
+      "source_scope": "repo",
+      "indexed": true,
+      "capability": "image",
+      "coverage_tier": "required",
+      "custom_nodes": [],
+      "model_count": 3,
+      "public_inputs": [
+        {
+          "name": "diffusion_model",
+          "target": {
+            "node_id": "1",
+            "field": "unet_name"
+          },
+          "node_id": "1",
+          "field": "unet_name",
+          "value": "qwen_image_2.1_turbo_int8_convrot.safetensors",
+          "type": "CHOICE",
+          "default": "qwen_image_2.1_turbo_int8_convrot.safetensors",
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "text_encoder",
+          "target": {
+            "node_id": "2",
+            "field": "clip_name"
+          },
+          "node_id": "2",
+          "field": "clip_name",
+          "value": "qwen3vl_8b_int8_convrot.safetensors",
+          "type": "CHOICE",
+          "default": "qwen3vl_8b_int8_convrot.safetensors",
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "vae",
+          "target": {
+            "node_id": "3",
+            "field": "vae_name"
+          },
+          "node_id": "3",
+          "field": "vae_name",
+          "value": "qwen_image_2.1_vae_bf16.safetensors",
+          "type": "CHOICE",
+          "default": "qwen_image_2.1_vae_bf16.safetensors",
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "prompt",
+          "target": {
+            "node_id": "5",
+            "field": "prompt"
+          },
+          "node_id": "5",
+          "field": "prompt",
+          "value": "",
+          "type": "STRING",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "text",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "negative_prompt",
+          "target": {
+            "node_id": "5",
+            "field": "negative_prompt"
+          },
+          "node_id": "5",
+          "field": "negative_prompt",
+          "value": "",
+          "type": "STRING",
+          "default": "",
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "text",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "seed",
+          "target": {
+            "node_id": "8",
+            "field": "noise_seed"
+          },
+          "node_id": "8",
+          "field": "noise_seed",
+          "value": 0,
+          "type": "INT",
+          "default": 0,
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "width",
+          "target": {
+            "node_id": "4",
+            "field": "width"
+          },
+          "node_id": "4",
+          "field": "width",
+          "value": 1024,
+          "type": "INT",
+          "default": 1024,
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "height",
+          "target": {
+            "node_id": "4",
+            "field": "height"
+          },
+          "node_id": "4",
+          "field": "height",
+          "value": 1024,
+          "type": "INT",
+          "default": 1024,
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "model",
+          "target": {
+            "node_id": "1",
+            "field": "unet_name"
+          },
+          "node_id": "1",
+          "field": "unet_name",
+          "value": "qwen_image_2.1_turbo_int8_convrot.safetensors",
+          "type": null,
+          "default": null,
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "finalize_metadata"
+        }
+      ],
+      "public_outputs": [
+        {
+          "name": "image",
+          "node_id": "13",
+          "output_type": "SaveImage",
+          "artifact_kind": "image",
+          "mime_type": "image/png",
+          "filename_prefix": "Qwen_image_2.1",
+          "expected_cardinality": "one",
+          "status": "static",
+          "source": "finalize"
+        }
+      ],
+      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+      "artifact_expectations": [
+        {
+          "name": "image",
+          "node_id": "13",
+          "output_type": "SaveImage",
+          "artifact_kind": "image",
+          "mime_type": "image/png",
+          "filename_prefix": "Qwen_image_2.1",
+          "expected_cardinality": "one",
+          "status": "static",
+          "source": "finalize"
+        }
+      ],
+      "static_diagnostics": [
+        {
+          "code": "static_dynamic_value",
+          "severity": "warning",
+          "message": "finalize has dynamic 'output_node'"
+        }
+      ],
+      "public_input_status": "declared",
+      "public_output_status": "declared",
+      "custom_node_count": 0,
+      "strict_ready_diagnostic_counts": {},
+      "readiness_class": "ready",
+      "marker": "unmarked",
+      "app_active": true,
+      "blocked": false,
+      "reference": false,
+      "supplemental": false,
+      "vibecomfy_version": "2.8.0",
+      "comfy_core": {
+        "commit": "unknown",
+        "status": "unavailable",
+        "tested_at": "2026-07-09T09:32:35.945439+00:00",
+        "version": "unknown"
+      },
+      "source_workflow": "ready_templates/sources/official/image/qwen_image_2_1_turbo.json",
+      "source_sha256": "3eb9cef2866c0186fbe30172701f112b35e574cf3c6575c6e4a6b5dd1e76a403"
     },
     {
       "id": "image/z_image",
