@@ -32,6 +32,7 @@ from .session import (
     _normalized_descriptor_path,
     _embedded_configuration,
     _external_log_locator,
+    _history_observation,
     _outputs_from_server_history,
     _declared_outputs_from_server_history,
     _prepare_prompt_async,
@@ -769,6 +770,8 @@ async def run(
             if server_client is not None:
                 history_kwargs["client"] = server_client
             history = await _wait_for_server_history(active_url, prompt_id, **history_kwargs)
+            attempt_bundle["comfy_history_observation"] = _history_observation(history, prompt_id)
+            write_attempt_json(run_dir, attempt_bundle)
             output_verification = _validate_declared_output_contract(workflow, history, prompt_id)
             # Keep terminal status/error decoding authoritative even when the
             # declared-sink filter below selects a subset of history outputs.

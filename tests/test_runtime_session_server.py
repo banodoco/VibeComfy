@@ -346,6 +346,7 @@ def test_server_managed_success_adapter_provenance_is_identical(
     run_dir = Path(result.metadata_path).parent
     attempt = json.loads((run_dir / "attempt.json").read_text(encoding="utf-8"))
     metadata = json.loads((run_dir / "metadata.json").read_text(encoding="utf-8"))
+    assert attempt["comfy_history_observation"]["status"]["status_str"] == "success"
     lifecycle = run_dir / "transactions" / record.api_digest / "lifecycle_events.jsonl"
     events = [json.loads(line) for line in lifecycle.read_text(encoding="utf-8").splitlines()]
     adapters = [

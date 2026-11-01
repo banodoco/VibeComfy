@@ -1142,6 +1142,7 @@ def test_run_external_server_does_not_apply_workflow_session_config(
     assert result.completion_path == str(Path(result.metadata_path).parent / "completion.json")
     completion = json.loads(Path(result.completion_path).read_text(encoding="utf-8"))
     attempt = json.loads((Path(result.metadata_path).parent / "attempt.json").read_text(encoding="utf-8"))
+    assert attempt["comfy_history_observation"]["status"]["status_str"] == "success"
     assert attempt["status"] == result.status
     assert attempt["completion_status"] == result.status
     assert attempt["prompt_id"] == result.prompt_id
@@ -1400,6 +1401,17 @@ def test_live_image_descriptor_variants_preserve_information() -> None:
     entries = session_module._collect_output_entries({"images": [descriptor], "gifs": [other]})
     assert len(entries) == 1
     assert [v["metadata"]["kind"] for v in entries[0][0]["descriptor_variants"]] == ["image", "preview"]
+
+
+def test_history_observation_preserves_unknown_information_and_bounds_large_data() -> None:
+    entry = {"status": {"status_str": "success", "completed": True, "messages": [], "future": 7},
+             "outputs": {"ignored": "already recorded"}, "prompt": ["not duplicated"], "future": {"x": True}}
+    observed = session_module._history_observation({"p": entry}, "p")
+    assert observed == {"status": entry["status"], "future": {"x": True}}
+    entry["future"] = "x" * 65536
+    bounded = session_module._history_observation({"p": entry}, "p")
+    assert bounded["truncated"] is True
+    assert len(bounded["sha256"]) == 64
 
 
 def test_duplicate_paths_with_different_routing_are_rejected() -> None:

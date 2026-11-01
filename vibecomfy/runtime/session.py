@@ -2422,6 +2422,8 @@ class ServerSession:
             phase = "history"
             phase_start = time.monotonic()
             history = await _wait_for_server_history(self.url, prompt_id, config=self.config)
+            attempt_bundle["comfy_history_observation"] = _history_observation(history, prompt_id)
+            write_attempt_json(run_dir, attempt_bundle)
             output_verification = _validate_declared_output_contract(workflow, history, prompt_id)
             # The declared-output projection must not bypass Comfy's terminal
             # status/error decoder for the current prompt.
@@ -4215,6 +4217,16 @@ def _history_entry(history: Any, prompt_id: str | None) -> dict[str, Any] | None
         only = next(iter(history.values()))
         return only if isinstance(only, dict) else None
     return None
+
+
+def _history_observation(history: Any, prompt_id: str | None) -> dict[str, Any]:
+    """Keep bounded terminal information; outputs have their own receipt fields."""
+    entry = _history_entry(history, prompt_id) or {}
+    observation = {key: value for key, value in entry.items() if key not in {"prompt", "outputs"}}
+    raw = json.dumps(observation, sort_keys=True, ensure_ascii=True).encode("utf-8")
+    if len(raw) > 64 * 1024:
+        return {"sha256": hashlib.sha256(raw).hexdigest(), "truncated": True}
+    return observation
 
 
 def _outputs_from_server_history(history: dict[str, Any], prompt_id: str | None) -> Any:
