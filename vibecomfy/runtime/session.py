@@ -3063,7 +3063,10 @@ def current_source_revision() -> str | None:
             timeout=5,
             env=_checkout_git_environment(),
         )
-    except (CheckoutRequiredError, OSError, subprocess.SubprocessError):
+    except CheckoutRequiredError:
+        logger.debug("Source revision unavailable: VibeComfy is installed without a checkout")
+        return None
+    except (OSError, subprocess.SubprocessError):
         return None
     if result.returncode != 0:
         return None
@@ -3093,7 +3096,10 @@ def current_source_content_digest() -> str | None:
             timeout=60,
             env=_checkout_git_environment(),
         )
-    except (CheckoutRequiredError, OSError, subprocess.SubprocessError):
+    except CheckoutRequiredError:
+        logger.debug("Source content digest unavailable: VibeComfy is installed without a checkout")
+        return None
+    except (OSError, subprocess.SubprocessError):
         return None
     if result.returncode != 0:
         return None

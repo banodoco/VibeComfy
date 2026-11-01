@@ -10,6 +10,7 @@ from typing import Any, Iterable, Mapping
 from urllib.parse import urlsplit
 from vibecomfy.contracts.runtime import RuntimeDependencyError, RuntimeRequirements
 from vibecomfy.custom_node_refs import normalize_custom_node_requirements
+from vibecomfy.errors import CheckoutRequiredError
 from vibecomfy.utils import find_repo_root
 
 from vibecomfy.metadata import (
@@ -1044,13 +1045,15 @@ def _metadata_with_static_derivations(metadata: dict[str, Any], path: Path, sour
     return out
 
 
-def _repo_root() -> Path:
-    return find_repo_root()
+def _ready_root() -> Path:
+    from vibecomfy.registry.ready import repo_ready_template_root
+
+    return repo_ready_template_root()
 
 
 def _template_id_from_path(path: Path) -> str:
     try:
-        return path.resolve().relative_to(_repo_root() / "ready_templates").with_suffix("").as_posix()
+        return path.resolve().relative_to(_ready_root()).with_suffix("").as_posix()
     except ValueError:
         return path.stem
 
@@ -1060,7 +1063,7 @@ def _category_qualified_template_id(template_id: str, path: Path | None = None) 
         return template_id
     if path is not None:
         try:
-            rel = path.resolve().relative_to(_repo_root() / "ready_templates")
+            rel = path.resolve().relative_to(_ready_root())
             if len(rel.parts) > 1:
                 return f"{rel.parts[0]}/{template_id}"
         except ValueError:
@@ -1069,7 +1072,7 @@ def _category_qualified_template_id(template_id: str, path: Path | None = None) 
 
 
 def _coverage_manifest_row(template_id: str) -> dict[str, Any]:
-    path = _repo_root() / "ready_templates/sources" / "manifests" / "coverage.json"
+    path = _ready_root() / "sources" / "manifests" / "coverage.json"
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -1106,7 +1109,14 @@ def _source_workflow_from_static(metadata: dict[str, Any], row: dict[str, Any], 
 
 def _project_version() -> str:
     try:
-        data = tomllib.loads((_repo_root() / "pyproject.toml").read_text(encoding="utf-8"))
+        data = tomllib.loads((find_repo_root() / "pyproject.toml").read_text(encoding="utf-8"))
+    except CheckoutRequiredError:
+        from importlib import metadata
+
+        try:
+            return metadata.version("vibecomfy")
+        except metadata.PackageNotFoundError:
+            return "0"
     except (OSError, tomllib.TOMLDecodeError):
         return "0"
     project = data.get("project") if isinstance(data, dict) else None
@@ -1116,7 +1126,7 @@ def _project_version() -> str:
 
 def _comfy_core_metadata() -> dict[str, Any]:
     try:
-        data = json.loads((_repo_root() / "vibecomfy" / "comfy_metadata.json").read_text(encoding="utf-8"))
+        data = json.loads((Path(__file__).resolve().parents[1] / "comfy_metadata.json").read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {}
     core = data.get("core") if isinstance(data, dict) and isinstance(data.get("core"), dict) else data

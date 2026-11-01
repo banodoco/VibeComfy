@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from typing import Any, Iterable, Mapping
 
 from vibecomfy.porting.report import PortIssue
+from vibecomfy.errors import CheckoutRequiredError
 from vibecomfy.utils import find_repo_root
 
 if TYPE_CHECKING:
@@ -56,8 +57,15 @@ ALLOWED_FINAL_CATEGORIES: frozenset[str] = frozenset(
 def __getattr__(name: str) -> Path:
     """Keep the historical exception-path constant lazy."""
     if name == "DEFAULT_EXCEPTION_PATH":
-        return find_repo_root() / "docs" / "templates" / "strict_ready_exceptions.json"
+        return _default_exception_path()
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def _default_exception_path() -> Path:
+    try:
+        return find_repo_root() / "docs" / "templates" / "strict_ready_exceptions.json"
+    except CheckoutRequiredError:
+        return Path(__file__).resolve().parent / "strict_ready_exceptions.json"
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,7 +140,7 @@ def load_strict_ready_exceptions(path: Path | str | None = None) -> tuple[Strict
     exception_path = (
         Path(path)
         if path is not None
-        else find_repo_root() / "docs" / "templates" / "strict_ready_exceptions.json"
+        else _default_exception_path()
     )
     if not exception_path.exists():
         return ()

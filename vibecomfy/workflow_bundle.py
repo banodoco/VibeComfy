@@ -2126,13 +2126,13 @@ def _approval_preconditions(
 
     try:
         from vibecomfy.node_packs import CORE_COMFY_CLASSES, CustomNodePack, get_known_node_packs, read_lockfile
+        from vibecomfy.node_packs._lockfile import resolve_lockfile_path
         from vibecomfy.custom_node_refs import effective_lock_entries
 
         # Bind both local pack authorities to the repository containing this
         # implementation.  In particular, never branch on a caller's CWD or
         # invoke the legacy helper's ambient/on-demand schema path.
-        repo_root = Path(__file__).resolve().parents[1]
-        lock_path = repo_root / "custom_nodes.lock"
+        lock_path = resolve_lockfile_path()
         lock_entries = effective_lock_entries(workflow, read_lockfile(lock_path))
         known_packs = get_known_node_packs(lock_path)
         # A portable workflow may carry the only available class inventory.
