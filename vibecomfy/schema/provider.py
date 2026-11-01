@@ -1920,6 +1920,7 @@ def _parse_index_outputs(row: dict[str, Any]) -> list[OutputSpec]:
 
 
 DYNAMIC_COMBO_TYPE = "COMFY_DYNAMICCOMBO_V3"
+AUTOGROW_V3_TYPE = "COMFY_AUTOGROW_V3"
 
 
 def _dynamic_combo_field_names(option_inputs: Any, prefix: str) -> list[str]:
@@ -1999,9 +2000,29 @@ def _parse_input_spec(raw: Any, *, required: bool, name: str | None = None) -> I
                     if fields:
                         dynamic_fields[key] = tuple(dict.fromkeys(fields))
 
+    # V3 auto-grow inputs serialize populated template sockets as dotted API
+    # names.  Comfy's template.names is the finite set of child slot names
+    # declared by this schema, so retain it in the existing dynamic-field
+    # payload for validation and schema snapshot round-trips.
+    if typ == AUTOGROW_V3_TYPE and isinstance(attrs.get("template"), Mapping):
+        template_names = attrs["template"].get("names")
+        if isinstance(template_names, list):
+            names = tuple(dict.fromkeys(name for name in template_names if isinstance(name, str)))
+            if names:
+                dynamic_fields["*"] = names
+
+    auto_grow_template = attrs.get("template") if typ == AUTOGROW_V3_TYPE else None
+    auto_grow_min = (
+        auto_grow_template.get("min")
+        if isinstance(auto_grow_template, Mapping)
+        else None
+    )
+    if isinstance(auto_grow_min, bool) or not isinstance(auto_grow_min, (int, float)):
+        auto_grow_min = None
+
     return InputSpec(
         type=str(typ) if typ is not None else None,
-        required=required,
+        required=required and not (typ == AUTOGROW_V3_TYPE and auto_grow_min == 0),
         default=attrs.get("default"),
         choices=choices,
         min=typed_bound(attrs.get("min")),
