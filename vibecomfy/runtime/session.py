@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING, Any, Mapping, Protocol, Sequence
 
 from vibecomfy.comfy_command import comfyui_command
 from vibecomfy.errors import (
+    CheckoutRequiredError,
     MODEL_DOCTOR_NEXT_ACTION,
     ModelAssetError,
     QueueError,
@@ -3062,7 +3063,7 @@ def current_source_revision() -> str | None:
             timeout=5,
             env=_checkout_git_environment(),
         )
-    except (OSError, subprocess.SubprocessError):
+    except (CheckoutRequiredError, OSError, subprocess.SubprocessError):
         return None
     if result.returncode != 0:
         return None
@@ -3092,7 +3093,7 @@ def current_source_content_digest() -> str | None:
             timeout=60,
             env=_checkout_git_environment(),
         )
-    except (OSError, subprocess.SubprocessError):
+    except (CheckoutRequiredError, OSError, subprocess.SubprocessError):
         return None
     if result.returncode != 0:
         return None
