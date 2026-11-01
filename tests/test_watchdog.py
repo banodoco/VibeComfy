@@ -63,6 +63,14 @@ def test_executing_message_sets_current_node_and_class_type() -> None:
     assert wd.state.current_node_started_at is not None
 
 
+def test_executing_missing_node_does_not_signal_completion() -> None:
+    wd = _make_watchdog()
+    wd.feed({"type": "executing", "data": {"node": "42"}})
+    wd.feed({"type": "executing", "data": {"future_info": "ignored"}})
+    assert wd.state.current_node_id == "42"
+    assert not wd.state.prompt_completed
+
+
 def test_executing_null_signals_completion_and_records_executed() -> None:
     wd = _make_watchdog()
     wd.feed({"type": "execution_start", "data": {"prompt_id": "abc"}})

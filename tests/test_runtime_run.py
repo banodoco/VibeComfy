@@ -509,6 +509,24 @@ def _approved(workflow: VibeWorkflow):
         return bundle.compile(schema_provider=_FixtureProvider()), bundle
 
 
+@pytest.mark.parametrize("status,expected", [(400, "rejected"), (429, "unknown"), (502, "unknown")])
+def test_queue_http_failure_receipt_distinguishes_rejection_from_unknown(status, expected):
+    import httpx
+
+    request = httpx.Request("POST", "http://comfy.test/prompt")
+    response = httpx.Response(status, request=request)
+    cause = httpx.HTTPStatusError("failed", request=request, response=response)
+    wrapped = QueueError("queue failed")
+    wrapped.__cause__ = cause
+    record, _ = _approved(_workflow())
+    evidence = session_module._runtime_failure_evidence(
+        record, adapter_kind="external", backend="api", endpoint="http://comfy.test",
+        schema_provenance={}, queue_acceptance={"status": "unknown", "prompt_id": None},
+        phase="queue", exc=wrapped, queue_started=True)
+    assert evidence["queue_acceptance"]["status"] == expected
+    assert evidence["terminal"]["acceptance_known"] is (expected == "rejected")
+
+
 def _command_bundle():
     workflow = VibeWorkflow("command-runtime-test", WorkflowSource("command-runtime-test"))
     workflow.add_node("Integer", uid="integer-node", value=7)
@@ -1142,6 +1160,7 @@ def test_run_external_server_does_not_apply_workflow_session_config(
     assert result.completion_path == str(Path(result.metadata_path).parent / "completion.json")
     completion = json.loads(Path(result.completion_path).read_text(encoding="utf-8"))
     attempt = json.loads((Path(result.metadata_path).parent / "attempt.json").read_text(encoding="utf-8"))
+    assert attempt["comfy_history_observation"]["status"]["status_str"] == "success"
     assert attempt["status"] == result.status
     assert attempt["completion_status"] == result.status
     assert attempt["prompt_id"] == result.prompt_id
@@ -1358,7 +1377,7 @@ def test_artifact_records_deduplicate_comfy_video_descriptor_views() -> None:
     assert entries[0][0]["descriptor_sources"] == ["gifs", "images"]
 
 
-def test_artifact_records_keep_distinct_nested_paths_and_reject_conflicts() -> None:
+def test_artifact_records_keep_distinct_nested_paths_and_record_information_conflicts() -> None:
     outputs = {
         "gifs": [
             {"filename": "same.mp4", "subfolder": "video/a", "type": "output"},
@@ -1387,9 +1406,37 @@ def test_artifact_records_keep_distinct_nested_paths_and_reject_conflicts() -> N
             "format": "image/gif",
         }],
     }
-    with pytest.raises(RuntimeNodeError) as caught:
-        session_module._collect_output_entries(contradictory)
-    assert caught.value.diagnostics[0]["code"] == "conflicting_comfy_output_descriptors"
+    entries = session_module._collect_output_entries(contradictory)
+    assert len(entries) == 1
+    assert [v["format"] for v in entries[0][0]["descriptor_variants"]] == ["video/h264-mp4", "image/gif"]
+
+
+def test_live_image_descriptor_variants_preserve_information() -> None:
+    descriptor = {"filename": "Qwen_image_2.1_astrid_600d5a93f03747788ff193e8b4370ab3_00001_.png",
+                  "subfolder": "", "type": "output",
+                  "metadata": {"kind": "image", "width": 512, "height": 512}}
+    other = {**descriptor, "metadata": {"kind": "preview", "width": 512, "height": 512}}
+    entries = session_module._collect_output_entries({"images": [descriptor], "gifs": [other]})
+    assert len(entries) == 1
+    assert [v["metadata"]["kind"] for v in entries[0][0]["descriptor_variants"]] == ["image", "preview"]
+
+
+def test_history_observation_preserves_unknown_information_and_bounds_large_data() -> None:
+    entry = {"status": {"status_str": "success", "completed": True, "messages": [], "future": 7},
+             "outputs": {"ignored": "already recorded"}, "prompt": ["not duplicated"], "future": {"x": True}}
+    observed = session_module._history_observation({"p": entry}, "p")
+    assert observed == {"status": entry["status"], "future": {"x": True}}
+    entry["future"] = "x" * 65536
+    bounded = session_module._history_observation({"p": entry}, "p")
+    assert bounded["truncated"] is True
+    assert len(bounded["sha256"]) == 64
+
+
+def test_duplicate_paths_with_different_routing_are_rejected() -> None:
+    outputs = {"images": [{"filename": "same.png", "subfolder": "video", "type": "output"}],
+               "gifs": [{"filename": "video/same.png", "subfolder": "", "type": "output"}]}
+    with pytest.raises(RuntimeNodeError, match="inconsistent routing"):
+        session_module._collect_output_entries(outputs)
 
 
 def test_nested_output_descriptor_resolves_under_configured_root_only(tmp_path: Path) -> None:

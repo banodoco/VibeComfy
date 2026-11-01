@@ -22,6 +22,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+import httpx
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any, Mapping, Protocol, Sequence
@@ -361,11 +362,18 @@ def _runtime_failure_evidence(
             cursor_for_prompt = cursor_for_prompt.__cause__ or cursor_for_prompt.__context__
     cursor: BaseException | None = exc
     timed_out = False
-    while cursor is not None:
+    acceptance_unknown = False
+    seen_errors: set[int] = set()
+    while cursor is not None and id(cursor) not in seen_errors:
+        seen_errors.add(id(cursor))
+        if (getattr(cursor, "acceptance_known", None) is False
+                or isinstance(cursor, httpx.RequestError)
+                or (isinstance(cursor, httpx.HTTPStatusError)
+                    and cursor.response.status_code not in {400, 401, 403, 404, 422})):
+            acceptance_unknown = True
         if isinstance(cursor, (asyncio.TimeoutError, TimeoutError)):
             timed_out = True
-            break
-        cursor = cursor.__cause__
+        cursor = cursor.__cause__ or cursor.__context__
     if interrupted:
         if status != "accepted":
             status = "unknown" if queue_started else "not_attempted"
@@ -373,7 +381,7 @@ def _runtime_failure_evidence(
         reason_type = "KeyboardInterrupt" if isinstance(exc, KeyboardInterrupt) else "CancelledError"
     elif phase == "queue":
         if status != "accepted":
-            status = "unknown" if timed_out else "rejected"
+            status = "unknown" if timed_out or acceptance_unknown else "rejected"
         terminal_phase, reason_type = phase, "TimeoutError" if timed_out else type(exc).__name__
     elif phase == "acceptance_witness":
         status, terminal_phase = "unknown", phase
@@ -577,6 +585,7 @@ def _persist_runtime_failure(
             setattr(exc_for_class, "completion_status", str(completion_status))
         setattr(exc_for_class, "receipt_path", str(run_dir / "attempt.json"))
         setattr(exc_for_class, "prompt_id", normalized_acceptance.get("prompt_id"))
+        setattr(exc_for_class, "acceptance_known", terminal.get("acceptance_known"))
 
 
 def _persist_dependency_failure(
@@ -2422,6 +2431,8 @@ class ServerSession:
             phase = "history"
             phase_start = time.monotonic()
             history = await _wait_for_server_history(self.url, prompt_id, config=self.config)
+            attempt_bundle["comfy_history_observation"] = _history_observation(history, prompt_id)
+            write_attempt_json(run_dir, attempt_bundle)
             output_verification = _validate_declared_output_contract(workflow, history, prompt_id)
             # The declared-output projection must not bypass Comfy's terminal
             # status/error decoder for the current prompt.
@@ -4217,6 +4228,16 @@ def _history_entry(history: Any, prompt_id: str | None) -> dict[str, Any] | None
     return None
 
 
+def _history_observation(history: Any, prompt_id: str | None) -> dict[str, Any]:
+    """Keep bounded terminal information; outputs have their own receipt fields."""
+    entry = _history_entry(history, prompt_id) or {}
+    observation = {key: value for key, value in entry.items() if key not in {"prompt", "outputs"}}
+    raw = json.dumps(observation, sort_keys=True, ensure_ascii=True).encode("utf-8")
+    if len(raw) > 64 * 1024:
+        return {"sha256": hashlib.sha256(raw).hexdigest(), "truncated": True}
+    return observation
+
+
 def _outputs_from_server_history(history: dict[str, Any], prompt_id: str | None) -> Any:
     entry = _history_entry(history, prompt_id)
     if entry is None:
@@ -4472,6 +4493,8 @@ def _collect_output_entries(
     visit(value)
 
     unique: list[tuple[dict[str, Any] | None, str]] = []
+    variants: dict[int, list[dict[str, Any]]] = {}
+    conflicts: set[int] = set()
     index_by_key: dict[tuple[str, ...], int] = {}
     for descriptor, path in entries:
         if descriptor is not None:
@@ -4493,6 +4516,13 @@ def _collect_output_entries(
         if existing_descriptor is None:
             unique[existing_index] = (descriptor, path)
             continue
+        if any(existing_descriptor.get(field) != descriptor.get(field)
+               for field in ("filename", "subfolder", "type")):
+            raise RuntimeNodeError(
+                "Comfy history returned inconsistent routing for one output artifact",
+                next_action="inspect the final sink history and correct the output routing",
+            )
+        variants.setdefault(existing_index, [dict(existing_descriptor)]).append(dict(descriptor))
         merged = dict(existing_descriptor)
         sources = list(merged.get("descriptor_sources") or [])
         for source in descriptor.get("descriptor_sources") or []:
@@ -4503,21 +4533,14 @@ def _collect_output_entries(
             if field_name in {"filename", "subfolder", "type", "descriptor_sources"}:
                 continue
             if field_name in merged and merged[field_name] != field_value:
-                error = RuntimeNodeError(
-                    "Comfy history returned contradictory descriptors for one output artifact",
-                    next_action="inspect the final sink history and correct the conflicting descriptor metadata",
-                )
-                error.diagnostics = [{
-                    "code": "conflicting_comfy_output_descriptors",
-                    "artifact_path": existing_path,
-                    "field": field_name,
-                    "values": [merged[field_name], field_value],
-                    "descriptor_sources": sources,
-                }]
-                raise error
+                conflicts.add(existing_index)
             merged.setdefault(field_name, field_value)
         unique[existing_index] = (merged, existing_path)
     for index, (descriptor, path) in enumerate(unique):
+        if descriptor is not None and index in conflicts:
+            descriptor = dict(descriptor)
+            descriptor["descriptor_variants"] = variants[index]
+            unique[index] = (descriptor, path)
         if descriptor is not None and len(descriptor.get("descriptor_sources") or []) < 2:
             descriptor = dict(descriptor)
             descriptor.pop("descriptor_sources", None)

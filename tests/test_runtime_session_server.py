@@ -346,6 +346,7 @@ def test_server_managed_success_adapter_provenance_is_identical(
     run_dir = Path(result.metadata_path).parent
     attempt = json.loads((run_dir / "attempt.json").read_text(encoding="utf-8"))
     metadata = json.loads((run_dir / "metadata.json").read_text(encoding="utf-8"))
+    assert attempt["comfy_history_observation"]["status"]["status_str"] == "success"
     lifecycle = run_dir / "transactions" / record.api_digest / "lifecycle_events.jsonl"
     events = [json.loads(line) for line in lifecycle.read_text(encoding="utf-8").splitlines()]
     adapters = [
@@ -678,7 +679,7 @@ def test_server_post_witness_failure_matrix(
     monkeypatch.setattr(session_module, "_finalize_watchdog", fake_finalize_watchdog)
     if failure_kind == "output":
         monkeypatch.setattr(
-            session_module, "_collect_output_paths",
+            session_module, "_artifact_records",
             lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("output collection failed")),
         )
     elif failure_kind == "metadata":
