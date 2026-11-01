@@ -4472,6 +4472,8 @@ def _collect_output_entries(
     visit(value)
 
     unique: list[tuple[dict[str, Any] | None, str]] = []
+    variants: dict[int, list[dict[str, Any]]] = {}
+    conflicts: set[int] = set()
     index_by_key: dict[tuple[str, ...], int] = {}
     for descriptor, path in entries:
         if descriptor is not None:
@@ -4493,6 +4495,13 @@ def _collect_output_entries(
         if existing_descriptor is None:
             unique[existing_index] = (descriptor, path)
             continue
+        if any(existing_descriptor.get(field) != descriptor.get(field)
+               for field in ("filename", "subfolder", "type")):
+            raise RuntimeNodeError(
+                "Comfy history returned inconsistent routing for one output artifact",
+                next_action="inspect the final sink history and correct the output routing",
+            )
+        variants.setdefault(existing_index, [dict(existing_descriptor)]).append(dict(descriptor))
         merged = dict(existing_descriptor)
         sources = list(merged.get("descriptor_sources") or [])
         for source in descriptor.get("descriptor_sources") or []:
@@ -4503,21 +4512,14 @@ def _collect_output_entries(
             if field_name in {"filename", "subfolder", "type", "descriptor_sources"}:
                 continue
             if field_name in merged and merged[field_name] != field_value:
-                error = RuntimeNodeError(
-                    "Comfy history returned contradictory descriptors for one output artifact",
-                    next_action="inspect the final sink history and correct the conflicting descriptor metadata",
-                )
-                error.diagnostics = [{
-                    "code": "conflicting_comfy_output_descriptors",
-                    "artifact_path": existing_path,
-                    "field": field_name,
-                    "values": [merged[field_name], field_value],
-                    "descriptor_sources": sources,
-                }]
-                raise error
+                conflicts.add(existing_index)
             merged.setdefault(field_name, field_value)
         unique[existing_index] = (merged, existing_path)
     for index, (descriptor, path) in enumerate(unique):
+        if descriptor is not None and index in conflicts:
+            descriptor = dict(descriptor)
+            descriptor["descriptor_variants"] = variants[index]
+            unique[index] = (descriptor, path)
         if descriptor is not None and len(descriptor.get("descriptor_sources") or []) < 2:
             descriptor = dict(descriptor)
             descriptor.pop("descriptor_sources", None)

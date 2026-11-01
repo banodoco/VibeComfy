@@ -1358,7 +1358,7 @@ def test_artifact_records_deduplicate_comfy_video_descriptor_views() -> None:
     assert entries[0][0]["descriptor_sources"] == ["gifs", "images"]
 
 
-def test_artifact_records_keep_distinct_nested_paths_and_reject_conflicts() -> None:
+def test_artifact_records_keep_distinct_nested_paths_and_record_information_conflicts() -> None:
     outputs = {
         "gifs": [
             {"filename": "same.mp4", "subfolder": "video/a", "type": "output"},
@@ -1387,9 +1387,19 @@ def test_artifact_records_keep_distinct_nested_paths_and_reject_conflicts() -> N
             "format": "image/gif",
         }],
     }
-    with pytest.raises(RuntimeNodeError) as caught:
-        session_module._collect_output_entries(contradictory)
-    assert caught.value.diagnostics[0]["code"] == "conflicting_comfy_output_descriptors"
+    entries = session_module._collect_output_entries(contradictory)
+    assert len(entries) == 1
+    assert [v["format"] for v in entries[0][0]["descriptor_variants"]] == ["video/h264-mp4", "image/gif"]
+
+
+def test_live_image_descriptor_variants_preserve_information() -> None:
+    descriptor = {"filename": "Qwen_image_2.1_astrid_600d5a93f03747788ff193e8b4370ab3_00001_.png",
+                  "subfolder": "", "type": "output",
+                  "metadata": {"kind": "image", "width": 512, "height": 512}}
+    other = {**descriptor, "metadata": {"kind": "preview", "width": 512, "height": 512}}
+    entries = session_module._collect_output_entries({"images": [descriptor], "gifs": [other]})
+    assert len(entries) == 1
+    assert [v["metadata"]["kind"] for v in entries[0][0]["descriptor_variants"]] == ["image", "preview"]
 
 
 def test_nested_output_descriptor_resolves_under_configured_root_only(tmp_path: Path) -> None:
