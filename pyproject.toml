@@ -96,6 +96,9 @@ exclude = [
 
 [tool.hatch.build.targets.wheel.force-include]
 "ready_templates" = "vibecomfy/ready_templates"
+"docs/templates/strict_ready_exceptions.json" = "vibecomfy/porting/strict_ready_exceptions.json"
+"custom_nodes.lock" = "vibecomfy/custom_nodes.lock"
+"template_index.json" = "vibecomfy/template_index.json"
 
 [tool.hatch.build.targets.sdist]
 exclude = [

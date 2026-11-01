@@ -40,15 +40,16 @@ __all__ = [
 
 
 def _package_relative_fixture_root() -> Path:
-    """Return the checkout-relative corpus path without requiring a checkout.
+    """Find the packaged or checkout corpus independently of process CWD."""
+    from vibecomfy.errors import CheckoutRequiredError
+    from vibecomfy.registry.ready import repo_ready_template_root
 
-    In a wheel this candidate simply does not exist, which is intentional:
-    callers can still import/list/copy and the copy path will use its existing
-    synthetic fallback.  In a source checkout ``__file__`` anchors discovery
-    independently of the process CWD.
-    """
-
-    return (Path(__file__).resolve().parents[2] / "ready_templates/sources/input").resolve()
+    try:
+        root = repo_ready_template_root()
+    except CheckoutRequiredError:
+        # Sparse installs can still use the existing synthetic fallback.
+        root = Path(__file__).resolve().parents[1] / "ready_templates"
+    return (root / "sources" / "input").resolve()
 
 
 # Keep this public name for callers/tests that inspect or override the source

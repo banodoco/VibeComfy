@@ -627,8 +627,14 @@ def _materialize_transformed_source(source_path: Path, transformed: str, destina
 
 def _worker_environment() -> dict[str, str]:
     env = dict(os.environ)
-    root = str(find_repo_root())
-    env["PYTHONPATH"] = root if not env.get("PYTHONPATH") else root + os.pathsep + env["PYTHONPATH"]
+    from vibecomfy.errors import CheckoutRequiredError
+
+    try:
+        root = str(find_repo_root())
+    except CheckoutRequiredError:
+        pass  # The worker uses this interpreter's installed distribution.
+    else:
+        env["PYTHONPATH"] = root if not env.get("PYTHONPATH") else root + os.pathsep + env["PYTHONPATH"]
     env["PYTHONHASHSEED"] = "0"
     return env
 
@@ -998,7 +1004,9 @@ def simulate_rule(rule_spec: str, template_ids: list[str] | None = None, *, sche
     caller_schema_provider = schema_provider
     if schema_provider is None:
         schema_provider = get_schema_provider("auto")
-    snapshot = build_corpus_snapshot(find_repo_root() / "ready_templates")
+    from vibecomfy.registry.ready import repo_ready_template_root
+
+    snapshot = build_corpus_snapshot(repo_ready_template_root())
     templates_by_id = {template["id"]: template for template in snapshot.templates_list}
     target_ids = (
         [template["id"] for template in snapshot.templates_list if template["marker"] == "generated"]

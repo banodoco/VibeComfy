@@ -131,7 +131,12 @@ def _load_from_template(template_id: str) -> dict[str, Any] | None:
 
     source_path = Path(match.group(1))
     if not source_path.is_absolute():
-        source_path = Path(__file__).resolve().parents[2] / source_path
+        if source_path.parts and source_path.parts[0] == "ready_templates":
+            from vibecomfy.registry.ready import repo_ready_template_root
+
+            source_path = repo_ready_template_root() / Path(*source_path.parts[1:])
+        else:
+            source_path = Path(__file__).resolve().parents[2] / source_path
     return _load_and_normalize(source_path)
 
 

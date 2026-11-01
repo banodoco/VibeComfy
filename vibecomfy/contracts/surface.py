@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import json
 from typing import Any
 
@@ -75,7 +77,12 @@ def _ready_id(workflow: VibeWorkflow, contract: dict[str, Any]) -> str | None:
 
 
 def _template_index_row(ready_id: str) -> dict[str, Any]:
-    template_index_path = find_repo_root() / "template_index.json"
+    from vibecomfy.errors import CheckoutRequiredError
+
+    try:
+        template_index_path = find_repo_root() / "template_index.json"
+    except CheckoutRequiredError:
+        template_index_path = Path(__file__).resolve().parents[1] / "template_index.json"
     if not template_index_path.exists():
         return {}
     try:

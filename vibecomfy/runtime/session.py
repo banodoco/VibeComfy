@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING, Any, Mapping, Protocol, Sequence
 
 from vibecomfy.comfy_command import comfyui_command
 from vibecomfy.errors import (
+    CheckoutRequiredError,
     MODEL_DOCTOR_NEXT_ACTION,
     ModelAssetError,
     QueueError,
@@ -3062,6 +3063,9 @@ def current_source_revision() -> str | None:
             timeout=5,
             env=_checkout_git_environment(),
         )
+    except CheckoutRequiredError:
+        logger.debug("Source revision unavailable: VibeComfy is installed without a checkout")
+        return None
     except (OSError, subprocess.SubprocessError):
         return None
     if result.returncode != 0:
@@ -3092,6 +3096,9 @@ def current_source_content_digest() -> str | None:
             timeout=60,
             env=_checkout_git_environment(),
         )
+    except CheckoutRequiredError:
+        logger.debug("Source content digest unavailable: VibeComfy is installed without a checkout")
+        return None
     except (OSError, subprocess.SubprocessError):
         return None
     if result.returncode != 0:

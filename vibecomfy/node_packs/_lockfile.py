@@ -21,9 +21,13 @@ def resolve_lockfile_path(path: str | Path | None = None, *, repo_root: Path | N
     if path is not None:
         return Path(path).expanduser()
     if repo_root is None:
-        # Package-owned default, matching workflow-bundle approval authority;
-        # do not require a checkout-discovery call when running from a wheel.
-        repo_root = Path(__file__).resolve().parents[2]
+        from vibecomfy.errors import CheckoutRequiredError
+        from vibecomfy.utils import find_repo_root
+
+        try:
+            repo_root = find_repo_root()
+        except CheckoutRequiredError:
+            return Path(__file__).resolve().parents[1] / "custom_nodes.lock"
     return Path(repo_root) / "custom_nodes.lock"
 
 

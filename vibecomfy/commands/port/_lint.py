@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from vibecomfy.porting.lint import lint_ready_template
-from vibecomfy.utils import find_repo_root
+from vibecomfy.registry.ready import repo_ready_template_root
 
 
 def _cmd_port_lint(args: argparse.Namespace) -> int:
@@ -16,7 +16,7 @@ def _cmd_port_lint(args: argparse.Namespace) -> int:
     json_mode = getattr(args, "json", False)
 
     if all_mode:
-        ready_root = find_repo_root() / "ready_templates"
+        ready_root = repo_ready_template_root()
         paths = list(ready_root.rglob("*.py"))
     else:
         wf_path = Path(args.workflow)
@@ -24,7 +24,7 @@ def _cmd_port_lint(args: argparse.Namespace) -> int:
             paths = [wf_path]
         else:
             # Try as ready template ID
-            ready_root = find_repo_root() / "ready_templates"
+            ready_root = repo_ready_template_root()
             candidate = ready_root / f"{args.workflow}.py"
             if candidate.is_file():
                 paths = [candidate]

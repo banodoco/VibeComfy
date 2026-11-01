@@ -2061,7 +2061,9 @@ def _derive_template_id(template_id: str | None, source_path: Path | None) -> st
         return template_id
     if source_path is not None:
         try:
-            return source_path.resolve().relative_to(_repo_root() / "ready_templates").with_suffix("").as_posix()
+            from vibecomfy.registry.ready import repo_ready_template_root
+
+            return source_path.resolve().relative_to(repo_ready_template_root()).with_suffix("").as_posix()
         except (ValueError, CheckoutRequiredError):
             return source_path.stem
     return "ready_template"
@@ -2069,9 +2071,11 @@ def _derive_template_id(template_id: str | None, source_path: Path | None) -> st
 
 def _coverage_manifest_row(template_id: str) -> dict[str, Any]:
     try:
-        path = _repo_root() / "ready_templates/sources" / "manifests" / "coverage.json"
+        from vibecomfy.registry.ready import repo_ready_template_root
+
+        path = repo_ready_template_root() / "sources" / "manifests" / "coverage.json"
     except CheckoutRequiredError:
-        return {}  # an installed (wheel) VibeComfy ships no corpus manifest, like a missing file
+        return {}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
