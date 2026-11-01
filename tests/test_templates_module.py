@@ -825,6 +825,37 @@ def test_finalize_unions_custom_nodes_from_both_sources() -> None:
     assert custom == sorted(custom)
 
 
+@pytest.mark.parametrize(
+    ("field", "first", "second"),
+    [
+        ("commit", "a" * 40, "b" * 40),
+        ("url", "https://example.test/first.git", "https://example.test/second.git"),
+        ("path", "/example/first", "/example/second"),
+        ("version", "1.0.0", "2.0.0"),
+    ],
+)
+def test_finalize_rejects_conflicting_exact_custom_node_refs(
+    field: str, first: str, second: str,
+) -> None:
+    from vibecomfy.custom_node_refs import CustomNodeRefConflict
+
+    wf = _workflow("custom-node-ref-conflict")
+    metadata = {
+        "requirements": {
+            "custom_node_refs": [{"slug": "pack-a", "source": "git", field: first}],
+        },
+    }
+    with pytest.raises(CustomNodeRefConflict) as error:
+        finalize(
+            wf, {}, metadata,
+            requirements={
+                "custom_node_refs": [{"slug": "pack-a", "source": "git", field: second}],
+            },
+        )
+    assert error.value.field == field
+    assert {error.value.first_value, error.value.second_value} == {first, second}
+
+
 def test_finalize_uses_metadata_output_prefix_as_filename_fallback() -> None:
     """T4(b): metadata output_prefix reaches finalized output when filename_prefix omitted."""
     wf = _workflow("image/example")

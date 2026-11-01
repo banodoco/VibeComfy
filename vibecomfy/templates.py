@@ -1629,6 +1629,10 @@ def _finalize_impl(
             existing_refs = list(requirements.get("custom_node_refs") or [])
             requirements["custom_node_refs"] = [*existing_refs, *meta_normalized["custom_node_refs"]]
 
+    # The metadata witness may alias requirements; normalize the merged refs
+    # before model refresh can retain that duplicated witness for restoration.
+    requirements, _warnings = normalize_custom_node_requirements(requirements)
+
     # Fall back to metadata output_prefix when filename_prefix not provided.
     if "filename_prefix" not in bind_kwargs:
         output_prefix_fallback = metadata.get("output_prefix")
