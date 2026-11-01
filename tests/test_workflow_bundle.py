@@ -140,6 +140,76 @@ def test_reemitting_a_loaded_pair_preserves_runtime_requirements(tmp_path: Path)
     assert reopened.semantic_digest == loaded.semantic_digest
 
 
+@pytest.mark.parametrize("source_format", ["scratchpad", "ready_template"])
+def test_model_bundle_rebuild_preserves_admitted_custom_node_refs(
+    tmp_path: Path, source_format: str,
+) -> None:
+    """Model refresh must not append metadata pins to their own witness."""
+    from vibecomfy.workflow import WorkflowRequirements
+
+    workflow = _workflow("model-custom-node-refs")
+    workflow.add_node(
+        "UNETLoader", uid="model", unet_name="bundle-model.safetensors", weight_dtype="default",
+    )
+    model_asset = {
+        "name": "bundle-model.safetensors", "url": "https://example.test/bundle-model.safetensors",
+        "subdir": "diffusion_models",
+    }
+    workflow.requirements = WorkflowRequirements(
+        models=[model_asset],
+        custom_node_refs=[
+            {"slug": "pack-a", "source": "git", "commit": "a" * 40,
+             "url": "https://example.test/pack-a.git", "classes": ["AlphaNode", "BetaNode"]},
+            {"slug": "pack-b", "source": "git", "commit": "b" * 40,
+             "url": "https://example.test/pack-b.git", "classes": ["GammaNode"]},
+        ],
+        runtime={"comfy_commit": "c" * 40, "comfy_version": "==0.36.0"},
+    )
+    workflow.metadata["model_assets"] = [model_asset]
+    admitted = workflow.semantic_projection()
+    admitted_digest = workflow.semantic_digest()
+    first_path = tmp_path / "first.py"
+    first = emit_bundle_with_candidate(
+        workflow, first_path, Provenance.AGENT_AUTHORED, None, source_format=source_format,
+    )
+    loaded = load_bundle(first_path, trust=Provenance.USER_CONFIRMED)
+    second_path = tmp_path / "second.py"
+    second = emit_bundle(loaded.workflow, second_path, Provenance.AGENT_AUTHORED)
+    reopened = load_bundle(second_path, trust=Provenance.USER_CONFIRMED)
+
+    for bundle in (first, loaded, second, reopened):
+        assert bundle.semantic_digest == admitted_digest
+        assert bundle.workflow.semantic_projection() == admitted
+        assert bundle.workflow.requirements.custom_node_refs == workflow.requirements.custom_node_refs
+        assert len(bundle.workflow.requirements.custom_node_refs) == 2
+        assert bundle.workflow.metadata["model_assets"] == workflow.metadata["model_assets"]
+    assert workflow.semantic_projection() == admitted
+
+
+def test_first_build_custom_node_pin_drift_refuses_publication(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workflow = _nonempty_workflow("custom-node-pin-drift")
+    workflow.requirements.custom_node_refs = [
+        {"slug": "pack-a", "source": "git", "commit": "a" * 40},
+    ]
+    admitted_digest = workflow.semantic_digest()
+    real_load_scratchpad = load_scratchpad
+
+    def load_with_pin_drift(*args, **kwargs):
+        loaded = real_load_scratchpad(*args, **kwargs)
+        loaded.requirements.custom_node_refs[0]["commit"] = "b" * 40
+        return loaded
+
+    monkeypatch.setattr("vibecomfy.scratchpad_loader.load_scratchpad", load_with_pin_drift)
+    destination = tmp_path / "workflow.py"
+    with pytest.raises(WorkflowBundleError, match="first-build semantic digest"):
+        emit_bundle(workflow, destination, Provenance.AGENT_AUTHORED)
+    assert workflow.semantic_digest() == admitted_digest
+    assert not destination.exists()
+    assert not destination.with_suffix(".vibe.json").exists()
+
+
 def test_source_provenance_report_survives_bundle_reload_and_reemission(tmp_path: Path) -> None:
     report = {
         "records": [
