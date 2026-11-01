@@ -1402,6 +1402,13 @@ def test_live_image_descriptor_variants_preserve_information() -> None:
     assert [v["metadata"]["kind"] for v in entries[0][0]["descriptor_variants"]] == ["image", "preview"]
 
 
+def test_duplicate_paths_with_different_routing_are_rejected() -> None:
+    outputs = {"images": [{"filename": "same.png", "subfolder": "video", "type": "output"}],
+               "gifs": [{"filename": "video/same.png", "subfolder": "", "type": "output"}]}
+    with pytest.raises(RuntimeNodeError, match="inconsistent routing"):
+        session_module._collect_output_entries(outputs)
+
+
 def test_nested_output_descriptor_resolves_under_configured_root_only(tmp_path: Path) -> None:
     output_root = tmp_path / "output"
     resolved = session_module._resolve_comfy_output_filename(
