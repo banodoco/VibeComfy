@@ -368,7 +368,8 @@ def _runtime_failure_evidence(
         seen_errors.add(id(cursor))
         if (getattr(cursor, "acceptance_known", None) is False
                 or isinstance(cursor, httpx.RequestError)
-                or (isinstance(cursor, httpx.HTTPStatusError) and cursor.response.status_code >= 500)):
+                or (isinstance(cursor, httpx.HTTPStatusError)
+                    and cursor.response.status_code not in {400, 401, 403, 404, 422})):
             acceptance_unknown = True
         if isinstance(cursor, (asyncio.TimeoutError, TimeoutError)):
             timed_out = True

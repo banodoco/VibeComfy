@@ -509,7 +509,7 @@ def _approved(workflow: VibeWorkflow):
         return bundle.compile(schema_provider=_FixtureProvider()), bundle
 
 
-@pytest.mark.parametrize("status,expected", [(400, "rejected"), (502, "unknown")])
+@pytest.mark.parametrize("status,expected", [(400, "rejected"), (429, "unknown"), (502, "unknown")])
 def test_queue_http_failure_receipt_distinguishes_rejection_from_unknown(status, expected):
     import httpx
 
