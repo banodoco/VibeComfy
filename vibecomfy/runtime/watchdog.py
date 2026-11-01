@@ -389,6 +389,10 @@ class Watchdog:
                     if nid not in self._state.cached_node_ids:
                         self._state.cached_node_ids.append(nid)
         elif msg_type == "executing":
+            # An absent node is malformed; only an explicit null is the
+            # protocol's end-of-prompt signal.
+            if "node" not in data:
+                return
             node = data.get("node")
             if node is None:
                 # Comfy signals end-of-prompt via {"node": null}.
