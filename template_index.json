@@ -3,7 +3,7 @@
   "generated_from": "repo-only ready template discovery",
   "include_rule": "find ready_templates -type f -name '*.py' ! -name '_*' | sort",
   "exclude_rule": "exclude __init__.py and files whose basename starts with '_' to match vibecomfy.registry.ready._template_paths",
-  "template_count": 67,
+  "template_count": 68,
   "templates": [
     {
       "id": "audio/ace_step_1_5_t2a_song",
@@ -125,6 +125,199 @@
         "version": "unknown"
       },
       "source_workflow": "ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json",
+      "source_sha256": null
+    },
+    {
+      "id": "audio/hunyuan_foley_v2a",
+      "path": "ready_templates/audio/hunyuan_foley_v2a.py",
+      "source_scope": "repo",
+      "indexed": true,
+      "capability": "audio",
+      "coverage_tier": "",
+      "custom_nodes": [],
+      "model_count": 5,
+      "public_inputs": [
+        {
+          "name": "video",
+          "target": {
+            "node_id": "1",
+            "field": "file"
+          },
+          "node_id": "1",
+          "field": "file",
+          "value": "muted_clip.mp4",
+          "type": null,
+          "default": "muted_clip.mp4",
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "video",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "prompt",
+          "target": {
+            "node_id": "5",
+            "field": "prompt"
+          },
+          "node_id": "5",
+          "field": "prompt",
+          "value": "A sledgehammer smashes a glass bottle: a heavy whoosh, a sharp glass shatter and tinkling shards. No speech is present. No music is present.",
+          "type": null,
+          "default": "A sledgehammer smashes a glass bottle: a heavy whoosh, a sharp glass shatter and tinkling shards. No speech is present. No music is present.",
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "text",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "negative_prompt",
+          "target": {
+            "node_id": "5",
+            "field": "negative_prompt"
+          },
+          "node_id": "5",
+          "field": "negative_prompt",
+          "value": "music, melody, song, singing, vocals, score, soundtrack, beat, rhythm bed, instrumental backing, speech, dialogue, talking, narration, tinny, thin, harsh, clipped, distorted, low bitrate",
+          "type": null,
+          "default": "music, melody, song, singing, vocals, score, soundtrack, beat, rhythm bed, instrumental backing, speech, dialogue, talking, narration, tinny, thin, harsh, clipped, distorted, low bitrate",
+          "required": false,
+          "range": null,
+          "aliases": [
+            "negative"
+          ],
+          "media_semantics": "text",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "negative",
+          "target": {
+            "node_id": "5",
+            "field": "negative_prompt"
+          },
+          "node_id": "5",
+          "field": "negative_prompt",
+          "value": "music, melody, song, singing, vocals, score, soundtrack, beat, rhythm bed, instrumental backing, speech, dialogue, talking, narration, tinny, thin, harsh, clipped, distorted, low bitrate",
+          "type": null,
+          "default": "music, melody, song, singing, vocals, score, soundtrack, beat, rhythm bed, instrumental backing, speech, dialogue, talking, narration, tinny, thin, harsh, clipped, distorted, low bitrate",
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "text",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "seed",
+          "target": {
+            "node_id": "5",
+            "field": "seed"
+          },
+          "node_id": "5",
+          "field": "seed",
+          "value": 42,
+          "type": null,
+          "default": 42,
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "steps",
+          "target": {
+            "node_id": "5",
+            "field": "steps"
+          },
+          "node_id": "5",
+          "field": "steps",
+          "value": 50,
+          "type": null,
+          "default": 50,
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "guidance_scale",
+          "target": {
+            "node_id": "5",
+            "field": "guidance_scale"
+          },
+          "node_id": "5",
+          "field": "guidance_scale",
+          "value": 4.5,
+          "type": null,
+          "default": 4.5,
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        }
+      ],
+      "public_outputs": [
+        {
+          "name": "video",
+          "node_id": "8",
+          "output_type": "SaveVideo",
+          "artifact_kind": "video",
+          "mime_type": "video/mp4",
+          "filename_prefix": "audio/hunyuan_foley_v2a",
+          "expected_cardinality": "one",
+          "status": "static",
+          "source": "finalize"
+        }
+      ],
+      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+      "artifact_expectations": [
+        {
+          "name": "video",
+          "node_id": "8",
+          "output_type": "SaveVideo",
+          "artifact_kind": "video",
+          "mime_type": "video/mp4",
+          "filename_prefix": "audio/hunyuan_foley_v2a",
+          "expected_cardinality": "one",
+          "status": "static",
+          "source": "finalize"
+        }
+      ],
+      "static_diagnostics": [
+        {
+          "code": "static_dynamic_value",
+          "severity": "warning",
+          "message": "finalize has dynamic 'output_node'"
+        }
+      ],
+      "public_input_status": "declared",
+      "public_output_status": "declared",
+      "custom_node_count": 0,
+      "strict_ready_diagnostic_counts": {},
+      "readiness_class": "ready",
+      "marker": "manual",
+      "app_active": false,
+      "blocked": false,
+      "reference": false,
+      "supplemental": false,
+      "vibecomfy_version": "2.8.0",
+      "comfy_core": {
+        "commit": "unknown",
+        "status": "unavailable",
+        "tested_at": "2026-07-09T09:32:35.945439+00:00",
+        "version": "unknown"
+      },
+      "source_workflow": "example_workflows/Hunyuan-Foley.json (commit b94f7aca)",
       "source_sha256": null
     },
     {
