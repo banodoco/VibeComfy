@@ -1278,6 +1278,66 @@ def test_object_info_schema_provider_reads_normalized_cache_shape(tmp_path) -> N
     assert schema.outputs == [OutputSpec(type="IMAGE", name="image")]
 
 
+def test_qwen_image_21_v3_autogrow_zero_min_is_optional_and_declares_dotted_slots(tmp_path) -> None:
+    fixture = Path(__file__).parent / "fixtures" / "comfyui" / "text_encode_qwen_image_21_object_info.json"
+    provider = ObjectInfoSchemaProvider(fixture)
+    schema = provider.get_schema("TextEncodeQwenImage21")
+
+    assert schema is not None
+    images = schema.inputs["images"]
+    assert images.type == "COMFY_AUTOGROW_V3"
+    assert images.required is False
+    assert images.dynamic_fields == {
+        "*": tuple(f"image_{index}" for index in range(1, 17))
+    }
+
+    from vibecomfy.schema.validate import validate_api_against_schema
+
+    omitted = validate_api_against_schema(
+        {"1": {"class_type": "TextEncodeQwenImage21", "inputs": {}}},
+        provider,
+    )
+    assert not [
+        issue for issue in omitted
+        if issue.code == "missing_required_input" and issue.detail.get("input") == "images"
+    ]
+
+    populated = validate_api_against_schema(
+        {
+            "1": {
+                "class_type": "TextEncodeQwenImage21",
+                "inputs": {"images.image_1": "reference-image"},
+            }
+        },
+        provider,
+    )
+    assert not [
+        issue for issue in populated
+        if issue.code == "unknown_input" and issue.detail.get("input") == "images.image_1"
+    ]
+    assert any(
+        issue.code == "unknown_input" and issue.detail.get("input") == "images.image_17"
+        for issue in validate_api_against_schema(
+            {
+                "1": {
+                    "class_type": "TextEncodeQwenImage21",
+                    "inputs": {"images.image_17": "unexpected-slot"},
+                }
+            },
+            provider,
+        )
+    )
+
+    positive_minimum = tmp_path / "positive-minimum.json"
+    data = json.loads(fixture.read_text(encoding="utf-8"))
+    data["TextEncodeQwenImage21"]["input"]["required"]["images"][1]["template"]["min"] = 1
+    positive_minimum.write_text(json.dumps(data), encoding="utf-8")
+    positive_schema = ObjectInfoSchemaProvider(positive_minimum).get_schema("TextEncodeQwenImage21")
+    assert positive_schema is not None
+    assert positive_schema.inputs["images"].required is True
+    assert positive_schema.inputs["prompt"].required is True
+
+
 def test_runtime_schema_provider_fetches_and_writes_object_info_cache(tmp_path, monkeypatch) -> None:
     class FakeServer:
         async def __aenter__(self):

@@ -970,6 +970,12 @@ def _is_dynamic_payload_input(
         spec = schema_inputs.get(controller)
         input_type = str(getattr(spec, "type", "") or "").upper()
         if child and "AUTOGROW" in input_type:
+            # V3's template.names is the declared set of dotted child slots.
+            # Older/manual schemas without that metadata retain their
+            # existing generic auto-grow behavior.
+            declared_fields = (getattr(spec, "dynamic_fields", {}) or {}).get("*")
+            if declared_fields:
+                return child in declared_fields
             return True
     # ComfyMathExpression declares one ``values`` auto-grow controller in
     # object_info, while the API expands each connected variable to a dotted
