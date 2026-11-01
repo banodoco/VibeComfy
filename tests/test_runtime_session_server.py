@@ -679,7 +679,7 @@ def test_server_post_witness_failure_matrix(
     monkeypatch.setattr(session_module, "_finalize_watchdog", fake_finalize_watchdog)
     if failure_kind == "output":
         monkeypatch.setattr(
-            session_module, "_collect_output_paths",
+            session_module, "_artifact_records",
             lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("output collection failed")),
         )
     elif failure_kind == "metadata":
