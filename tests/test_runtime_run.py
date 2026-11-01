@@ -509,6 +509,24 @@ def _approved(workflow: VibeWorkflow):
         return bundle.compile(schema_provider=_FixtureProvider()), bundle
 
 
+@pytest.mark.parametrize("status,expected", [(400, "rejected"), (502, "unknown")])
+def test_queue_http_failure_receipt_distinguishes_rejection_from_unknown(status, expected):
+    import httpx
+
+    request = httpx.Request("POST", "http://comfy.test/prompt")
+    response = httpx.Response(status, request=request)
+    cause = httpx.HTTPStatusError("failed", request=request, response=response)
+    wrapped = QueueError("queue failed")
+    wrapped.__cause__ = cause
+    record, _ = _approved(_workflow())
+    evidence = session_module._runtime_failure_evidence(
+        record, adapter_kind="external", backend="api", endpoint="http://comfy.test",
+        schema_provenance={}, queue_acceptance={"status": "unknown", "prompt_id": None},
+        phase="queue", exc=wrapped, queue_started=True)
+    assert evidence["queue_acceptance"]["status"] == expected
+    assert evidence["terminal"]["acceptance_known"] is (expected == "rejected")
+
+
 def _command_bundle():
     workflow = VibeWorkflow("command-runtime-test", WorkflowSource("command-runtime-test"))
     workflow.add_node("Integer", uid="integer-node", value=7)

@@ -22,6 +22,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+import httpx
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any, Mapping, Protocol, Sequence
@@ -361,11 +362,17 @@ def _runtime_failure_evidence(
             cursor_for_prompt = cursor_for_prompt.__cause__ or cursor_for_prompt.__context__
     cursor: BaseException | None = exc
     timed_out = False
-    while cursor is not None:
+    acceptance_unknown = False
+    seen_errors: set[int] = set()
+    while cursor is not None and id(cursor) not in seen_errors:
+        seen_errors.add(id(cursor))
+        if (getattr(cursor, "acceptance_known", None) is False
+                or isinstance(cursor, httpx.RequestError)
+                or (isinstance(cursor, httpx.HTTPStatusError) and cursor.response.status_code >= 500)):
+            acceptance_unknown = True
         if isinstance(cursor, (asyncio.TimeoutError, TimeoutError)):
             timed_out = True
-            break
-        cursor = cursor.__cause__
+        cursor = cursor.__cause__ or cursor.__context__
     if interrupted:
         if status != "accepted":
             status = "unknown" if queue_started else "not_attempted"
@@ -373,7 +380,7 @@ def _runtime_failure_evidence(
         reason_type = "KeyboardInterrupt" if isinstance(exc, KeyboardInterrupt) else "CancelledError"
     elif phase == "queue":
         if status != "accepted":
-            status = "unknown" if timed_out else "rejected"
+            status = "unknown" if timed_out or acceptance_unknown else "rejected"
         terminal_phase, reason_type = phase, "TimeoutError" if timed_out else type(exc).__name__
     elif phase == "acceptance_witness":
         status, terminal_phase = "unknown", phase
@@ -577,6 +584,7 @@ def _persist_runtime_failure(
             setattr(exc_for_class, "completion_status", str(completion_status))
         setattr(exc_for_class, "receipt_path", str(run_dir / "attempt.json"))
         setattr(exc_for_class, "prompt_id", normalized_acceptance.get("prompt_id"))
+        setattr(exc_for_class, "acceptance_known", terminal.get("acceptance_known"))
 
 
 def _persist_dependency_failure(
