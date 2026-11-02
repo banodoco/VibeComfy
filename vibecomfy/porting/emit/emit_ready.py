@@ -777,7 +777,7 @@ def _strip_unused_template_imports(source: str) -> str:
         kept = [name for name in names if _import_binding_name(name) in used]
         if kept:
             rewritten.append(target + ", ".join(kept))
-    return "\n".join(rewritten) + ("\n" if source.endswith("\n") else "")
+    return "\n".join(rewritten).rstrip() + ("\n" if source.endswith("\n") else "")
 
 
 def _import_binding_name(import_name: str) -> str:

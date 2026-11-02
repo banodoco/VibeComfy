@@ -123,4 +123,3 @@ def build() -> VibeWorkflow:
         )
 
         return wf.finalize(PUBLIC_INPUT_METADATA, outputs=[OutputSpec(node=saveaudio, output_type='SaveAudio', name='audio', artifact_kind='audio', mime_type='audio/flac', filename_prefix='audio/hunyuan_video_foley', expected_cardinality='one')])
-
