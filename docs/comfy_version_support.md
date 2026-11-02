@@ -1,6 +1,6 @@
 # ComfyUI version support
 
-The Phase 2 default graphs are qualified on CPU against the exact core node
+CPU qualification of the Phase 2 default graphs uses the exact core node
 schemas in official ComfyUI **v0.43.0**, commit
 `426f5eea52a7ece1dd599fff4cb6cd1f352ddd24` (release 2026-10-27).
 `vibecomfy/comfy_metadata.json` owns that upstream source qualification tuple.
