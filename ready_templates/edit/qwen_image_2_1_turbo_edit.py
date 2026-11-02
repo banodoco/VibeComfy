@@ -22,7 +22,7 @@ PUBLIC_INPUT_METADATA = {
     'prompt': InputSpec(node='5', field='prompt', default='', type='STRING', required=True, media_semantics='text'),
     'negative_prompt': InputSpec(node='5', field='negative_prompt', default='', type='STRING', media_semantics='text'),
     'seed': InputSpec(node='8', field='noise_seed', default=0, type='INT'),
-    'image': InputSpec(node='4', field='image', default='input.png', type='IMAGE', required=True, media_semantics='image'),
+    'image': InputSpec(node='4', field='image', default='', type='IMAGE', required=True, media_semantics='image'),
 }
 READY_METADATA = ReadyMetadata.build(capability='image', inputs=PUBLIC_INPUT_METADATA, models=MODELS, unbound_inputs={},
     provenance={'source_hash': '5a9622d550866800414afcb9c70523ec5c6965eb171476e401e243a7fe8d5a4e', 'source_workflow': 'ready_templates/sources/official/edit/qwen_image_2_1_turbo_edit.json'})

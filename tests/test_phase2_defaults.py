@@ -10,7 +10,7 @@ import pytest
 from vibecomfy.registry.ready import ready_template_ids, workflow_from_ready
 from vibecomfy.runtime.session import _model_assets_from_workflow
 from vibecomfy.security.provenance import Provenance
-from vibecomfy.workflow_bundle import emit_bundle, load_bundle
+from vibecomfy.workflow_bundle import emit_bundle, emit_bundle_with_candidate, load_bundle
 
 ROOT = Path(__file__).resolve().parents[1]
 BINDINGS = {
@@ -20,6 +20,30 @@ BINDINGS = {
     'image/qwen_image_2_1_turbo': {'prompt': ('5', 'prompt'), 'seed': ('8', 'noise_seed'), 'width': ('4', 'width'), 'height': ('4', 'height')},
     'edit/qwen_image_2_1_turbo_edit': {'image': ('4', 'image'), 'prompt': ('5', 'prompt'), 'seed': ('8', 'noise_seed')},
 }
+
+
+def test_edit_required_image_default_survives_first_canonical_publication(tmp_path):
+    workflow = workflow_from_ready('edit/qwen_image_2_1_turbo_edit')
+    image = workflow.inputs['image']
+    # A caller supplies this required reference; the loader's local placeholder
+    # is not a public default. Exercise first publication without a companion.
+    assert image.required and image.default == ''
+    workflow.metadata.pop('source_bundle', None)
+    before = workflow.semantic_projection()
+    api = workflow.compile('api')
+    destination = tmp_path / 'qwen_image_2_1_turbo_edit.py'
+    assert not destination.with_suffix('.vibe.json').exists()
+    bundle = emit_bundle_with_candidate(
+        workflow, destination, {'operation': 'authored'}, None,
+        source_format='ready_template', preserve_authored_graph=True,
+    )
+    reopened = load_bundle(bundle.python_path, trust=Provenance.USER_CONFIRMED)
+    reopened.require_canonical_authority('Edit first publication')
+    assert reopened.workflow.semantic_projection() == before
+    assert reopened.workflow.compile('api') == api
+    assert reopened.workflow.inputs['image'].default == ''
+    reopened.workflow.set_input('image', 'reference.png')
+    assert reopened.workflow.compile('api')['4']['inputs']['image'] == 'reference.png'
 
 
 @pytest.mark.parametrize('template_id', BINDINGS)
