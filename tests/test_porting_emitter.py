@@ -1185,6 +1185,7 @@ def test_convert_ready_templates_tool_dry_run_remains_compatible() -> None:
         text=True,
         capture_output=True,
         check=False,
+        cwd=Path(__file__).resolve().parents[1],
     )
 
     assert result.returncode == 0, result.stderr
@@ -1594,8 +1595,12 @@ def test_ideogram_fixture_native_boundary_is_materialized() -> None:
     )
     loaded = load_port_source(str(fixture), use_comfy_converter=False)
     assert loaded.workflow.nodes
-    with pytest.raises(Exception, match="primitive_literal_invalid"):
-        loaded.workflow.compile("api")
+    # Subgraph 83e6e004 feeds PrimitiveInt nodes 27/28 from subgraph inputs
+    # (linked value primitives). Commit 74998990 intentionally lets linked value
+    # primitives pass through instead of raising primitive_literal_invalid, so
+    # compile must now succeed rather than raise that code.
+    compiled = loaded.workflow.compile("api")
+    assert compiled is not None
 
 def test_ideogram_fixture_ports_from_cache_without_live_introspection(
     tmp_path: Path,
