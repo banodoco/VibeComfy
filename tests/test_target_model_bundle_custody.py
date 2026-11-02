@@ -173,6 +173,18 @@ def test_foley_approves_only_with_its_selected_targets_complete_auxiliary_invent
     assert sampler.native_input_optional == [
         not spec.required for spec in sampler_schema.inputs.values()
     ]
+    decoder_schema = get_authoring_schema_provider(on_demand_schemas=False).get_schema(
+        'DACHunyuanVAEDecode'
+    )
+    assert decoder_schema is not None
+    decoder = workflow.nodes['14']
+    assert decoder.native_input_names == list(decoder_schema.inputs)
+    assert decoder.native_input_types == [
+        spec.type for spec in decoder_schema.inputs.values()
+    ]
+    assert decoder.native_input_optional == [
+        not spec.required for spec in decoder_schema.inputs.values()
+    ]
     # Fake target explicitly declares its provisioned assets from its own lock.
     lock = json.loads((Path(__file__).resolve().parents[1] /
         'ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/assets.json').read_text())

@@ -95,6 +95,25 @@ def generate() -> None:
     sampler.native_output_names = None
     sampler.native_output_types = None
     sampler.__post_init__()
+    decoder = workflow.nodes.get("14")
+    decoder_schema = provider.get_schema("DACHunyuanVAEDecode")
+    if decoder is None or decoder_schema is None:
+        raise RuntimeError("DACHunyuanVAEDecode schema or canonical node 14 is missing")
+    decoder_inputs = raw["14"].get("inputs", {})
+    decoder_outputs = tuple(
+        str(output.name) for output in (getattr(decoder_schema, "outputs", None) or ())
+        if getattr(output, "name", None) is not None
+    )
+    _hydrate_native_schema_carriers(
+        decoder,
+        "DACHunyuanVAEDecode",
+        decoder_outputs,
+        authored_input_names=tuple(str(name) for name in decoder_inputs),
+    )
+    # Keep the authored output-slot mapping and Python references intact.
+    decoder.native_output_names = None
+    decoder.native_output_types = None
+    decoder.__post_init__()
     workflow.register_input("video_ref", "23", "file", "foley-input.mp4", type="COMBO",
                             required=True, media_semantics="video")
     workflow.register_input("prompt", "22", "prompt", raw["22"]["inputs"]["prompt"],
