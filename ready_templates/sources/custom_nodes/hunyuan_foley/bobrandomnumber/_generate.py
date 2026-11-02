@@ -83,7 +83,7 @@ def generate() -> None:
         emit_bundle_with_candidate(built.workflow, destination, {"operation": "authored"}, None,
             operation="authored", source_provenance={"ready_id": TEMPLATE_ID,
                 "source_workflow": str(source.relative_to(ROOT)), "output_mode": "ready_template"},
-            source_format="ready_template")
+            source_format="ready_template", preserve_authored_graph=True)
     if refresh_index([]):
         raise RuntimeError("template index regeneration failed")
 

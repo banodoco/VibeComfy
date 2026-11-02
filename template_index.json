@@ -140,10 +140,10 @@
         {
           "name": "seed",
           "target": {
-            "node_id": "5",
+            "node_id": "22",
             "field": "seed"
           },
-          "node_id": "5",
+          "node_id": "22",
           "field": "seed",
           "value": 123,
           "type": "INT",
@@ -158,10 +158,10 @@
         {
           "name": "video_ref",
           "target": {
-            "node_id": "3",
+            "node_id": "23",
             "field": "file"
           },
-          "node_id": "3",
+          "node_id": "23",
           "field": "file",
           "value": "foley-input.mp4",
           "type": "COMBO",
@@ -176,10 +176,10 @@
         {
           "name": "prompt",
           "target": {
-            "node_id": "5",
+            "node_id": "22",
             "field": "prompt"
           },
-          "node_id": "5",
+          "node_id": "22",
           "field": "prompt",
           "value": "Synchronized footsteps on gravel.",
           "type": "STRING",
@@ -194,7 +194,7 @@
       ],
       "public_outputs": [
         {
-          "node_id": "7",
+          "node_id": "27",
           "name": "audio",
           "output_type": "SaveAudio",
           "artifact_kind": "audio",
@@ -208,7 +208,7 @@
       "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
       "artifact_expectations": [
         {
-          "node_id": "7",
+          "node_id": "27",
           "name": "audio",
           "output_type": "SaveAudio",
           "artifact_kind": "audio",

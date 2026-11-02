@@ -62,18 +62,38 @@ def build() -> VibeWorkflow:
     """Build the workflow (auto-generated)."""
     with new_workflow(READY_METADATA, source_path=__file__) as wf:
 
-        hunyuanfoleymodelloader = raw_call('HunyuanFoleyModelLoader',
+        hunyuanfoleymodelloader = raw_call('HunyuanFoleyModelLoader', '11',
             _outputs=('FOLEY_MODEL',),
+            _native_ports={'native_input_names': None, 'native_output_names': None, 'native_input_types': None, 'native_output_types': None, 'native_input_optional': None, 'native_input_asset_kinds': None, 'native_output_slots': [0]},
             foley_checkpoint_name=FOLEY_CHECKPOINT_NAME,
             model_path_name='hunyuan_foley',
+            _uid='n1',
         )
 
-        loaddachunyuanvae = raw_call('LoadDACHunyuanVAE', _outputs=('VAE',), vae_name=VAE_NAME)
-        loadvideo = LoadVideo(file=DEFAULT_VIDEO_REF)
-        getvideocomponents = GetVideoComponents(video=loadvideo.out(0))
+        loaddachunyuanvae = raw_call('LoadDACHunyuanVAE', '12',
+            _outputs=('VAE',),
+            _native_ports={'native_input_names': None, 'native_output_names': None, 'native_input_types': None, 'native_output_types': None, 'native_input_optional': None, 'native_input_asset_kinds': None, 'native_output_slots': [0]},
+            vae_name=VAE_NAME,
+            _uid='n2',
+        )
 
-        hunyuanfoleysampler = raw_call('HunyuanFoleySampler',
+        loadvideo = LoadVideo(
+            _native_ports={'native_input_names': None, 'native_output_names': None, 'native_input_types': None, 'native_output_types': None, 'native_input_optional': None, 'native_input_asset_kinds': None, 'native_output_slots': [0]},
+            file=DEFAULT_VIDEO_REF,
+            _id='23',
+            _uid='n3',
+        )
+
+        getvideocomponents = GetVideoComponents(
+            _native_ports={'native_input_names': None, 'native_output_names': None, 'native_input_types': None, 'native_output_types': None, 'native_input_optional': None, 'native_input_asset_kinds': None, 'native_output_slots': [0, 2]},
+            video=loadvideo.out(0),
+            _id='24',
+            _uid='n4',
+        )
+
+        hunyuanfoleysampler = raw_call('HunyuanFoleySampler', '22',
             _outputs=('LATENT',),
+            _native_ports={'native_input_names': None, 'native_output_names': None, 'native_input_types': None, 'native_output_types': None, 'native_input_optional': None, 'native_input_asset_kinds': None, 'native_output_slots': [0]},
             guidance_scale=4.5,
             negative_prompt=DEFAULT_NEGATIVE,
             prompt=DEFAULT_PROMPT,
@@ -82,20 +102,27 @@ def build() -> VibeWorkflow:
             foley_model=hunyuanfoleymodelloader.out('FOLEY_MODEL'),
             fps=getvideocomponents.out(2),
             video_frames=getvideocomponents.out(0),
+            _uid='n5',
         )
 
-        dachunyuanvaedecode = raw_call('DACHunyuanVAEDecode',
+        dachunyuanvaedecode = raw_call('DACHunyuanVAEDecode', '14',
             _outputs=('AUDIO',),
+            _native_ports={'native_input_names': None, 'native_output_names': None, 'native_input_types': None, 'native_output_types': None, 'native_input_optional': None, 'native_input_asset_kinds': None, 'native_output_slots': [0]},
             unload_models_after_use=True,
             samples=hunyuanfoleysampler.out('LATENT'),
             vae=loaddachunyuanvae.out('VAE'),
+            _uid='n6',
         )
 
         saveaudio = SaveAudio(
+            _native_ports={'native_input_names': ['filename_prefix', 'extra_pnginfo', 'prompt', 'audio'], 'native_output_names': None, 'native_input_types': ['STRING', 'EXTRA_PNGINFO', 'PROMPT', 'AUDIO'], 'native_output_types': None, 'native_input_optional': [False, True, True, False], 'native_input_asset_kinds': None, 'native_output_slots': None},
             filename_prefix='audio/hunyuan_video_foley',
             audio=dachunyuanvaedecode.out('AUDIO'),
+            _id='27',
+            _uid='n7',
         )
 
+        wf = wf.finalize(PUBLIC_INPUT_METADATA, outputs=[OutputSpec(node=saveaudio, output_type='SaveAudio', name='audio', artifact_kind='audio', mime_type='audio/flac', filename_prefix='audio/hunyuan_video_foley', expected_cardinality='one')])
         wf.strict_types = False
-        return wf.finalize(PUBLIC_INPUT_METADATA, outputs=[OutputSpec(node=saveaudio, output_type='SaveAudio', name='audio', artifact_kind='audio', mime_type='audio/flac', filename_prefix='audio/hunyuan_video_foley', expected_cardinality='one')])
+        return wf
 
