@@ -157,6 +157,9 @@ def test_foley_approves_only_with_its_selected_targets_complete_auxiliary_invent
     bundle = load_bundle(Path(__file__).resolve().parents[1] /
                          'ready_templates/audio/hunyuan_video_foley.py')
     workflow = bundle.workflow
+    video_components = workflow.nodes['24']
+    assert video_components.native_input_names == ['video']
+    assert video_components.native_input_types == ['VIDEO']
     # Fake target explicitly declares its provisioned assets from its own lock.
     lock = json.loads((Path(__file__).resolve().parents[1] /
         'ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/assets.json').read_text())

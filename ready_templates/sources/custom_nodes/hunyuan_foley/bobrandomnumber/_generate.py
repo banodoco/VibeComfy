@@ -27,6 +27,7 @@ def generate() -> None:
     from vibecomfy.schema import get_authoring_schema_provider
     from vibecomfy.schema.extract import normalize_entry
     from vibecomfy.security.provenance import Provenance
+    from vibecomfy.templates import _hydrate_native_schema_carriers
     from vibecomfy.workflow_bundle import emit_bundle_with_candidate, load_bundle
 
     lock = json.loads((SOURCE / "assets.json").read_text())
@@ -52,6 +53,29 @@ def generate() -> None:
     source = SOURCE / "hunyuan_video_foley.json"
     raw = json.loads(source.read_text())
     workflow = from_api(raw, workflow_id=TEMPLATE_ID, schema_provider=provider)
+    # Keep native edge port ownership on the Python workflow.  API ingestion
+    # retains the UI graph but does not attach a roster to this core wrapper;
+    # the existing offline schema carrier supplies the exact names and types.
+    video_components = workflow.nodes.get("24")
+    video_schema = provider.get_schema("GetVideoComponents")
+    if video_components is None or video_schema is None:
+        raise RuntimeError("GetVideoComponents schema or canonical node 24 is missing")
+    video_inputs = raw["24"].get("inputs", {})
+    video_outputs = tuple(
+        str(output.name) for output in (getattr(video_schema, "outputs", None) or ())
+        if getattr(output, "name", None) is not None
+    )
+    _hydrate_native_schema_carriers(
+        video_components,
+        "GetVideoComponents",
+        video_outputs,
+        authored_input_names=tuple(str(name) for name in video_inputs),
+    )
+    # Keep the already-authored output-slot mapping and Python references
+    # intact; this repair is only for the missing native input roster.
+    video_components.native_output_names = None
+    video_components.native_output_types = None
+    video_components.__post_init__()
     workflow.register_input("video_ref", "23", "file", "foley-input.mp4", type="COMBO",
                             required=True, media_semantics="video")
     workflow.register_input("prompt", "22", "prompt", raw["22"]["inputs"]["prompt"],
