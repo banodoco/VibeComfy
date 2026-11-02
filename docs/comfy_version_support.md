@@ -1,69 +1,41 @@
-# ComfyUI Version Compatibility Support
+# ComfyUI version support
 
-## Overview
+The Phase 2 default graphs are qualified on CPU against the exact core node
+schemas in official ComfyUI **v0.43.0**, commit
+`426f5eea52a7ece1dd599fff4cb6cd1f352ddd24` (release 2026-10-27).
+`vibecomfy/comfy_metadata.json` owns that upstream source qualification tuple.
+The source-derived schema shard retains immutable URLs, source hashes and
+unresolved dynamic expressions. It is not a live `/object_info` capture.
 
-VibeComfy targets a specific pinned ComfyUI commit (HiddenSwitch) for all
-default development, CI, and production use. Cross-version compatibility
-testing — verifying that ported workflows remain correct across multiple
-ComfyUI versions — is **Sprint 4 scope** and is **not enabled by default**.
+The optional `vibecomfy[comfy]` dependency remains the **HiddenSwitch/AppMana
+packaged fork**, now `comfyui==0.43.0.2`, at fork source commit
+`ff7644a70dba1707f4caee52576496ce848792f8`. Its runtime compatibility tuple is
+in `vibecomfy/registry/comfy_version_matrix.json`; `uv.lock` owns package
+artifacts and dependency resolution. This is not a direct official upstream
+installation. The fork's whole-tree ancestry/equivalence to the official
+release is unproven. Music 3's node source matches upstream; Qwen's source has
+fork import changes. A version match does not prove installed ABI or inference.
 
-## Target Channels
+`tests/test_comfy_version_compat.py` checks the five scoped graphs against
+those exact source schemas using the existing schema provider and node-call
+validator. Dynamic model/file choices are not proof of target asset custody.
+Qwen3-TTS and Foley custom node schemas/pins remain separately recorded by
+their existing template and custom-node lock machinery.
 
-Four ComfyUI channels are tracked for compatibility testing:
+The selected defaults are Qwen3-TTS CustomVoice 0.6B, MiniMax Music 3,
+HunyuanVideo-Foley, Qwen-Image-2.1 Turbo, and its edit adapter. Qwen3-TTS
+`voice` selects a named speaker; it does not promise 1.7B instruction control.
+TTS's complete inference file paths are pinned to one model repository
+revision, but small-file byte hashes and installed auto-download behavior
+remain unverified. Prestage and verify assets before a runtime qualification.
 
-| Channel | Identifier | Description |
-|---|---|---|
-| **Current** | `hiddenswitch-pinned` | The currently pinned Hiddenswitch commit. This is the active development target and the version used in all default CI. |
-| **Previous** | `previous-release` | One previous release pin. Backward compatibility baseline — guards against regressions in older but still widely used ComfyUI versions. |
-| **Ahead** | `ahead-candidate` | One ahead candidate commit. Forward compatibility smoke test — provides early warning of upcoming breaking changes. |
-| **Upstream HEAD** | `upstream-main-head` | Upstream ComfyUI main HEAD. Bleeding edge check — informs Sprint planning for version upgrades. |
+H3_AV remains deferred pending the owner's Ref2VA/FL2V LoRA and capacity
+decision. Previous-release, ahead-candidate and upstream-main execution,
+installed node imports, model loads, GPU generation, VRAM, quality and
+completed target delivery are not established by these CPU checks.
 
-## Current State (Sprint 3)
+Run the focused compatibility checks from the selected checkout:
 
-- **Marker defined**: All compatibility tests use the `comfy_version_compat`
-  pytest marker, registered in `pyproject.toml`.
-- **Skipped by default**: All tests are decorated with `@pytest.mark.skipif`
-  and will not execute unless explicitly opted in.
-- **Offline collection**: `python -m pytest -m comfy_version_compat --collect-only`
-  works without network access or ComfyUI installation.
-- **Default CI unaffected**: The standard `ci.yml` workflow excludes these tests
-  via `-m 'not gpu'` (which also excludes `comfy_version_compat` — only `gpu`
-  tests are explicitly filtered).
-
-## Opt-In Instructions (Local Testing)
-
-To run cross-version compatibility tests locally:
-
-```bash
-# Set the environment variable
-export COMFY_VERSION_COMPAT=1
-
-# Run the compatibility tests
-python -m pytest -m comfy_version_compat -v
+```sh
+pytest -q tests/test_comfy_version_compat.py
 ```
-
-To run a specific channel in Sprint 4 (when implemented):
-
-```bash
-# Per-channel markers will be added in Sprint 4
-python -m pytest -m "comfy_version_compat and hiddenswitch_pinned" -v
-```
-
-## Sprint 4 Roadmap
-
-In Sprint 4, the following will be implemented:
-
-1. **Per-channel ComfyUI installation**: Automated fetching and setup of each
-   channel's ComfyUI commit in isolated environments.
-2. **Cross-version execution**: Full `port_convert_workflow` validation suite
-   run against all four channels.
-3. **Result comparison**: Diff-based comparison of outputs across channels to
-   detect regressions or improvements.
-4. **CI integration**: Optional matrix workflow for on-demand cross-version
-   testing (not part of default PR CI).
-
-## Related Files
-
-- `tests/test_comfy_version_compat.py` — Marker-only collection tests
-- `.github/workflows/ci.yml` — Default CI (excludes compat tests)
-- `pyproject.toml` — Marker registration

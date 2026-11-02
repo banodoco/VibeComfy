@@ -33,13 +33,10 @@ comfy = [
   # extra is not installed. The package is published on AppMana's Python index;
   # pip callers must pass --extra-index-url https://nodes.appmana.com/simple/.
   #
-  # Frontend pin conflict: comfyui 0.26.0 pins comfyui-frontend-package<1.46
-  # while a fresh ComfyUI checkout tracks a 1.48.x frontend. Installing this
-  # extra into a checkout venv can therefore surface a pip resolver conflict; it
-  # is benign because the checkout's own comfy/ package wins when running
-  # main.py, but keep checkout venvs and [comfy]-extra venvs separate. See the
-  # "Use VibeComfy Inside ComfyUI" section of the README.
-  "comfyui==0.26.0",
+  # Latest packaged fork, not a direct Comfy-Org source installation.
+  # The exact fork source and official schema qualification tuples are recorded
+  # in registry/comfy_version_matrix.json and comfy_metadata.json respectively.
+  "comfyui==0.43.0.2",
 ]
 png = [
   # Optional image-ingest hook (M2 Step 11): read a ComfyUI workflow chunk

@@ -61,8 +61,8 @@ def test_load_checked_in_version_matrix() -> None:
 
     assert isinstance(matrix, VersionMatrix)
     assert matrix.schema_version == "1.0"
-    assert matrix.supported_comfyui_version == "0.26.0"
-    assert matrix.pinned_comfyui_commit is None
+    assert matrix.supported_comfyui_version == "0.43.0.2"
+    assert matrix.pinned_comfyui_commit == "ff7644a70dba1707f4caee52576496ce848792f8"
     assert matrix.vendor_path == "vibecomfy[comfy]"
     assert matrix.object_info_fingerprint is None
 

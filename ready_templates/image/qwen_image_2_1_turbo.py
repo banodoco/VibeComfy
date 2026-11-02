@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from vibecomfy.templates import InputSpec, ModelAsset, ReadyMetadata, new_workflow, node
-from vibecomfy.nodes.core import CLIPLoader, VAELoader, UNETLoader, EmptyLatentImage, LoadImage, ManualSigmas, KSamplerSelect, RandomNoise, CFGGuider, SamplerCustomAdvanced, VAEDecode, SaveImage
+from vibecomfy.nodes.core import CLIPLoader, VAELoader, UNETLoader, EmptyLatentImage, ManualSigmas, KSamplerSelect, RandomNoise, CFGGuider, SamplerCustomAdvanced, VAEDecode, SaveImage
 
 REVISION = 'aacf31a6d48e707f352ecba714cee0680da3479b'
 BASE = f'https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/{REVISION}'
@@ -26,7 +26,7 @@ PUBLIC_INPUT_METADATA = {
     'height': InputSpec(node='4', field='height', default=1024, type='INT'),
 }
 READY_METADATA = ReadyMetadata.build(capability='image', inputs=PUBLIC_INPUT_METADATA, models=MODELS, unbound_inputs={},
-    provenance={'source_workflow': 'ready_templates/sources/official/image/qwen_image_2_1_turbo.json'})
+    provenance={'source_hash': '3eb9cef2866c0186fbe30172701f112b35e574cf3c6575c6e4a6b5dd1e76a403', 'source_workflow': 'ready_templates/sources/official/image/qwen_image_2_1_turbo.json'})
 
 
 def build():

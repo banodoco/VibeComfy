@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "supported_comfyui_version": "0.26.0",
-  "pinned_comfyui_commit": null,
+  "supported_comfyui_version": "0.43.0.2",
+  "pinned_comfyui_commit": "ff7644a70dba1707f4caee52576496ce848792f8",
   "vendor_path": "vibecomfy[comfy]",
   "object_info_fingerprint": null
 }

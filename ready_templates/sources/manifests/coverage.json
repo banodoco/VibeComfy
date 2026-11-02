@@ -5,7 +5,7 @@
     {
       "id": "qwen_image_2_1_turbo",
       "path": "ready_templates/sources/official/image/qwen_image_2_1_turbo.json",
-      "source": "Comfy-Org/workflow_templates@c067929d7e9cc0f3fd15be348fa1a1d85da15946",
+      "source": "Comfy-Org/workflow_templates@60d0d2c2f5c98ab50116abd837156e4010534657",
       "model_family": "qwen-image-2.1-turbo",
       "task": "text_to_image",
       "media": "image",
@@ -15,7 +15,7 @@
     {
       "id": "qwen_image_2_1_turbo_edit",
       "path": "ready_templates/sources/official/edit/qwen_image_2_1_turbo_edit.json",
-      "source": "Comfy-Org/workflow_templates@c067929d7e9cc0f3fd15be348fa1a1d85da15946",
+      "source": "Comfy-Org/workflow_templates@60d0d2c2f5c98ab50116abd837156e4010534657",
       "model_family": "qwen-image-2.1-turbo",
       "task": "image_edit",
       "media": "image",
@@ -727,6 +727,27 @@
       "ready_template": "audio/hunyuan_video_foley",
       "license_notice": "Tencent Hunyuan Community license excludes the EU, UK, and South Korea.",
       "approach": "Pinned community workflow adapted to SaveAudio with native video/FPS bindings; CPU contract only, GPU qualification pending."
+    },
+    {
+      "id": "minimax_music_3",
+      "path": "ready_templates/sources/official/audio/minimax_music_3.json",
+      "source": "Comfy-Org/ComfyUI@426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+      "model_family": "minimax-music-3",
+      "task": "music",
+      "media": "audio",
+      "coverage_tier": "required",
+      "ready_template": "audio/minimax_music_3",
+      "approach": "Official blueprint with shared seed, INT8 diffusion asset, tiled decode selected, and MP3 saver."
+    },
+    {
+      "id": "qwen3_tts_custom_voice",
+      "path": "ready_templates/sources/custom_nodes/qwen_tts/1038lab/qwen3_tts_custom_voice.json",
+      "source": "1038lab/ComfyUI-QwenTTS@d8122a8ba835b65fd65c113d2b273b1ad1579293",
+      "model_family": "qwen3-tts",
+      "task": "tts",
+      "media": "audio",
+      "coverage_tier": "required",
+      "ready_template": "audio/qwen3_tts_custom_voice"
     }
   ]
 }

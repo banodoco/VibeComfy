@@ -1,0 +1,1694 @@
+{
+  "UNETLoader": {
+    "name": "UNETLoader",
+    "display_name": "UNETLoader",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "model/loaders",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "nodes",
+    "inputs": {
+      "required": {
+        "unet_name": [
+          []
+        ],
+        "weight_dtype": [
+          [
+            "default",
+            "fp8_e4m3fn",
+            "fp8_e4m3fn_fast",
+            "fp8_e5m2"
+          ],
+          {
+            "advanced": true
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "unet_name",
+        "weight_dtype"
+      ]
+    },
+    "input_order_all": [
+      "unet_name",
+      "weight_dtype"
+    ],
+    "outputs": [
+      {
+        "type": "MODEL",
+        "name": "Model",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/nodes.py",
+    "source_line": 992,
+    "source_kind": "static_ast",
+    "unresolved": [
+      {
+        "input": "unet_name",
+        "field": "choices",
+        "expression": "folder_paths.get_filename_list('diffusion_models')",
+        "status": "dynamic choice; do not imply any model/file exists"
+      }
+    ]
+  },
+  "CLIPLoader": {
+    "name": "CLIPLoader",
+    "display_name": "CLIPLoader",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "model/loaders",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "nodes",
+    "inputs": {
+      "required": {
+        "clip_name": [
+          []
+        ],
+        "type": [
+          [
+            "stable_diffusion",
+            "stable_cascade",
+            "sd3",
+            "stable_audio",
+            "mochi",
+            "ltxv",
+            "pixart",
+            "cosmos",
+            "lumina2",
+            "wan",
+            "hidream",
+            "chroma",
+            "ace",
+            "omnigen2",
+            "qwen_image",
+            "hunyuan_image",
+            "flux2",
+            "ovis",
+            "longcat_image",
+            "cogvideox",
+            "lens",
+            "pixeldit",
+            "ideogram4",
+            "boogu",
+            "krea2",
+            "joyimage",
+            "mage",
+            "minimax",
+            "yue2",
+            "flux3",
+            "moss_image",
+            "fibo2"
+          ]
+        ]
+      },
+      "optional": {
+        "device": [
+          [
+            "default",
+            "cpu"
+          ],
+          {
+            "advanced": true
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "clip_name",
+        "type"
+      ],
+      "optional": [
+        "device"
+      ]
+    },
+    "input_order_all": [
+      "clip_name",
+      "type",
+      "device"
+    ],
+    "outputs": [
+      {
+        "type": "CLIP",
+        "name": "Clip",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/nodes.py",
+    "source_line": 1017,
+    "source_kind": "static_ast",
+    "unresolved": [
+      {
+        "input": "clip_name",
+        "field": "choices",
+        "expression": "folder_paths.get_filename_list('text_encoders')",
+        "status": "dynamic choice; do not imply any model/file exists"
+      }
+    ]
+  },
+  "VAELoader": {
+    "name": "VAELoader",
+    "display_name": "VAELoader",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "model/loaders",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "nodes",
+    "inputs": {
+      "required": {
+        "vae_name": [
+          []
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "vae_name"
+      ]
+    },
+    "input_order_all": [
+      "vae_name"
+    ],
+    "outputs": [
+      {
+        "type": "VAE",
+        "name": "Vae",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/nodes.py",
+    "source_line": 776,
+    "source_kind": "static_ast",
+    "unresolved": [
+      {
+        "input": "vae_name",
+        "field": "choices",
+        "expression": "s.vae_list(s)",
+        "status": "dynamic choice; do not imply any model/file exists"
+      }
+    ]
+  },
+  "EmptyLatentImage": {
+    "name": "EmptyLatentImage",
+    "display_name": "EmptyLatentImage",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "model/latent",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "nodes",
+    "inputs": {
+      "required": {
+        "width": [
+          "INT",
+          {
+            "default": 1024,
+            "min": 16,
+            "max": 16384,
+            "step": 8,
+            "tooltip": "The width of the latent images in pixels."
+          }
+        ],
+        "height": [
+          "INT",
+          {
+            "default": 1024,
+            "min": 16,
+            "max": 16384,
+            "step": 8,
+            "tooltip": "The height of the latent images in pixels."
+          }
+        ],
+        "batch_size": [
+          "INT",
+          {
+            "default": 1,
+            "min": 1,
+            "max": 4096,
+            "tooltip": "The number of latent images in the batch."
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "width",
+        "height",
+        "batch_size"
+      ]
+    },
+    "input_order_all": [
+      "width",
+      "height",
+      "batch_size"
+    ],
+    "outputs": [
+      {
+        "type": "LATENT",
+        "name": "Latent",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/nodes.py",
+    "source_line": 1255,
+    "source_kind": "static_ast",
+    "unresolved": []
+  },
+  "LoadImage": {
+    "name": "LoadImage",
+    "display_name": "LoadImage",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "image",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "nodes",
+    "inputs": {
+      "required": {
+        "image": [
+          [],
+          {
+            "image_upload": true
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "image"
+      ]
+    },
+    "input_order_all": [
+      "image"
+    ],
+    "outputs": [
+      {
+        "type": "IMAGE",
+        "name": "Image",
+        "is_list": false
+      },
+      {
+        "type": "MASK",
+        "name": "Mask",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/nodes.py",
+    "source_line": 1747,
+    "source_kind": "static_ast",
+    "unresolved": [
+      {
+        "input": "image",
+        "field": "choices",
+        "expression": "sorted(files)",
+        "status": "dynamic choice; do not imply any model/file exists"
+      }
+    ]
+  },
+  "ConditioningZeroOut": {
+    "name": "ConditioningZeroOut",
+    "display_name": "ConditioningZeroOut",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "model/conditioning/transform",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "nodes",
+    "inputs": {
+      "required": {
+        "conditioning": [
+          "CONDITIONING"
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "conditioning"
+      ]
+    },
+    "input_order_all": [
+      "conditioning"
+    ],
+    "outputs": [
+      {
+        "type": "CONDITIONING",
+        "name": "Conditioning",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/nodes.py",
+    "source_line": 274,
+    "source_kind": "static_ast",
+    "unresolved": []
+  },
+  "KSampler": {
+    "name": "KSampler",
+    "display_name": "KSampler",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "model/sampling",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "nodes",
+    "inputs": {
+      "required": {
+        "model": [
+          "MODEL",
+          {
+            "tooltip": "The model used for denoising the input latent."
+          }
+        ],
+        "seed": [
+          "INT",
+          {
+            "default": 0,
+            "min": 0,
+            "max": 18446744073709551615,
+            "control_after_generate": true,
+            "tooltip": "The random seed used for creating the noise."
+          }
+        ],
+        "steps": [
+          "INT",
+          {
+            "default": 20,
+            "min": 1,
+            "max": 10000,
+            "tooltip": "The number of steps used in the denoising process."
+          }
+        ],
+        "cfg": [
+          "FLOAT",
+          {
+            "default": 8.0,
+            "min": 0.0,
+            "max": 100.0,
+            "step": 0.1,
+            "round": 0.01,
+            "tooltip": "The Classifier-Free Guidance scale balances creativity and adherence to the prompt. Higher values result in images more closely matching the prompt however too high values will negatively impact quality."
+          }
+        ],
+        "sampler_name": [
+          [],
+          {
+            "tooltip": "The algorithm used when sampling, this can affect the quality, speed, and style of the generated output."
+          }
+        ],
+        "scheduler": [
+          [],
+          {
+            "tooltip": "The scheduler controls how noise is gradually removed to form the image."
+          }
+        ],
+        "positive": [
+          "CONDITIONING",
+          {
+            "tooltip": "The conditioning describing the attributes you want to include in the image."
+          }
+        ],
+        "negative": [
+          "CONDITIONING",
+          {
+            "tooltip": "The conditioning describing the attributes you want to exclude from the image."
+          }
+        ],
+        "latent_image": [
+          "LATENT",
+          {
+            "tooltip": "The latent image to denoise."
+          }
+        ],
+        "denoise": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "step": 0.01,
+            "tooltip": "The amount of denoising applied, lower values will maintain the structure of the initial image allowing for image to image sampling."
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "model",
+        "seed",
+        "steps",
+        "cfg",
+        "sampler_name",
+        "scheduler",
+        "positive",
+        "negative",
+        "latent_image",
+        "denoise"
+      ]
+    },
+    "input_order_all": [
+      "model",
+      "seed",
+      "steps",
+      "cfg",
+      "sampler_name",
+      "scheduler",
+      "positive",
+      "negative",
+      "latent_image",
+      "denoise"
+    ],
+    "outputs": [
+      {
+        "type": "LATENT",
+        "name": "Latent",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/nodes.py",
+    "source_line": 1606,
+    "source_kind": "static_ast",
+    "unresolved": [
+      {
+        "input": "sampler_name",
+        "field": "choices",
+        "expression": "comfy.samplers.KSampler.SAMPLERS",
+        "status": "dynamic choice; do not imply any model/file exists"
+      },
+      {
+        "input": "scheduler",
+        "field": "choices",
+        "expression": "comfy.samplers.KSampler.SCHEDULERS",
+        "status": "dynamic choice; do not imply any model/file exists"
+      }
+    ]
+  },
+  "VAEDecode": {
+    "name": "VAEDecode",
+    "display_name": "VAEDecode",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "model/latent",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "nodes",
+    "inputs": {
+      "required": {
+        "samples": [
+          "LATENT",
+          {
+            "tooltip": "The latent to be decoded."
+          }
+        ],
+        "vae": [
+          "VAE",
+          {
+            "tooltip": "The VAE model used for decoding the latent."
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "samples",
+        "vae"
+      ]
+    },
+    "input_order_all": [
+      "samples",
+      "vae"
+    ],
+    "outputs": [
+      {
+        "type": "IMAGE",
+        "name": "Image",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/nodes.py",
+    "source_line": 321,
+    "source_kind": "static_ast",
+    "unresolved": []
+  },
+  "SaveImage": {
+    "name": "SaveImage",
+    "display_name": "SaveImage",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "image",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "nodes",
+    "inputs": {
+      "required": {
+        "images": [
+          "IMAGE",
+          {
+            "tooltip": "The images to save."
+          }
+        ],
+        "filename_prefix": [
+          "STRING",
+          {
+            "default": "ComfyUI",
+            "tooltip": "The prefix for the file to save. This may include formatting information such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to include values from nodes."
+          }
+        ]
+      },
+      "hidden": {
+        "prompt": [
+          "PROMPT"
+        ],
+        "extra_pnginfo": [
+          "EXTRA_PNGINFO"
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "images",
+        "filename_prefix"
+      ],
+      "hidden": [
+        "prompt",
+        "extra_pnginfo"
+      ]
+    },
+    "input_order_all": [
+      "images",
+      "filename_prefix"
+    ],
+    "outputs": [
+      {
+        "type": "IMAGE",
+        "name": "images",
+        "is_list": false
+      }
+    ],
+    "output_node": true,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/nodes.py",
+    "source_line": 1669,
+    "source_kind": "static_ast",
+    "unresolved": []
+  },
+  "MiniMaxMusic3TextEncode": {
+    "name": "MiniMaxMusic3TextEncode",
+    "display_name": "MiniMax Music3 Text Encode",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "model/conditioning/minimax music",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "comfy_extras.nodes_minimax_music",
+    "inputs": {
+      "required": {
+        "clip": [
+          "CLIP"
+        ],
+        "caption": [
+          "STRING",
+          {
+            "multiline": true,
+            "dynamic_prompts": true
+          }
+        ],
+        "lyrics": [
+          "STRING",
+          {
+            "multiline": true,
+            "dynamic_prompts": true
+          }
+        ],
+        "seed": [
+          "INT",
+          {
+            "default": 0,
+            "min": 0,
+            "max": 18446744073709551615,
+            "control_after_generate": true
+          }
+        ],
+        "max_duration": [
+          "FLOAT",
+          {
+            "default": 120.0,
+            "min": 0.04,
+            "step": 0.04,
+            "tooltip": "Maximum duration in seconds; the model can end the song earlier.",
+            "max": 360.0
+          }
+        ],
+        "cfg_scale": [
+          "FLOAT",
+          {
+            "min": 0.0,
+            "max": 100.0,
+            "step": 0.1,
+            "round": 0.01,
+            "advanced": true,
+            "default": 1.5
+          }
+        ],
+        "top_k": [
+          "INT",
+          {
+            "min": 1,
+            "advanced": true,
+            "default": 50,
+            "max": 16384
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "clip",
+        "caption",
+        "lyrics",
+        "seed",
+        "max_duration",
+        "cfg_scale",
+        "top_k"
+      ]
+    },
+    "input_order_all": [
+      "clip",
+      "caption",
+      "lyrics",
+      "seed",
+      "max_duration",
+      "cfg_scale",
+      "top_k"
+    ],
+    "outputs": [
+      {
+        "type": "CONDITIONING",
+        "name": "Conditioning",
+        "is_list": false
+      },
+      {
+        "type": "FLOAT",
+        "name": "seconds",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "ff0c9d6dfcd63b76fea0bf52026ee408272dc7a1ffc43fa6ced2097608e25af5",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_minimax_music.py",
+    "source_line": 10,
+    "source_kind": "static_ast",
+    "unresolved": []
+  },
+  "EmptyMiniMaxMusic3LatentAudio": {
+    "name": "EmptyMiniMaxMusic3LatentAudio",
+    "display_name": "Empty MiniMax Music3 Latent Audio",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "model/latent/minimax music",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "comfy_extras.nodes_minimax_music",
+    "inputs": {
+      "required": {
+        "seconds": [
+          "FLOAT",
+          {
+            "default": 120.0,
+            "min": 0.04,
+            "step": 0.04,
+            "max": 360.0
+          }
+        ],
+        "batch_size": [
+          "INT",
+          {
+            "default": 1,
+            "min": 1,
+            "max": 4096
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "seconds",
+        "batch_size"
+      ]
+    },
+    "input_order_all": [
+      "seconds",
+      "batch_size"
+    ],
+    "outputs": [
+      {
+        "type": "LATENT",
+        "name": "Latent",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "ff0c9d6dfcd63b76fea0bf52026ee408272dc7a1ffc43fa6ced2097608e25af5",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_minimax_music.py",
+    "source_line": 44,
+    "source_kind": "static_ast",
+    "unresolved": []
+  },
+  "VAEDecodeAudioTiled": {
+    "name": "VAEDecodeAudioTiled",
+    "display_name": "VAE Decode Audio (Tiled)",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "model/latent",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "comfy_extras.nodes_audio",
+    "inputs": {
+      "required": {
+        "samples": [
+          "LATENT"
+        ],
+        "vae": [
+          "VAE"
+        ],
+        "tile_size": [
+          "INT",
+          {
+            "default": 512,
+            "min": 32,
+            "max": 8192,
+            "step": 8
+          }
+        ],
+        "overlap": [
+          "INT",
+          {
+            "default": 64,
+            "min": 0,
+            "max": 1024,
+            "step": 8
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "samples",
+        "vae",
+        "tile_size",
+        "overlap"
+      ]
+    },
+    "input_order_all": [
+      "samples",
+      "vae",
+      "tile_size",
+      "overlap"
+    ],
+    "outputs": [
+      {
+        "type": "AUDIO",
+        "name": "Audio",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "483466af050a43bf96f9fcdfa56ab2759dbf8611dd6a14a9543f6d136ecbdf43",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_audio.py",
+    "source_line": 176,
+    "source_kind": "static_ast",
+    "unresolved": []
+  },
+  "SaveAudioMP3": {
+    "name": "SaveAudioMP3",
+    "display_name": "Save Audio (MP3) (DEPRECATED)",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "audio",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "comfy_extras.nodes_audio",
+    "inputs": {
+      "required": {
+        "audio": [
+          "AUDIO"
+        ],
+        "filename_prefix": [
+          "STRING",
+          {
+            "default": "audio/ComfyUI"
+          }
+        ],
+        "quality": [
+          [
+            "V0",
+            "128k",
+            "320k"
+          ],
+          {
+            "default": "V0"
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "audio",
+        "filename_prefix",
+        "quality"
+      ]
+    },
+    "input_order_all": [
+      "audio",
+      "filename_prefix",
+      "quality"
+    ],
+    "outputs": [
+      {
+        "type": "AUDIO",
+        "name": "audio",
+        "is_list": false
+      }
+    ],
+    "output_node": true,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "483466af050a43bf96f9fcdfa56ab2759dbf8611dd6a14a9543f6d136ecbdf43",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_audio.py",
+    "source_line": 227,
+    "source_kind": "static_ast",
+    "unresolved": []
+  },
+  "SaveAudio": {
+    "name": "SaveAudio",
+    "display_name": "Save Audio (FLAC) (DEPRECATED)",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "audio",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "comfy_extras.nodes_audio",
+    "inputs": {
+      "required": {
+        "audio": [
+          "AUDIO"
+        ],
+        "filename_prefix": [
+          "STRING",
+          {
+            "default": "audio/ComfyUI"
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "audio",
+        "filename_prefix"
+      ]
+    },
+    "input_order_all": [
+      "audio",
+      "filename_prefix"
+    ],
+    "outputs": [
+      {
+        "type": "AUDIO",
+        "name": "audio",
+        "is_list": false
+      }
+    ],
+    "output_node": true,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "483466af050a43bf96f9fcdfa56ab2759dbf8611dd6a14a9543f6d136ecbdf43",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_audio.py",
+    "source_line": 198,
+    "source_kind": "static_ast",
+    "unresolved": []
+  },
+  "TextEncodeQwenImage21": {
+    "name": "TextEncodeQwenImage21",
+    "display_name": "Text Encode Qwen Image 2.1",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "model/conditioning/qwen image",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "comfy_extras.nodes_qwen",
+    "inputs": {
+      "required": {
+        "clip": [
+          "CLIP"
+        ],
+        "prompt": [
+          "STRING",
+          {
+            "multiline": true,
+            "dynamic_prompts": true
+          }
+        ],
+        "negative_prompt": [
+          "STRING",
+          {
+            "multiline": true,
+            "dynamic_prompts": true
+          }
+        ],
+        "resolution": [
+          "INT",
+          {
+            "default": 1024,
+            "min": 0,
+            "max": 4096,
+            "step": 32,
+            "tooltip": "Reference images are resized to about resolution x resolution pixels, at multiples of 32, preserving aspect ratio. 0 keeps each reference at its own size, rounded to a multiple of 32. "
+          }
+        ]
+      },
+      "optional": {
+        "vae": [
+          "VAE"
+        ],
+        "image_1": [
+          "IMAGE"
+        ],
+        "image_2": [
+          "IMAGE"
+        ],
+        "image_3": [
+          "IMAGE"
+        ],
+        "image_4": [
+          "IMAGE"
+        ],
+        "image_5": [
+          "IMAGE"
+        ],
+        "image_6": [
+          "IMAGE"
+        ],
+        "image_7": [
+          "IMAGE"
+        ],
+        "image_8": [
+          "IMAGE"
+        ],
+        "image_9": [
+          "IMAGE"
+        ],
+        "image_10": [
+          "IMAGE"
+        ],
+        "image_11": [
+          "IMAGE"
+        ],
+        "image_12": [
+          "IMAGE"
+        ],
+        "image_13": [
+          "IMAGE"
+        ],
+        "image_14": [
+          "IMAGE"
+        ],
+        "image_15": [
+          "IMAGE"
+        ],
+        "image_16": [
+          "IMAGE"
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "clip",
+        "prompt",
+        "negative_prompt",
+        "resolution"
+      ],
+      "optional": [
+        "vae",
+        "image_1",
+        "image_2",
+        "image_3",
+        "image_4",
+        "image_5",
+        "image_6",
+        "image_7",
+        "image_8",
+        "image_9",
+        "image_10",
+        "image_11",
+        "image_12",
+        "image_13",
+        "image_14",
+        "image_15",
+        "image_16"
+      ]
+    },
+    "input_order_all": [
+      "clip",
+      "prompt",
+      "negative_prompt",
+      "resolution",
+      "vae",
+      "image_1",
+      "image_2",
+      "image_3",
+      "image_4",
+      "image_5",
+      "image_6",
+      "image_7",
+      "image_8",
+      "image_9",
+      "image_10",
+      "image_11",
+      "image_12",
+      "image_13",
+      "image_14",
+      "image_15",
+      "image_16"
+    ],
+    "outputs": [
+      {
+        "type": "CONDITIONING",
+        "name": "positive",
+        "is_list": false
+      },
+      {
+        "type": "CONDITIONING",
+        "name": "negative",
+        "is_list": false
+      },
+      {
+        "type": "LATENT",
+        "name": "latent",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "54ce02aa9e167c0b497ce026ac6b558f539427d2d1ed4fc1fcc2ec8e6bc529da",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_qwen.py",
+    "source_line": 111,
+    "source_kind": "static_ast",
+    "unresolved": [
+      {
+        "input": "images",
+        "field": "autogrow",
+        "expanded_names": [
+          "image_1",
+          "image_2",
+          "image_3",
+          "image_4",
+          "image_5",
+          "image_6",
+          "image_7",
+          "image_8",
+          "image_9",
+          "image_10",
+          "image_11",
+          "image_12",
+          "image_13",
+          "image_14",
+          "image_15",
+          "image_16"
+        ],
+        "min": 0,
+        "source_expr": "io.Autogrow.Input('images', template=io.Autogrow.TemplateNames(io.Image.Input('image'), names=[f'image_{i}' for i in range(1, 17)], min=0), tooltip='Reference images, seen by the text encoder and spliced into the sequence as VAE latents.')"
+      }
+    ]
+  },
+  "QwenImage21Cache": {
+    "name": "QwenImage21Cache",
+    "display_name": "Qwen Image 2.1 Cache",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "model/conditioning/qwen image",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "comfy_extras.nodes_qwen",
+    "inputs": {
+      "required": {
+        "model": [
+          "MODEL"
+        ],
+        "device": [
+          [
+            "auto",
+            "gpu",
+            "cpu",
+            "off"
+          ],
+          {
+            "default": "auto",
+            "tooltip": "auto uses spare VRAM, then RAM. cpu (RAM) is prefetched behind compute and costs little speed. off recomputes the prefix every step, which is slower but is the one way to rule the cache out."
+          }
+        ],
+        "dtype": [
+          [
+            "default",
+            "int8",
+            "int4"
+          ],
+          {
+            "default": "default",
+            "tooltip": "Storage precision. default is lossless. int8 halves the cache at about bf16 accuracy, int4 quarters it but roughly doubles the per-step error."
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "model",
+        "device",
+        "dtype"
+      ]
+    },
+    "input_order_all": [
+      "model",
+      "device",
+      "dtype"
+    ],
+    "outputs": [
+      {
+        "type": "MODEL",
+        "name": "Model",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "54ce02aa9e167c0b497ce026ac6b558f539427d2d1ed4fc1fcc2ec8e6bc529da",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_qwen.py",
+    "source_line": 185,
+    "source_kind": "static_ast",
+    "unresolved": []
+  },
+  "ManualSigmas": {
+    "name": "ManualSigmas",
+    "display_name": "ManualSigmas",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "model/sampling/sigmas",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "comfy_extras.nodes_custom_sampler",
+    "inputs": {
+      "required": {
+        "sigmas": [
+          "STRING",
+          {
+            "default": "1, 0.5",
+            "multiline": false
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "sigmas"
+      ]
+    },
+    "input_order_all": [
+      "sigmas"
+    ],
+    "outputs": [
+      {
+        "type": "SIGMAS",
+        "name": "Sigmas",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "b0ba1521c72475e06fed15db004274ed7c8bb2bf73f1d58849faf6f9f9d264fe",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_custom_sampler.py",
+    "source_line": 1125,
+    "source_kind": "static_ast",
+    "unresolved": []
+  },
+  "RandomNoise": {
+    "name": "RandomNoise",
+    "display_name": "RandomNoise",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "model/sampling/noise",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "comfy_extras.nodes_custom_sampler",
+    "inputs": {
+      "required": {
+        "noise_seed": [
+          "INT",
+          {
+            "default": 0,
+            "min": 0,
+            "max": 18446744073709551615,
+            "control_after_generate": true
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "noise_seed"
+      ]
+    },
+    "input_order_all": [
+      "noise_seed"
+    ],
+    "outputs": [
+      {
+        "type": "NOISE",
+        "name": "Noise",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "b0ba1521c72475e06fed15db004274ed7c8bb2bf73f1d58849faf6f9f9d264fe",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_custom_sampler.py",
+    "source_line": 1003,
+    "source_kind": "static_ast",
+    "unresolved": []
+  },
+  "KSamplerSelect": {
+    "name": "KSamplerSelect",
+    "display_name": "KSamplerSelect",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "model/sampling/samplers",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "comfy_extras.nodes_custom_sampler",
+    "inputs": {
+      "required": {
+        "sampler_name": [
+          "COMBO"
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "sampler_name"
+      ]
+    },
+    "input_order_all": [
+      "sampler_name"
+    ],
+    "outputs": [
+      {
+        "type": "SAMPLER",
+        "name": "Sampler",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "b0ba1521c72475e06fed15db004274ed7c8bb2bf73f1d58849faf6f9f9d264fe",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_custom_sampler.py",
+    "source_line": 379,
+    "source_kind": "static_ast",
+    "unresolved": [
+      {
+        "input": "sampler_name",
+        "field": "choices",
+        "expression": "comfy.samplers.SAMPLER_NAMES"
+      }
+    ]
+  },
+  "CFGGuider": {
+    "name": "CFGGuider",
+    "display_name": "CFG Guider",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "model/sampling/guiders",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "comfy_extras.nodes_custom_sampler",
+    "inputs": {
+      "required": {
+        "model": [
+          "MODEL"
+        ],
+        "positive": [
+          "CONDITIONING"
+        ],
+        "negative": [
+          "CONDITIONING"
+        ],
+        "cfg": [
+          "FLOAT",
+          {
+            "default": 8.0,
+            "min": 0.0,
+            "max": 100.0,
+            "step": 0.1,
+            "round": 0.01
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "model",
+        "positive",
+        "negative",
+        "cfg"
+      ]
+    },
+    "input_order_all": [
+      "model",
+      "positive",
+      "negative",
+      "cfg"
+    ],
+    "outputs": [
+      {
+        "type": "GUIDER",
+        "name": "Guider",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "b0ba1521c72475e06fed15db004274ed7c8bb2bf73f1d58849faf6f9f9d264fe",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_custom_sampler.py",
+    "source_line": 823,
+    "source_kind": "static_ast",
+    "unresolved": []
+  },
+  "SamplerCustomAdvanced": {
+    "name": "SamplerCustomAdvanced",
+    "display_name": "SamplerCustomAdvanced",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "model/sampling/custom",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "comfy_extras.nodes_custom_sampler",
+    "inputs": {
+      "required": {
+        "noise": [
+          "NOISE"
+        ],
+        "guider": [
+          "GUIDER"
+        ],
+        "sampler": [
+          "SAMPLER"
+        ],
+        "sigmas": [
+          "SIGMAS"
+        ],
+        "latent_image": [
+          "LATENT"
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "noise",
+        "guider",
+        "sampler",
+        "sigmas",
+        "latent_image"
+      ]
+    },
+    "input_order_all": [
+      "noise",
+      "guider",
+      "sampler",
+      "sigmas",
+      "latent_image"
+    ],
+    "outputs": [
+      {
+        "type": "LATENT",
+        "name": "output",
+        "is_list": false
+      },
+      {
+        "type": "LATENT",
+        "name": "denoised_output",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "b0ba1521c72475e06fed15db004274ed7c8bb2bf73f1d58849faf6f9f9d264fe",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_custom_sampler.py",
+    "source_line": 1020,
+    "source_kind": "static_ast",
+    "unresolved": []
+  },
+  "LoadVideo": {
+    "name": "LoadVideo",
+    "display_name": "Load Video",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "video",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "comfy_extras.nodes_video",
+    "inputs": {
+      "required": {
+        "file": [
+          "COMBO"
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "file"
+      ]
+    },
+    "input_order_all": [
+      "file"
+    ],
+    "outputs": [
+      {
+        "type": "VIDEO",
+        "name": "Video",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "9d01f3f5cc392a475fcf1422366a66d5ea665c59e391a9c0d6374e6b84ed8a0c",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_video.py",
+    "source_line": 341,
+    "source_kind": "static_ast",
+    "unresolved": [
+      {
+        "input": "file",
+        "field": "choices",
+        "expression": "sorted(files)"
+      }
+    ]
+  },
+  "GetVideoComponents": {
+    "name": "GetVideoComponents",
+    "display_name": "Get Video Components",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "video",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "comfy_extras.nodes_video",
+    "inputs": {
+      "required": {
+        "video": [
+          "VIDEO",
+          {
+            "tooltip": "The video to extract components from."
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "video"
+      ]
+    },
+    "input_order_all": [
+      "video"
+    ],
+    "outputs": [
+      {
+        "type": "IMAGE",
+        "name": "images",
+        "is_list": false
+      },
+      {
+        "type": "AUDIO",
+        "name": "audio",
+        "is_list": false
+      },
+      {
+        "type": "FLOAT",
+        "name": "fps",
+        "is_list": false
+      },
+      {
+        "type": "COMBO",
+        "name": "bit_depth",
+        "is_list": false
+      },
+      {
+        "type": "COMBO",
+        "name": "color_space",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "9d01f3f5cc392a475fcf1422366a66d5ea665c59e391a9c0d6374e6b84ed8a0c",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_video.py",
+    "source_line": 308,
+    "source_kind": "static_ast",
+    "unresolved": []
+  },
+  "PrimitiveInt": {
+    "name": "PrimitiveInt",
+    "display_name": "Int",
+    "description": "Statically derived from exact upstream source; no runtime capture.",
+    "category": "utilities/primitive",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "comfy_extras.nodes_primitive",
+    "inputs": {
+      "required": {
+        "value": [
+          "INT",
+          {
+            "min": -9223372036854775807,
+            "max": 9223372036854775807,
+            "control_after_generate": "fixed"
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "value"
+      ]
+    },
+    "input_order_all": [
+      "value"
+    ],
+    "outputs": [
+      {
+        "type": "INT",
+        "name": "Int",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "329963dd20fbf8985539b7b990780291f4b82ee9cfd42b96b571288b77eaa47a",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_primitive.py",
+    "source_line": 42,
+    "source_kind": "static_ast",
+    "unresolved": [
+      {
+        "input": "value",
+        "field": "min/max",
+        "source_expression": "-sys.maxsize / sys.maxsize",
+        "resolved_for_64_bit_Python": [
+          -9223372036854775807,
+          9223372036854775807
+        ],
+        "note": "sys.maxsize is platform-dependent (2**(Py_ssize_t bit width - 1) - 1); ComfyUI source does not constrain runtime architecture, so 32-bit Python yields a different range."
+      },
+      {
+        "input": "value",
+        "field": "control_after_generate",
+        "source_expression": "io.ControlAfterGenerate.fixed",
+        "resolved_value": "fixed"
+      }
+    ]
+  },
+  "SeedNode": {
+    "name": "SeedNode",
+    "display_name": "Seed",
+    "category": "utilities",
+    "function": "execute",
+    "pack": "comfy_core",
+    "pack_version": "zz-official-426f5eea",
+    "python_module": "comfy_extras.nodes_seed",
+    "inputs": {
+      "required": {
+        "seed": [
+          "INT",
+          {
+            "min": 0,
+            "max": 9223372036854775807,
+            "control_after_generate": "fixed"
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "seed"
+      ]
+    },
+    "input_order_all": [
+      "seed"
+    ],
+    "outputs": [
+      {
+        "type": "INT",
+        "name": "seed",
+        "is_list": false
+      }
+    ],
+    "output_node": false,
+    "source_commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+    "source_sha256": "f1566b448ca9e4b4a1cbd15767301635905cf36a44a17f586c18b848e23e5932",
+    "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_seed.py",
+    "source_line": 7,
+    "source_kind": "static_ast",
+    "unresolved": [
+      {
+        "field": "max",
+        "expression": "sys.maxsize",
+        "status": "Resolved for 64-bit qualification interpreter; architecture-dependent upstream limit."
+      }
+    ]
+  }
+}
