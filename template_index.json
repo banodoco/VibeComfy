@@ -3,7 +3,7 @@
   "generated_from": "repo-only ready template discovery",
   "include_rule": "find ready_templates -type f -name '*.py' ! -name '_*' | sort",
   "exclude_rule": "exclude __init__.py and files whose basename starts with '_' to match vibecomfy.registry.ready._template_paths",
-  "template_count": 67,
+  "template_count": 68,
   "templates": [
     {
       "id": "audio/ace_step_1_5_t2a_song",
@@ -126,6 +126,120 @@
       },
       "source_workflow": "ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json",
       "source_sha256": null
+    },
+    {
+      "id": "audio/hunyuan_video_foley",
+      "path": "ready_templates/audio/hunyuan_video_foley.py",
+      "source_scope": "repo",
+      "indexed": true,
+      "capability": "audio",
+      "coverage_tier": "required",
+      "custom_nodes": [],
+      "model_count": 10,
+      "public_inputs": [
+        {
+          "name": "seed",
+          "target": {
+            "node_id": "",
+            "field": "seed"
+          },
+          "node_id": "",
+          "field": "seed",
+          "value": 123,
+          "type": "INT",
+          "default": 123,
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "video_ref",
+          "target": {
+            "node_id": "",
+            "field": "file"
+          },
+          "node_id": "",
+          "field": "file",
+          "value": "foley-input.mp4",
+          "type": "COMBO",
+          "default": "foley-input.mp4",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "video",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "prompt",
+          "target": {
+            "node_id": "",
+            "field": "prompt"
+          },
+          "node_id": "",
+          "field": "prompt",
+          "value": "Synchronized footsteps on gravel.",
+          "type": "STRING",
+          "default": "Synchronized footsteps on gravel.",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        }
+      ],
+      "public_outputs": [
+        {
+          "name": null,
+          "node_id": "27",
+          "output_type": null,
+          "artifact_kind": null,
+          "mime_type": null,
+          "filename_prefix": null,
+          "expected_cardinality": null,
+          "status": "static",
+          "source": "finalize"
+        }
+      ],
+      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+      "artifact_expectations": [
+        {
+          "name": null,
+          "node_id": "27",
+          "output_type": null,
+          "artifact_kind": null,
+          "mime_type": null,
+          "filename_prefix": null,
+          "expected_cardinality": null,
+          "status": "static",
+          "source": "finalize"
+        }
+      ],
+      "static_diagnostics": [],
+      "public_input_status": "declared",
+      "public_output_status": "declared",
+      "custom_node_count": 0,
+      "strict_ready_diagnostic_counts": {},
+      "readiness_class": "ready",
+      "marker": "generated",
+      "app_active": true,
+      "blocked": false,
+      "reference": false,
+      "supplemental": false,
+      "vibecomfy_version": "2.8.0",
+      "comfy_core": {
+        "commit": "unknown",
+        "status": "unavailable",
+        "tested_at": "2026-07-09T09:32:35.945439+00:00",
+        "version": "unknown"
+      },
+      "source_workflow": "ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/hunyuan_video_foley.json",
+      "source_sha256": null,
+      "license_notice": "Tencent Hunyuan Community license excludes the EU, UK, and South Korea."
     },
     {
       "id": "audio/qwen3_tts_custom_voice",

@@ -18,6 +18,7 @@ _OUTPUT_KINDS = {
 # Roles describe the loader, not an inferred catalog model. Target-side model
 # resolution remains the generation backend's responsibility.
 LOADER_ROLES = {
+    "HunyuanFoleyModelLoader": "checkpoint", "LoadDACHunyuanVAE": "vae",
     "CheckpointLoaderSimple": "checkpoint", "UNETLoader": "diffusion_model",
     "UnetLoaderGGUF": "diffusion_model", "WanVideoModelLoader": "diffusion_model",
     "CLIPLoader": "text_encoder", "DualCLIPLoader": "text_encoder",

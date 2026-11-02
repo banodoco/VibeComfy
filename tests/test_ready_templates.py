@@ -39,6 +39,43 @@ SNAPSHOT_IDS = (
 )
 
 
+def test_generated_foley_roundtrip_keeps_public_media_assets_and_node_pin(tmp_path):
+    from vibecomfy.security.provenance import Provenance
+    from vibecomfy.workflow_bundle import emit_bundle, load_bundle
+
+    identifier = 'audio/hunyuan_video_foley'
+    root = Path(__file__).resolve().parents[1]
+    lock = json.loads((root / 'ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/assets.json').read_text())
+    workflow = workflow_from_ready(identifier)
+    assert workflow.inputs['video_ref'].media_semantics == 'video'
+    assert workflow.inputs['video_ref'].node_id == '23' and workflow.inputs['video_ref'].field == 'file'
+    assert workflow.inputs['prompt'].node_id == '22' and workflow.inputs['prompt'].field == 'prompt'
+    workflow.set_input('prompt', 'A copper bell rings.')
+    bundle = emit_bundle(workflow, tmp_path / 'workflow.py', {'operation': 'authored'})
+    reopened = load_bundle(bundle.python_path, trust=Provenance.USER_CONFIRMED)
+    reopened.require_canonical_authority('Foley roundtrip regression')
+    assert reopened.workflow.compile('api') == workflow.compile('api')
+    assert reopened.workflow.nodes['22'].inputs['prompt'] == 'A copper bell rings.'
+    assert reopened.workflow.inputs['video_ref'].media_semantics == 'video'
+    assert reopened.workflow.outputs[0].artifact_kind == 'audio'
+    actual = {(row['subdir'], row['name']): row for row in _model_assets_from_workflow(reopened.workflow)}
+    assert len(actual) == len(lock['assets']) == 10
+    for expected in lock['assets']:
+        row = actual[(expected['subdir'], expected['name'])]
+        assert all(row[key] == expected[key] for key in ('url', 'sha256', 'size_bytes', 'hf_revision'))
+        assert expected['hf_revision'] in row['url']
+        assert len(row['sha256']) == 64 and row['size_bytes'] > 0
+    pack = reopened.workflow.metadata['custom_node_packs'][lock['node_pack']['name']]
+    assert pack['commit'] == lock['node_pack']['commit']
+    assert set(pack['classes_used']) == {'HunyuanFoleyModelLoader', 'HunyuanFoleySampler',
+                                       'LoadDACHunyuanVAE', 'DACHunyuanVAEDecode'}
+    indexed = next(row for row in json.loads((root / 'template_index.json').read_text())['templates']
+                   if row['id'] == identifier)
+    assert {row['name'] for row in indexed['public_inputs']} == {'prompt', 'video_ref', 'seed'}
+    assert indexed['model_count'] == 10
+    assert indexed['license_notice'] == 'Tencent Hunyuan Community license excludes the EU, UK, and South Korea.'
+
+
 def _model_names(models: object) -> set[str]:
     return {
         str(item.get("name")) if isinstance(item, Mapping) else str(item)

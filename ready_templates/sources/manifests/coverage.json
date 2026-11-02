@@ -715,6 +715,18 @@
         "hivemind_workflow_id": "3743",
         "hivemind_search_workflow_id": "4018"
       }
+    },
+    {
+      "id": "hunyuan_video_foley",
+      "path": "ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/hunyuan_video_foley.json",
+      "source": "BobRandomNumber/ComfyUI-HunyuanVideo_Foley@b94f7aca877ff2be5bc264b057abee3dac682c1b",
+      "model_family": "hunyuan-video-foley",
+      "task": "video_to_audio_foley",
+      "media": "audio",
+      "coverage_tier": "required",
+      "ready_template": "audio/hunyuan_video_foley",
+      "license_notice": "Tencent Hunyuan Community license excludes the EU, UK, and South Korea.",
+      "approach": "Pinned community workflow adapted to SaveAudio with native video/FPS bindings; CPU contract only, GPU qualification pending."
     }
   ]
 }

@@ -1,0 +1,76 @@
+{
+  "23": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "foley-input.mp4"
+    }
+  },
+  "24": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": [
+        "23",
+        0
+      ]
+    }
+  },
+  "11": {
+    "class_type": "HunyuanFoleyModelLoader",
+    "inputs": {
+      "model_path_name": "hunyuan_foley",
+      "foley_checkpoint_name": "hunyuanvideo_foley_xl.pth"
+    }
+  },
+  "12": {
+    "class_type": "LoadDACHunyuanVAE",
+    "inputs": {
+      "vae_name": "hunyuan_foley/vae_128d_48k.pth"
+    }
+  },
+  "22": {
+    "class_type": "HunyuanFoleySampler",
+    "inputs": {
+      "foley_model": [
+        "11",
+        0
+      ],
+      "video_frames": [
+        "24",
+        0
+      ],
+      "fps": [
+        "24",
+        2
+      ],
+      "prompt": "Synchronized footsteps on gravel.",
+      "negative_prompt": "noisy, harsh",
+      "guidance_scale": 4.5,
+      "steps": 50,
+      "seed": 123
+    }
+  },
+  "14": {
+    "class_type": "DACHunyuanVAEDecode",
+    "inputs": {
+      "samples": [
+        "22",
+        0
+      ],
+      "vae": [
+        "12",
+        0
+      ],
+      "unload_models_after_use": true
+    }
+  },
+  "27": {
+    "class_type": "SaveAudio",
+    "inputs": {
+      "audio": [
+        "14",
+        0
+      ],
+      "filename_prefix": "audio/hunyuan_video_foley"
+    }
+  }
+}

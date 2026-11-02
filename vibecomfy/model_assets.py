@@ -47,6 +47,8 @@ _MODEL_INPUT_SUBDIRS = {
 }
 
 _CLASS_FIELD_SUBDIRS = {
+    ("HunyuanFoleyModelLoader", "foley_checkpoint_name"): "hunyuan_foley",
+    ("LoadDACHunyuanVAE", "vae_name"): "hunyuan_foley",
     ("CLIPVisionLoader", "clip_name"): "clip_vision",
     ("LatentUpscaleModelLoader", "model_name"): "latent_upscale_models",
     ("LoadWanVideoT5TextEncoder", "model_name"): "text_encoders",
