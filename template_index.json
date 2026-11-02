@@ -3,7 +3,7 @@
   "generated_from": "repo-only ready template discovery",
   "include_rule": "find ready_templates -type f -name '*.py' ! -name '_*' | sort",
   "exclude_rule": "exclude __init__.py and files whose basename starts with '_' to match vibecomfy.registry.ready._template_paths",
-  "template_count": 68,
+  "template_count": 69,
   "templates": [
     {
       "id": "audio/ace_step_1_5_t2a_song",
@@ -119,10 +119,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json",
       "source_sha256": null
@@ -232,14 +231,183 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/hunyuan_video_foley.json",
       "source_sha256": null,
       "license_notice": "Tencent Hunyuan Community license excludes the EU, UK, and South Korea."
+    },
+    {
+      "id": "audio/minimax_music_3",
+      "path": "ready_templates/audio/minimax_music_3.py",
+      "source_scope": "repo",
+      "indexed": true,
+      "capability": "audio",
+      "coverage_tier": "required",
+      "custom_nodes": [],
+      "model_count": 3,
+      "public_inputs": [
+        {
+          "name": "model",
+          "target": {
+            "node_id": "6",
+            "field": "unet_name"
+          },
+          "node_id": "6",
+          "field": "unet_name",
+          "value": null,
+          "type": null,
+          "default": null,
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "seed",
+          "target": {
+            "node_id": "38",
+            "field": "seed"
+          },
+          "node_id": "38",
+          "field": "seed",
+          "value": 123,
+          "type": "INT",
+          "default": 123,
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "steps",
+          "target": {
+            "node_id": "9",
+            "field": "steps"
+          },
+          "node_id": "9",
+          "field": "steps",
+          "value": null,
+          "type": null,
+          "default": null,
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "prompt",
+          "target": {
+            "node_id": "13",
+            "field": "caption"
+          },
+          "node_id": "13",
+          "field": "caption",
+          "value": "",
+          "type": "STRING",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "text",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "lyrics",
+          "target": {
+            "node_id": "13",
+            "field": "lyrics"
+          },
+          "node_id": "13",
+          "field": "lyrics",
+          "value": "",
+          "type": "STRING",
+          "default": "",
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "text",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "duration",
+          "target": {
+            "node_id": "13",
+            "field": "max_duration"
+          },
+          "node_id": "13",
+          "field": "max_duration",
+          "value": 60.0,
+          "type": "FLOAT",
+          "default": 60.0,
+          "required": false,
+          "range": {
+            "min": 0.04,
+            "max": 360.0,
+            "step": 0.04
+          },
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        }
+      ],
+      "public_outputs": [
+        {
+          "node_id": "44",
+          "name": "audio",
+          "output_type": "SaveAudioMP3",
+          "artifact_kind": "audio",
+          "mime_type": "audio/mpeg",
+          "filename_prefix": "audio/minimax_music_3",
+          "expected_cardinality": "one",
+          "status": "static",
+          "source": "OutputSpec"
+        }
+      ],
+      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+      "artifact_expectations": [
+        {
+          "node_id": "44",
+          "name": "audio",
+          "output_type": "SaveAudioMP3",
+          "artifact_kind": "audio",
+          "mime_type": "audio/mpeg",
+          "filename_prefix": "audio/minimax_music_3",
+          "expected_cardinality": "one",
+          "status": "static",
+          "source": "OutputSpec"
+        }
+      ],
+      "static_diagnostics": [],
+      "public_input_status": "declared",
+      "public_output_status": "declared",
+      "custom_node_count": 0,
+      "strict_ready_diagnostic_counts": {},
+      "readiness_class": "ready",
+      "marker": "generated",
+      "app_active": true,
+      "blocked": false,
+      "reference": false,
+      "supplemental": false,
+      "vibecomfy_version": "2.8.0",
+      "comfy_core": {
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
+      },
+      "source_workflow": "ready_templates/sources/official/audio/minimax_music_3.json",
+      "source_sha256": null
     },
     {
       "id": "audio/qwen3_tts_custom_voice",
@@ -249,7 +417,7 @@
       "capability": "audio",
       "coverage_tier": "supplemental",
       "custom_nodes": [],
-      "model_count": 0,
+      "model_count": 11,
       "public_inputs": [
         {
           "name": "seed",
@@ -268,42 +436,84 @@
           "media_semantics": null,
           "status": "static",
           "source": "InputSpec"
+        },
+        {
+          "name": "text",
+          "target": {
+            "node_id": "1",
+            "field": "text"
+          },
+          "node_id": "1",
+          "field": "text",
+          "value": "VibeComfy generated this short Qwen voice smoke test from a reusable Python template.",
+          "type": "STRING",
+          "default": "VibeComfy generated this short Qwen voice smoke test from a reusable Python template.",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "text",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "voice",
+          "target": {
+            "node_id": "1",
+            "field": "speaker"
+          },
+          "node_id": "1",
+          "field": "speaker",
+          "value": "Ryan",
+          "type": "CHOICE",
+          "default": "Ryan",
+          "required": false,
+          "range": {
+            "choices": [
+              "Aiden",
+              "Dylan",
+              "Eric",
+              "Ono_Anna",
+              "Ryan",
+              "Serena",
+              "Sohee",
+              "Uncle_Fu",
+              "Vivian"
+            ]
+          },
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
         }
       ],
       "public_outputs": [
         {
-          "name": "audio",
           "node_id": "2",
+          "name": "audio",
           "output_type": "SaveAudioMP3",
           "artifact_kind": "audio",
           "mime_type": "audio/mpeg",
           "filename_prefix": "audio/qwen3_tts_custom_voice",
           "expected_cardinality": "one",
           "status": "static",
-          "source": "finalize"
+          "source": "OutputSpec"
         }
       ],
       "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
       "artifact_expectations": [
         {
-          "name": "audio",
           "node_id": "2",
+          "name": "audio",
           "output_type": "SaveAudioMP3",
           "artifact_kind": "audio",
           "mime_type": "audio/mpeg",
           "filename_prefix": "audio/qwen3_tts_custom_voice",
           "expected_cardinality": "one",
           "status": "static",
-          "source": "finalize"
+          "source": "OutputSpec"
         }
       ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
+      "static_diagnostics": [],
       "public_input_status": "declared",
       "public_output_status": "declared",
       "custom_node_count": 0,
@@ -316,10 +526,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/qwen_tts/1038lab/qwen3_tts_custom_voice.json",
       "source_sha256": null
@@ -399,10 +608,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/qwen_tts/1038lab/qwen3_tts_voice_clone.json",
       "source_sha256": null
@@ -482,10 +690,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/qwen_tts/1038lab/qwen3_tts_voice_design.json",
       "source_sha256": null
@@ -621,10 +828,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/official/edit/flux2_klein_4b_image_edit_base.json",
       "source_sha256": null
@@ -742,10 +948,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/official/edit/flux2_klein_4b_image_edit_distilled.json",
       "source_sha256": null
@@ -881,10 +1086,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/official/edit/flux2_klein_9b_image_edit_base.json",
       "source_sha256": null
@@ -1002,10 +1206,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/official/edit/flux2_klein_9b_image_edit_distilled.json",
       "source_sha256": null
@@ -1020,6 +1223,24 @@
       "custom_nodes": [],
       "model_count": 3,
       "public_inputs": [
+        {
+          "name": "seed",
+          "target": {
+            "node_id": "8",
+            "field": "noise_seed"
+          },
+          "node_id": "8",
+          "field": "noise_seed",
+          "value": 0,
+          "type": "INT",
+          "default": 0,
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
         {
           "name": "diffusion_model",
           "target": {
@@ -1111,24 +1332,6 @@
           "source": "InputSpec"
         },
         {
-          "name": "seed",
-          "target": {
-            "node_id": "8",
-            "field": "noise_seed"
-          },
-          "node_id": "8",
-          "field": "noise_seed",
-          "value": 0,
-          "type": "INT",
-          "default": 0,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
           "name": "image",
           "target": {
             "node_id": "4",
@@ -1136,9 +1339,9 @@
           },
           "node_id": "4",
           "field": "image",
-          "value": "input.png",
+          "value": "",
           "type": "IMAGE",
-          "default": "input.png",
+          "default": "",
           "required": true,
           "range": null,
           "aliases": [],
@@ -1167,57 +1370,50 @@
       ],
       "public_outputs": [
         {
-          "name": "image",
           "node_id": "13",
+          "name": "image",
           "output_type": "SaveImage",
           "artifact_kind": "image",
           "mime_type": "image/png",
           "filename_prefix": "Qwen_image_2.1",
           "expected_cardinality": "one",
           "status": "static",
-          "source": "finalize"
+          "source": "OutputSpec"
         }
       ],
       "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
       "artifact_expectations": [
         {
-          "name": "image",
           "node_id": "13",
+          "name": "image",
           "output_type": "SaveImage",
           "artifact_kind": "image",
           "mime_type": "image/png",
           "filename_prefix": "Qwen_image_2.1",
           "expected_cardinality": "one",
           "status": "static",
-          "source": "finalize"
+          "source": "OutputSpec"
         }
       ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
+      "static_diagnostics": [],
       "public_input_status": "declared",
       "public_output_status": "declared",
       "custom_node_count": 0,
       "strict_ready_diagnostic_counts": {},
       "readiness_class": "ready",
-      "marker": "unmarked",
+      "marker": "generated",
       "app_active": true,
       "blocked": false,
       "reference": false,
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/official/edit/qwen_image_2_1_turbo_edit.json",
-      "source_sha256": "5a9622d550866800414afcb9c70523ec5c6965eb171476e401e243a7fe8d5a4e"
+      "source_sha256": null
     },
     {
       "id": "edit/qwen_image_edit",
@@ -1350,10 +1546,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/official/edit/qwen_image_edit.json",
       "source_sha256": null
@@ -1453,10 +1648,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/image/basic_image_upscale.py",
       "source_sha256": null
@@ -1554,10 +1748,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/official/image/flux2_klein_4b_t2i.json",
       "source_sha256": null
@@ -1655,10 +1848,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/flux2/flux2_klein_9b_gguf_t2i.json",
       "source_sha256": null
@@ -1756,10 +1948,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/official/image/flux2_klein_9b_t2i.json",
       "source_sha256": null
@@ -1911,10 +2102,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/official/image/qwen_image_2512.json",
       "source_sha256": null
@@ -1929,6 +2119,24 @@
       "custom_nodes": [],
       "model_count": 3,
       "public_inputs": [
+        {
+          "name": "seed",
+          "target": {
+            "node_id": "8",
+            "field": "noise_seed"
+          },
+          "node_id": "8",
+          "field": "noise_seed",
+          "value": 0,
+          "type": "INT",
+          "default": 0,
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
         {
           "name": "diffusion_model",
           "target": {
@@ -2020,24 +2228,6 @@
           "source": "InputSpec"
         },
         {
-          "name": "seed",
-          "target": {
-            "node_id": "8",
-            "field": "noise_seed"
-          },
-          "node_id": "8",
-          "field": "noise_seed",
-          "value": 0,
-          "type": "INT",
-          "default": 0,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
           "name": "width",
           "target": {
             "node_id": "4",
@@ -2094,57 +2284,50 @@
       ],
       "public_outputs": [
         {
-          "name": "image",
           "node_id": "13",
+          "name": "image",
           "output_type": "SaveImage",
           "artifact_kind": "image",
           "mime_type": "image/png",
           "filename_prefix": "Qwen_image_2.1",
           "expected_cardinality": "one",
           "status": "static",
-          "source": "finalize"
+          "source": "OutputSpec"
         }
       ],
       "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
       "artifact_expectations": [
         {
-          "name": "image",
           "node_id": "13",
+          "name": "image",
           "output_type": "SaveImage",
           "artifact_kind": "image",
           "mime_type": "image/png",
           "filename_prefix": "Qwen_image_2.1",
           "expected_cardinality": "one",
           "status": "static",
-          "source": "finalize"
+          "source": "OutputSpec"
         }
       ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
+      "static_diagnostics": [],
       "public_input_status": "declared",
       "public_output_status": "declared",
       "custom_node_count": 0,
       "strict_ready_diagnostic_counts": {},
       "readiness_class": "ready",
-      "marker": "unmarked",
+      "marker": "generated",
       "app_active": true,
       "blocked": false,
       "reference": false,
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/official/image/qwen_image_2_1_turbo.json",
-      "source_sha256": "3eb9cef2866c0186fbe30172701f112b35e574cf3c6575c6e4a6b5dd1e76a403"
+      "source_sha256": null
     },
     {
       "id": "image/z_image",
@@ -2239,10 +2422,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/official/image/z_image.json",
       "source_sha256": null
@@ -2540,10 +2722,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/image/z_image_img2img.py",
       "source_sha256": null
@@ -2803,10 +2984,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/official/image/z_image_turbo.json",
       "source_sha256": "fd880c78bba7a771d624cd0224a85f5e9b2e000323d285133999fe663a7dbd3e"
@@ -2904,10 +3084,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": null,
       "source_sha256": null
@@ -3025,10 +3204,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/video/basic_video_enhance.py",
       "source_sha256": null,
@@ -3197,10 +3375,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "manual",
       "source_sha256": null
@@ -3464,10 +3641,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/ltx2_3_single_stage_distilled_full.json",
       "source_sha256": null
@@ -3683,10 +3859,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/iamccs/IAMCCS_LTX23_BEST_3SEG_AUDIOEXT_30S_FREE_LOW_RAM.json",
       "source_sha256": null
@@ -3894,10 +4069,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/iamccs/IAMCCS_LTX2_AU_IMG2V.json",
       "source_sha256": null
@@ -4087,10 +4261,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/iamccs/IAMCCS_LTX2_I2V_LONG_LENGTH.json",
       "source_sha256": null
@@ -4283,10 +4456,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/video/ltx2_3_lightricks_first_last_parity.py",
       "source_sha256": null,
@@ -4495,10 +4667,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/video/ltx2_3_lightricks_first_last_two_stage_lowvram.py",
       "source_sha256": null,
@@ -4686,10 +4857,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/lightricks_2_3/LTX-2.3_ICLoRA_HDR_Distilled.json",
       "source_sha256": null
@@ -4917,10 +5087,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/lightricks_2_3/LTX-2.3_ICLoRA_Motion_Track_Distilled.json",
       "source_sha256": null
@@ -5112,10 +5281,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/lightricks_2_3/LTX-2.3_ICLoRA_Union_Control_Distilled.json",
       "source_sha256": null
@@ -5379,10 +5547,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/lightricks_2_3/LTX-2.3_T2V_I2V_Two_Stage_Distilled.json",
       "source_sha256": null
@@ -5536,10 +5703,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/runexx/LTX-2.3_Custom_Audio.json",
       "source_sha256": null
@@ -5747,10 +5913,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/runexx/LTX-2.3_FLF2V_First_Last_Frame.json",
       "source_sha256": null
@@ -5909,10 +6074,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/video/ltx2_3_runexx_first_last_raw_video_guide.py",
       "source_sha256": null,
@@ -6132,10 +6296,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/runexx/LTX-2.3_FML2V_First_Middle_Last_Frame_guider.json",
       "source_sha256": null
@@ -6325,10 +6488,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/runexx/LTX-2.3_V2V_Just_Talk_custom_audio_lipsync.json",
       "source_sha256": null
@@ -6556,10 +6718,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/runexx/LTX-2.3_Motion_Transfer_DWPose.json",
       "source_sha256": null
@@ -6821,10 +6982,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/runexx/LTX-2.3_Music_Video_Creator_Low_RAM.json",
       "source_sha256": null
@@ -6996,10 +7156,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/runexx/LTX-2.3_Talking_Avatar_Qwen_TTS.json",
       "source_sha256": null
@@ -7189,10 +7348,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/runexx/LTX-2.3_V2V_Extend_Any_Video.json",
       "source_sha256": null
@@ -7456,10 +7614,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/ltx2_3_single_stage_distilled_full.json",
       "source_sha256": null
@@ -7743,10 +7900,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/video/wan22_animate_native_first_stage.py",
       "source_sha256": null,
@@ -8013,10 +8169,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": null,
       "source_sha256": null
@@ -8244,10 +8399,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/official/video/wan_i2v.json",
       "source_sha256": null
@@ -8491,10 +8645,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/official/video/wan_t2v.json",
       "source_sha256": null
@@ -8592,10 +8745,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan13b_control_lora.json",
       "source_sha256": null
@@ -8729,10 +8881,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan13b_recammaster.json",
       "source_sha256": null
@@ -8904,10 +9055,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan13b_vace.json",
       "source_sha256": null
@@ -9079,10 +9229,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan21_14b_flf2v.json",
       "source_sha256": null
@@ -9198,10 +9347,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan21_14b_fun_control.json",
       "source_sha256": null
@@ -9373,10 +9521,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan21_14b_fun_control_camera.json",
       "source_sha256": null
@@ -9548,10 +9695,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan21_14b_i2v.json",
       "source_sha256": null
@@ -9685,10 +9831,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan21_14b_t2v.json",
       "source_sha256": null
@@ -9786,10 +9931,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan21_14b_v2v_infinitetalk.json",
       "source_sha256": null
@@ -9961,10 +10105,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan21_14b_wanmove_i2v.json",
       "source_sha256": null
@@ -10140,10 +10283,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/video/wanvideo_wrapper_22_14b_i2v_kijai.py",
       "source_sha256": null,
@@ -10302,10 +10444,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/video/wanvideo_wrapper_22_14b_t2i.py",
       "source_sha256": null,
@@ -10489,10 +10630,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/video/wanvideo_wrapper_22_14b_vace_cocktail.py",
       "source_sha256": null,
@@ -10680,10 +10820,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan22_5b_i2v.json",
       "source_sha256": null
@@ -10799,10 +10938,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan22_5b_i2v_controlnet.json",
       "source_sha256": null
@@ -10992,10 +11130,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan22_5b_ovi_audio_i2v.json",
       "source_sha256": null
@@ -11111,10 +11248,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan22_5b_t2v_controlnet.json",
       "source_sha256": null
@@ -11286,10 +11422,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan22_s2v_context_window.json",
       "source_sha256": null
@@ -11461,10 +11596,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan22_s2v_framepack_pose.json",
       "source_sha256": null
@@ -11608,10 +11742,9 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/video/wanvideo_wrapper_22_wan_animate_preprocess_kijai.py",
       "source_sha256": null,
@@ -11834,10 +11967,9 @@
       "supplemental": true,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "commit": "unknown",
-        "status": "unavailable",
-        "tested_at": "2026-07-09T09:32:35.945439+00:00",
-        "version": "unknown"
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan_animate.json",
       "source_sha256": null
