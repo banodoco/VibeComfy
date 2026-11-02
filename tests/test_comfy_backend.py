@@ -369,8 +369,9 @@ def test_check_comfy_compatibility_uses_version_when_vendor_missing(monkeypatch)
     import vibecomfy.comfy_backend as cb
 
     reset_matrix_cache()
+    expected_version = load_version_matrix().supported_comfyui_version
     monkeypatch.setattr(cb, "read_vendored_commit", lambda: None)
-    monkeypatch.setattr(cb, "read_live_comfy_version", lambda: _VALID_MATRIX["supported_comfyui_version"])
+    monkeypatch.setattr(cb, "read_live_comfy_version", lambda: expected_version)
 
     compatibility = check_comfy_compatibility()
 
@@ -378,7 +379,7 @@ def test_check_comfy_compatibility_uses_version_when_vendor_missing(monkeypatch)
     assert compatibility.reason_code == "ok"
     assert compatibility.actual == {
         "commit": None,
-        "version": _VALID_MATRIX["supported_comfyui_version"],
+        "version": expected_version,
     }
 
 
