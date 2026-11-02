@@ -26,8 +26,9 @@ The selected defaults are Qwen3-TTS CustomVoice 0.6B, MiniMax Music 3,
 HunyuanVideo-Foley, Qwen-Image-2.1 Turbo, and its edit adapter. Qwen3-TTS
 `voice` selects a named speaker; it does not promise 1.7B instruction control.
 TTS's complete inference file paths are pinned to one model repository
-revision, but small-file byte hashes and installed auto-download behavior
-remain unverified. Prestage and verify assets before a runtime qualification.
+revision with byte sizes and SHA-256 from retained source metadata (weights)
+and the prior read-only file audit (configs/tokenizers). Installed auto-download
+behavior remains unqualified. Prestage and verify assets before runtime use.
 
 H3_AV remains deferred pending the owner's Ref2VA/FL2V LoRA and capacity
 decision. Previous-release, ahead-candidate and upstream-main execution,

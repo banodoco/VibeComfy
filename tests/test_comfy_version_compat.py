@@ -96,6 +96,6 @@ def test_packaged_fork_pin_is_explicit_and_locked():
     artifacts = [package['sdist'], *package['wheels']]
     assert artifacts
     for artifact in artifacts:
-        assert '/hiddenswitch/forks-pip-and-uv-installable-ComfyUI/' in artifact['url']
+        assert '/hiddenswitch/forks-pip-and-uv-installable-ComfyUI/releases/download/v0.43.0.2/' in artifact['url']
         assert artifact['hash'].startswith('sha256:')
         assert len(artifact['hash']) == len('sha256:') + 64

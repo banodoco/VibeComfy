@@ -413,13 +413,69 @@
           }
         ],
         "sampler_name": [
-          [],
+          [
+            "euler",
+            "euler_cfg_pp",
+            "euler_ancestral",
+            "euler_ancestral_cfg_pp",
+            "heun",
+            "heunpp2",
+            "exp_heun_2_x0",
+            "exp_heun_2_x0_sde",
+            "dpm_2",
+            "dpm_2_ancestral",
+            "lms",
+            "dpm_fast",
+            "dpm_adaptive",
+            "dpmpp_2s_ancestral",
+            "dpmpp_2s_ancestral_cfg_pp",
+            "dpmpp_sde",
+            "dpmpp_sde_gpu",
+            "dpmpp_2m",
+            "dpmpp_2m_cfg_pp",
+            "dpmpp_2m_sde",
+            "dpmpp_2m_sde_gpu",
+            "dpmpp_2m_sde_heun",
+            "dpmpp_2m_sde_heun_gpu",
+            "dpmpp_3m_sde",
+            "dpmpp_3m_sde_gpu",
+            "ddpm",
+            "lcm",
+            "ipndm",
+            "ipndm_v",
+            "deis",
+            "cfgpp_ud10_ab",
+            "res_multistep",
+            "res_multistep_cfg_pp",
+            "res_multistep_ancestral",
+            "res_multistep_ancestral_cfg_pp",
+            "gradient_estimation",
+            "gradient_estimation_cfg_pp",
+            "er_sde",
+            "seeds_2",
+            "seeds_3",
+            "sa_solver",
+            "sa_solver_pece",
+            "ddim",
+            "uni_pc",
+            "uni_pc_bh2"
+          ],
           {
             "tooltip": "The algorithm used when sampling, this can affect the quality, speed, and style of the generated output."
           }
         ],
         "scheduler": [
-          [],
+          [
+            "simple",
+            "sgm_uniform",
+            "karras",
+            "exponential",
+            "ddim_uniform",
+            "beta",
+            "normal",
+            "linear_quadratic",
+            "kl_optimal"
+          ],
           {
             "tooltip": "The scheduler controls how noise is gradually removed to form the image."
           }
@@ -493,20 +549,71 @@
     "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/nodes.py",
     "source_line": 1606,
     "source_kind": "static_ast",
-    "unresolved": [
-      {
-        "input": "sampler_name",
-        "field": "choices",
-        "expression": "comfy.samplers.KSampler.SAMPLERS",
-        "status": "dynamic choice; do not imply any model/file exists"
-      },
-      {
-        "input": "scheduler",
-        "field": "choices",
-        "expression": "comfy.samplers.KSampler.SCHEDULERS",
-        "status": "dynamic choice; do not imply any model/file exists"
+    "unresolved": [],
+    "imported_source": {
+      "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy/samplers.py",
+      "source_sha256": "2d2dcdee55ff336ad5920a9af9326694ed8e4512390edaf7bbb12590a4ae002a",
+      "constants": {
+        "SAMPLER_NAMES": [
+          "euler",
+          "euler_cfg_pp",
+          "euler_ancestral",
+          "euler_ancestral_cfg_pp",
+          "heun",
+          "heunpp2",
+          "exp_heun_2_x0",
+          "exp_heun_2_x0_sde",
+          "dpm_2",
+          "dpm_2_ancestral",
+          "lms",
+          "dpm_fast",
+          "dpm_adaptive",
+          "dpmpp_2s_ancestral",
+          "dpmpp_2s_ancestral_cfg_pp",
+          "dpmpp_sde",
+          "dpmpp_sde_gpu",
+          "dpmpp_2m",
+          "dpmpp_2m_cfg_pp",
+          "dpmpp_2m_sde",
+          "dpmpp_2m_sde_gpu",
+          "dpmpp_2m_sde_heun",
+          "dpmpp_2m_sde_heun_gpu",
+          "dpmpp_3m_sde",
+          "dpmpp_3m_sde_gpu",
+          "ddpm",
+          "lcm",
+          "ipndm",
+          "ipndm_v",
+          "deis",
+          "cfgpp_ud10_ab",
+          "res_multistep",
+          "res_multistep_cfg_pp",
+          "res_multistep_ancestral",
+          "res_multistep_ancestral_cfg_pp",
+          "gradient_estimation",
+          "gradient_estimation_cfg_pp",
+          "er_sde",
+          "seeds_2",
+          "seeds_3",
+          "sa_solver",
+          "sa_solver_pece",
+          "ddim",
+          "uni_pc",
+          "uni_pc_bh2"
+        ],
+        "SCHEDULER_NAMES": [
+          "simple",
+          "sgm_uniform",
+          "karras",
+          "exponential",
+          "ddim_uniform",
+          "beta",
+          "normal",
+          "linear_quadratic",
+          "kl_optimal"
+        ]
       }
-    ]
+    }
   },
   "VAEDecode": {
     "name": "VAEDecode",
@@ -728,7 +835,18 @@
     "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_minimax_music.py",
     "source_line": 10,
     "source_kind": "static_ast",
-    "unresolved": []
+    "unresolved": [],
+    "imported_source": {
+      "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy/ldm/minimax_music/ar.py",
+      "source_sha256": "fe0b74593ca0c742e28a57cced1887829a2f62b8322cbfdcd606e260016b0edc",
+      "constants": {
+        "MAX_AUDIO_FRAMES": 9000,
+        "AUDIO_FRAMES_PER_SECOND": 25,
+        "CFG_SCALE": 1.5,
+        "CFG_TOP_K": 50,
+        "C0_VOCAB_SIZE": 16384
+      }
+    }
   },
   "EmptyMiniMaxMusic3LatentAudio": {
     "name": "EmptyMiniMaxMusic3LatentAudio",
@@ -783,7 +901,18 @@
     "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_minimax_music.py",
     "source_line": 44,
     "source_kind": "static_ast",
-    "unresolved": []
+    "unresolved": [],
+    "imported_source": {
+      "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy/ldm/minimax_music/ar.py",
+      "source_sha256": "fe0b74593ca0c742e28a57cced1887829a2f62b8322cbfdcd606e260016b0edc",
+      "constants": {
+        "MAX_AUDIO_FRAMES": 9000,
+        "AUDIO_FRAMES_PER_SECOND": 25,
+        "CFG_SCALE": 1.5,
+        "CFG_TOP_K": 50,
+        "C0_VOCAB_SIZE": 16384
+      }
+    }
   },
   "VAEDecodeAudioTiled": {
     "name": "VAEDecodeAudioTiled",
@@ -1000,52 +1129,52 @@
         "vae": [
           "VAE"
         ],
-        "image_1": [
+        "images.image_1": [
           "IMAGE"
         ],
-        "image_2": [
+        "images.image_2": [
           "IMAGE"
         ],
-        "image_3": [
+        "images.image_3": [
           "IMAGE"
         ],
-        "image_4": [
+        "images.image_4": [
           "IMAGE"
         ],
-        "image_5": [
+        "images.image_5": [
           "IMAGE"
         ],
-        "image_6": [
+        "images.image_6": [
           "IMAGE"
         ],
-        "image_7": [
+        "images.image_7": [
           "IMAGE"
         ],
-        "image_8": [
+        "images.image_8": [
           "IMAGE"
         ],
-        "image_9": [
+        "images.image_9": [
           "IMAGE"
         ],
-        "image_10": [
+        "images.image_10": [
           "IMAGE"
         ],
-        "image_11": [
+        "images.image_11": [
           "IMAGE"
         ],
-        "image_12": [
+        "images.image_12": [
           "IMAGE"
         ],
-        "image_13": [
+        "images.image_13": [
           "IMAGE"
         ],
-        "image_14": [
+        "images.image_14": [
           "IMAGE"
         ],
-        "image_15": [
+        "images.image_15": [
           "IMAGE"
         ],
-        "image_16": [
+        "images.image_16": [
           "IMAGE"
         ]
       }
@@ -1059,22 +1188,22 @@
       ],
       "optional": [
         "vae",
-        "image_1",
-        "image_2",
-        "image_3",
-        "image_4",
-        "image_5",
-        "image_6",
-        "image_7",
-        "image_8",
-        "image_9",
-        "image_10",
-        "image_11",
-        "image_12",
-        "image_13",
-        "image_14",
-        "image_15",
-        "image_16"
+        "images.image_1",
+        "images.image_2",
+        "images.image_3",
+        "images.image_4",
+        "images.image_5",
+        "images.image_6",
+        "images.image_7",
+        "images.image_8",
+        "images.image_9",
+        "images.image_10",
+        "images.image_11",
+        "images.image_12",
+        "images.image_13",
+        "images.image_14",
+        "images.image_15",
+        "images.image_16"
       ]
     },
     "input_order_all": [
@@ -1083,22 +1212,22 @@
       "negative_prompt",
       "resolution",
       "vae",
-      "image_1",
-      "image_2",
-      "image_3",
-      "image_4",
-      "image_5",
-      "image_6",
-      "image_7",
-      "image_8",
-      "image_9",
-      "image_10",
-      "image_11",
-      "image_12",
-      "image_13",
-      "image_14",
-      "image_15",
-      "image_16"
+      "images.image_1",
+      "images.image_2",
+      "images.image_3",
+      "images.image_4",
+      "images.image_5",
+      "images.image_6",
+      "images.image_7",
+      "images.image_8",
+      "images.image_9",
+      "images.image_10",
+      "images.image_11",
+      "images.image_12",
+      "images.image_13",
+      "images.image_14",
+      "images.image_15",
+      "images.image_16"
     ],
     "outputs": [
       {
@@ -1316,7 +1445,53 @@
     "inputs": {
       "required": {
         "sampler_name": [
-          "COMBO"
+          [
+            "euler",
+            "euler_cfg_pp",
+            "euler_ancestral",
+            "euler_ancestral_cfg_pp",
+            "heun",
+            "heunpp2",
+            "exp_heun_2_x0",
+            "exp_heun_2_x0_sde",
+            "dpm_2",
+            "dpm_2_ancestral",
+            "lms",
+            "dpm_fast",
+            "dpm_adaptive",
+            "dpmpp_2s_ancestral",
+            "dpmpp_2s_ancestral_cfg_pp",
+            "dpmpp_sde",
+            "dpmpp_sde_gpu",
+            "dpmpp_2m",
+            "dpmpp_2m_cfg_pp",
+            "dpmpp_2m_sde",
+            "dpmpp_2m_sde_gpu",
+            "dpmpp_2m_sde_heun",
+            "dpmpp_2m_sde_heun_gpu",
+            "dpmpp_3m_sde",
+            "dpmpp_3m_sde_gpu",
+            "ddpm",
+            "lcm",
+            "ipndm",
+            "ipndm_v",
+            "deis",
+            "cfgpp_ud10_ab",
+            "res_multistep",
+            "res_multistep_cfg_pp",
+            "res_multistep_ancestral",
+            "res_multistep_ancestral_cfg_pp",
+            "gradient_estimation",
+            "gradient_estimation_cfg_pp",
+            "er_sde",
+            "seeds_2",
+            "seeds_3",
+            "sa_solver",
+            "sa_solver_pece",
+            "ddim",
+            "uni_pc",
+            "uni_pc_bh2"
+          ]
         ]
       }
     },
@@ -1341,13 +1516,60 @@
     "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy_extras/nodes_custom_sampler.py",
     "source_line": 379,
     "source_kind": "static_ast",
-    "unresolved": [
-      {
-        "input": "sampler_name",
-        "field": "choices",
-        "expression": "comfy.samplers.SAMPLER_NAMES"
+    "unresolved": [],
+    "imported_source": {
+      "source_url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/426f5eea52a7ece1dd599fff4cb6cd1f352ddd24/comfy/samplers.py",
+      "source_sha256": "2d2dcdee55ff336ad5920a9af9326694ed8e4512390edaf7bbb12590a4ae002a",
+      "constants": {
+        "SAMPLER_NAMES": [
+          "euler",
+          "euler_cfg_pp",
+          "euler_ancestral",
+          "euler_ancestral_cfg_pp",
+          "heun",
+          "heunpp2",
+          "exp_heun_2_x0",
+          "exp_heun_2_x0_sde",
+          "dpm_2",
+          "dpm_2_ancestral",
+          "lms",
+          "dpm_fast",
+          "dpm_adaptive",
+          "dpmpp_2s_ancestral",
+          "dpmpp_2s_ancestral_cfg_pp",
+          "dpmpp_sde",
+          "dpmpp_sde_gpu",
+          "dpmpp_2m",
+          "dpmpp_2m_cfg_pp",
+          "dpmpp_2m_sde",
+          "dpmpp_2m_sde_gpu",
+          "dpmpp_2m_sde_heun",
+          "dpmpp_2m_sde_heun_gpu",
+          "dpmpp_3m_sde",
+          "dpmpp_3m_sde_gpu",
+          "ddpm",
+          "lcm",
+          "ipndm",
+          "ipndm_v",
+          "deis",
+          "cfgpp_ud10_ab",
+          "res_multistep",
+          "res_multistep_cfg_pp",
+          "res_multistep_ancestral",
+          "res_multistep_ancestral_cfg_pp",
+          "gradient_estimation",
+          "gradient_estimation_cfg_pp",
+          "er_sde",
+          "seeds_2",
+          "seeds_3",
+          "sa_solver",
+          "sa_solver_pece",
+          "ddim",
+          "uni_pc",
+          "uni_pc_bh2"
+        ]
       }
-    ]
+    }
   },
   "CFGGuider": {
     "name": "CFGGuider",
