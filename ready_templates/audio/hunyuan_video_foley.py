@@ -55,7 +55,7 @@ READY_METADATA = ReadyMetadata.build(
     ready_id='audio/hunyuan_video_foley',
     license_notice='Tencent Hunyuan Community license excludes the EU, UK, and South Korea.',
     provenance={'source_path': 'ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/hunyuan_video_foley.json', 'source_id': 'audio/hunyuan_video_foley', 'source_type': 'api', 'source_provenance': {'records': [], 'requirements': [], 'warnings': [], 'conflicts': [], 'version_pins': [], 'required_pack_slugs': [], 'aux_only': [], 'unprovenanced': [], 'core_slug_non_core': [], 'low_confidence': False}, 'source_hash': '720916735c73726206dfa21fa235791c1cfd37330e74cc65ed2111a588e28747', 'output_mode': 'ready_template', 'artifact_class': 'execution_ready_candidate', 'execution_ready': True, 'ready_id': 'audio/hunyuan_video_foley', 'source_workflow': 'ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/hunyuan_video_foley.json'},
-    source_bundle={'format_version': 2, 'generation_id': '0c5e4e6e00781ddd5624dda662bdc0ca9d007eadd8f5b1c5c90ce21572579a16', 'custody_digest': '0500ca03e749da9d9905a97f11a1a112fe64679396042075b2e7b5083d89c50a'},
+    source_bundle={'format_version': 2, 'generation_id': '5add998c230abdf3f5ab89fa854482d1f85ee43c37543a3b95bd3d00bf019dda', 'custody_digest': '343abd38620557b454792bc7630e9a58abee46d2f6ba4447285448760e35b689'},
 )
 
 def build() -> VibeWorkflow:
@@ -93,7 +93,7 @@ def build() -> VibeWorkflow:
 
         hunyuanfoleysampler = raw_call('HunyuanFoleySampler', '22',
             _outputs=('LATENT',),
-            _native_ports={'native_input_names': None, 'native_output_names': None, 'native_input_types': None, 'native_output_types': None, 'native_input_optional': None, 'native_input_asset_kinds': None, 'native_output_slots': [0]},
+            _native_ports={'native_input_names': ['foley_model', 'fps', 'prompt', 'negative_prompt', 'guidance_scale', 'steps', 'seed', 'video_frames'], 'native_output_names': None, 'native_input_types': ['FOLEY_MODEL', 'FLOAT', 'STRING', 'STRING', 'FLOAT', 'INT', 'INT', 'IMAGE'], 'native_output_types': None, 'native_input_optional': [False, False, False, False, False, False, False, False], 'native_input_asset_kinds': None, 'native_output_slots': [0]},
             guidance_scale=4.5,
             negative_prompt=DEFAULT_NEGATIVE,
             prompt=DEFAULT_PROMPT,

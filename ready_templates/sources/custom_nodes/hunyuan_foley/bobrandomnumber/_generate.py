@@ -76,6 +76,25 @@ def generate() -> None:
     video_components.native_output_names = None
     video_components.native_output_types = None
     video_components.__post_init__()
+    sampler = workflow.nodes.get("22")
+    sampler_schema = provider.get_schema("HunyuanFoleySampler")
+    if sampler is None or sampler_schema is None:
+        raise RuntimeError("HunyuanFoleySampler schema or canonical node 22 is missing")
+    sampler_inputs = raw["22"].get("inputs", {})
+    sampler_outputs = tuple(
+        str(output.name) for output in (getattr(sampler_schema, "outputs", None) or ())
+        if getattr(output, "name", None) is not None
+    )
+    _hydrate_native_schema_carriers(
+        sampler,
+        "HunyuanFoleySampler",
+        sampler_outputs,
+        authored_input_names=tuple(str(name) for name in sampler_inputs),
+    )
+    # Keep the authored output-slot mapping and Python references intact.
+    sampler.native_output_names = None
+    sampler.native_output_types = None
+    sampler.__post_init__()
     workflow.register_input("video_ref", "23", "file", "foley-input.mp4", type="COMBO",
                             required=True, media_semantics="video")
     workflow.register_input("prompt", "22", "prompt", raw["22"]["inputs"]["prompt"],

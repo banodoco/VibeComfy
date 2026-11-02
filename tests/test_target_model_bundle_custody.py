@@ -160,6 +160,19 @@ def test_foley_approves_only_with_its_selected_targets_complete_auxiliary_invent
     video_components = workflow.nodes['24']
     assert video_components.native_input_names == ['video']
     assert video_components.native_input_types == ['VIDEO']
+    from vibecomfy.schema import get_authoring_schema_provider
+    sampler_schema = get_authoring_schema_provider(on_demand_schemas=False).get_schema(
+        'HunyuanFoleySampler'
+    )
+    assert sampler_schema is not None
+    sampler = workflow.nodes['22']
+    assert sampler.native_input_names == list(sampler_schema.inputs)
+    assert sampler.native_input_types == [
+        spec.type for spec in sampler_schema.inputs.values()
+    ]
+    assert sampler.native_input_optional == [
+        not spec.required for spec in sampler_schema.inputs.values()
+    ]
     # Fake target explicitly declares its provisioned assets from its own lock.
     lock = json.loads((Path(__file__).resolve().parents[1] /
         'ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/assets.json').read_text())
