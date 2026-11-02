@@ -1107,12 +1107,11 @@ def _emit_ready_template_python_inner(
     # It preserves explicit multi-output contracts and makes an output-less
     # direct graph unambiguous without reintroducing the legacy output-node
     # argument bundle.
-    finalize_line = f"    wf = wf.finalize({input_expr}{_v2_output_args(workflow, var_names, metadata)})"
+    finalize_line = f"    return wf.finalize({input_expr}{_v2_output_args(workflow, var_names, metadata)})"
     # Finalization owns compact identity/schema rebinding.  Runtime values and
     # topology are already authoritative in the constructor calls above.
     tail_lines = [
         *tail_lines[:-1],
-        finalize_line,
         *(
             f"    {line}"
             for line in _canonical_graph_semantic_lines(
@@ -1120,7 +1119,7 @@ def _emit_ready_template_python_inner(
                 definitions_expr=definitions_expr,
             )
         ),
-        "    return wf",
+        finalize_line,
     ]
     out_lines.extend(
         _emit_build_function(

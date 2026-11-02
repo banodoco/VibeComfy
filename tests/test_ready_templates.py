@@ -45,6 +45,9 @@ def test_generated_foley_roundtrip_keeps_public_media_assets_and_node_pin(tmp_pa
 
     identifier = 'audio/hunyuan_video_foley'
     root = Path(__file__).resolve().parents[1]
+    source = root / 'ready_templates/audio/hunyuan_video_foley.py'
+    assert source.with_suffix('.vibe.json').is_file()
+    load_bundle(source, trust=Provenance.USER_CONFIRMED).require_canonical_authority('production Foley source')
     lock = json.loads((root / 'ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/assets.json').read_text())
     workflow = workflow_from_ready(identifier)
     assert workflow.inputs['video_ref'].media_semantics == 'video'
@@ -73,6 +76,9 @@ def test_generated_foley_roundtrip_keeps_public_media_assets_and_node_pin(tmp_pa
                    if row['id'] == identifier)
     assert {row['name'] for row in indexed['public_inputs']} == {'prompt', 'video_ref', 'seed'}
     assert indexed['model_count'] == 10
+    video = next(row for row in indexed['public_inputs'] if row['name'] == 'video_ref')
+    assert video['node_id'] == '23' and video['field'] == 'file'
+    assert indexed['public_outputs'][0]['name'] == 'audio'
     assert indexed['license_notice'] == 'Tencent Hunyuan Community license excludes the EU, UK, and South Korea.'
 
 

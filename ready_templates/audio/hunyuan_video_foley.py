@@ -9,6 +9,7 @@ from vibecomfy.workflow import VibeWorkflow
 from vibecomfy.nodes.core import GetVideoComponents, LoadVideo, SaveAudio
 
 
+DEFAULT_NEGATIVE = 'noisy, harsh'
 DEFAULT_PROMPT = 'Synchronized footsteps on gravel.'
 DEFAULT_SEED = 123
 FOLEY_CHECKPOINT_NAME = 'hunyuanvideo_foley_xl.pth'
@@ -43,55 +44,48 @@ READY_METADATA = ReadyMetadata.build(
     inputs=PUBLIC_INPUT_METADATA,
     models=MODELS,
     custom_node_packs={'ComfyUI-HunyuanVideo_Foley': {'commit': 'b94f7aca877ff2be5bc264b057abee3dac682c1b', 'url': 'https://github.com/BobRandomNumber/ComfyUI-HunyuanVideo_Foley.git', 'class_schema_sha256': 'b997f40ea6ff56898d81210bcec94811396be39dc6192608ff5318f020ea6c0c', 'classes_used': ['DACHunyuanVAEDecode', 'HunyuanFoleyModelLoader', 'HunyuanFoleySampler', 'LoadDACHunyuanVAE'], 'pip_packages': ['descript-audiotools', 'diffusers', 'omegaconf', 'timm', 'transformers>=4.49.0'], 'status': 'discovered'}},
+    source_path='ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/hunyuan_video_foley.json',
+    source_id='audio/hunyuan_video_foley',
+    source_type='api',
+    source_provenance={'records': [], 'requirements': [], 'warnings': [], 'conflicts': [], 'version_pins': [], 'required_pack_slugs': [], 'aux_only': [], 'unprovenanced': [], 'core_slug_non_core': [], 'low_confidence': False},
+    source_hash='720916735c73726206dfa21fa235791c1cfd37330e74cc65ed2111a588e28747',
+    output_mode='ready_template',
+    artifact_class='execution_ready_candidate',
+    execution_ready=True,
+    ready_id='audio/hunyuan_video_foley',
     license_notice='Tencent Hunyuan Community license excludes the EU, UK, and South Korea.',
-    provenance={'source_path': 'ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/hunyuan_video_foley.json', 'source_id': 'audio/hunyuan_video_foley', 'source_type': 'api', 'source_provenance': {'records': [], 'requirements': [], 'warnings': [], 'conflicts': [], 'version_pins': [], 'required_pack_slugs': [], 'aux_only': [], 'unprovenanced': [], 'core_slug_non_core': [], 'low_confidence': False}, 'source_hash': '720916735c73726206dfa21fa235791c1cfd37330e74cc65ed2111a588e28747', 'output_mode': 'ready_template', 'artifact_class': 'execution_ready_candidate', 'execution_ready': True, 'ready_id': 'audio/hunyuan_video_foley'},
+    provenance={'source_path': 'ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/hunyuan_video_foley.json', 'source_id': 'audio/hunyuan_video_foley', 'source_type': 'api', 'source_provenance': {'records': [], 'requirements': [], 'warnings': [], 'conflicts': [], 'version_pins': [], 'required_pack_slugs': [], 'aux_only': [], 'unprovenanced': [], 'core_slug_non_core': [], 'low_confidence': False}, 'source_hash': '720916735c73726206dfa21fa235791c1cfd37330e74cc65ed2111a588e28747', 'output_mode': 'ready_template', 'artifact_class': 'execution_ready_candidate', 'execution_ready': True, 'ready_id': 'audio/hunyuan_video_foley', 'source_workflow': 'ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/hunyuan_video_foley.json'},
+    source_bundle={'format_version': 2, 'generation_id': '5548cf57ba27539d18c4d662f851366c8cc54b5f85e40962bc79f9c501de29d4', 'custody_digest': 'a2810246152f374153d2943809460f7e61c973b7c5ef25178b825c5ec55a7181'},
 )
 
 def build() -> VibeWorkflow:
     """Build the workflow (auto-generated)."""
     with new_workflow(READY_METADATA, source_path=__file__) as wf:
 
-        hunyuanfoleymodelloader = raw_call('HunyuanFoleyModelLoader', '11',
+        hunyuanfoleymodelloader = raw_call('HunyuanFoleyModelLoader',
             _outputs=('FOLEY_MODEL',),
-            _native_ports={'native_input_names': None, 'native_output_names': None, 'native_input_types': None, 'native_output_types': None, 'native_input_optional': None, 'native_input_asset_kinds': None, 'native_output_slots': [0]},
             foley_checkpoint_name=FOLEY_CHECKPOINT_NAME,
             model_path_name='hunyuan_foley',
         )
 
-        loaddachunyuanvae = raw_call('LoadDACHunyuanVAE', '12',
-            _outputs=('VAE',),
-            _native_ports={'native_input_names': None, 'native_output_names': None, 'native_input_types': None, 'native_output_types': None, 'native_input_optional': None, 'native_input_asset_kinds': None, 'native_output_slots': [0]},
-            vae_name=VAE_NAME,
-        )
+        loaddachunyuanvae = raw_call('LoadDACHunyuanVAE', _outputs=('VAE',), vae_name=VAE_NAME)
+        loadvideo = LoadVideo(file=DEFAULT_VIDEO_REF)
+        getvideocomponents = GetVideoComponents(video=loadvideo.out(0))
 
-        loadvideo = LoadVideo(
-            _native_ports={'native_input_names': None, 'native_output_names': None, 'native_input_types': None, 'native_output_types': None, 'native_input_optional': None, 'native_input_asset_kinds': None, 'native_output_slots': [0]},
-            file=DEFAULT_VIDEO_REF,
-            _id='23',
-        )
-
-        getvideocomponents = GetVideoComponents(
-            _native_ports={'native_input_names': None, 'native_output_names': None, 'native_input_types': None, 'native_output_types': None, 'native_input_optional': None, 'native_input_asset_kinds': None, 'native_output_slots': [0, 2]},
-            video=loadvideo.out('VIDEO'),
-            _id='24',
-        )
-
-        hunyuanfoleysampler = raw_call('HunyuanFoleySampler', '22',
+        hunyuanfoleysampler = raw_call('HunyuanFoleySampler',
             _outputs=('LATENT',),
-            _native_ports={'native_input_names': None, 'native_output_names': None, 'native_input_types': None, 'native_output_types': None, 'native_input_optional': None, 'native_input_asset_kinds': None, 'native_output_slots': [0]},
             guidance_scale=4.5,
-            negative_prompt='noisy, harsh',
+            negative_prompt=DEFAULT_NEGATIVE,
             prompt=DEFAULT_PROMPT,
             seed=DEFAULT_SEED,
             steps=50,
             foley_model=hunyuanfoleymodelloader.out('FOLEY_MODEL'),
-            fps=getvideocomponents.out('FPS'),
-            video_frames=getvideocomponents.out('IMAGES'),
+            fps=getvideocomponents.out(2),
+            video_frames=getvideocomponents.out(0),
         )
 
-        dachunyuanvaedecode = raw_call('DACHunyuanVAEDecode', '14',
+        dachunyuanvaedecode = raw_call('DACHunyuanVAEDecode',
             _outputs=('AUDIO',),
-            _native_ports={'native_input_names': None, 'native_output_names': None, 'native_input_types': None, 'native_output_types': None, 'native_input_optional': None, 'native_input_asset_kinds': None, 'native_output_slots': [0]},
             unload_models_after_use=True,
             samples=hunyuanfoleysampler.out('LATENT'),
             vae=loaddachunyuanvae.out('VAE'),
@@ -100,10 +94,8 @@ def build() -> VibeWorkflow:
         saveaudio = SaveAudio(
             filename_prefix='audio/hunyuan_video_foley',
             audio=dachunyuanvaedecode.out('AUDIO'),
-            _id='27',
         )
 
-        wf = wf.finalize(PUBLIC_INPUT_METADATA, outputs=[OutputSpec(node=saveaudio, output_type='SaveAudio', name='audio', artifact_kind='audio', mime_type='audio/flac', filename_prefix='audio/hunyuan_video_foley', expected_cardinality='one')])
         wf.strict_types = False
-        return wf
+        return wf.finalize(PUBLIC_INPUT_METADATA, outputs=[OutputSpec(node=saveaudio, output_type='SaveAudio', name='audio', artifact_kind='audio', mime_type='audio/flac', filename_prefix='audio/hunyuan_video_foley', expected_cardinality='one')])
 

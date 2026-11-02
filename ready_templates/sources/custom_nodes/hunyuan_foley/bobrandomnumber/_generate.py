@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 
 SOURCE = Path(__file__).resolve().parent
@@ -22,9 +23,11 @@ def generate() -> None:
     from vibecomfy.ingest.normalize import from_api
     from vibecomfy.node_packs import CustomNodePack
     from vibecomfy.node_packs._lockfile import LockEntry, compute_schema_hash, upsert_lockfile_entry
-    from vibecomfy.porting.convert import port_convert_and_write, port_convert_workflow
+    from vibecomfy.porting.convert import _ready_requirements, port_convert_and_write, port_convert_workflow
     from vibecomfy.schema import get_authoring_schema_provider
     from vibecomfy.schema.extract import normalize_entry
+    from vibecomfy.security.provenance import Provenance
+    from vibecomfy.workflow_bundle import emit_bundle_with_candidate, load_bundle
 
     lock = json.loads((SOURCE / "assets.json").read_text())
     pack = lock["node_pack"]
@@ -66,7 +69,21 @@ def generate() -> None:
     result = port_convert_workflow(workflow, ready_id=TEMPLATE_ID,
         source_path=str(source.relative_to(ROOT)), source_hash=hashlib.sha256(source.read_bytes()).hexdigest(),
         schema_provider=provider, raw_workflow=raw, preserve_node_ids=True)
-    port_convert_and_write(result, ROOT / "ready_templates/audio/hunyuan_video_foley.py")
+    destination = ROOT / "ready_templates/audio/hunyuan_video_foley.py"
+    # Publish the canonical pair using the same writer as templates create.
+    # Production snapshots retain both members before staging or admission.
+    with TemporaryDirectory(prefix="hunyuan-foley-authoring-") as temporary:
+        candidate = Path(temporary) / destination.name
+        port_convert_and_write(result, candidate)
+        built = load_bundle(candidate, trust=Provenance.USER_CONFIRMED, schema_provider=provider)
+        # Runtime picker requirements and auxiliary downloads have different
+        # scopes. Use the shared picker projection; keep all ten locked files
+        # in model_assets for the normal downloader.
+        built.workflow.requirements.models = _ready_requirements(built.workflow)["models"]
+        emit_bundle_with_candidate(built.workflow, destination, {"operation": "authored"}, None,
+            operation="authored", source_provenance={"ready_id": TEMPLATE_ID,
+                "source_workflow": str(source.relative_to(ROOT)), "output_mode": "ready_template"},
+            source_format="ready_template")
     if refresh_index([]):
         raise RuntimeError("template index regeneration failed")
 

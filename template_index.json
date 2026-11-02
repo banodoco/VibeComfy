@@ -140,10 +140,10 @@
         {
           "name": "seed",
           "target": {
-            "node_id": "",
+            "node_id": "5",
             "field": "seed"
           },
-          "node_id": "",
+          "node_id": "5",
           "field": "seed",
           "value": 123,
           "type": "INT",
@@ -158,10 +158,10 @@
         {
           "name": "video_ref",
           "target": {
-            "node_id": "",
+            "node_id": "3",
             "field": "file"
           },
-          "node_id": "",
+          "node_id": "3",
           "field": "file",
           "value": "foley-input.mp4",
           "type": "COMBO",
@@ -176,10 +176,10 @@
         {
           "name": "prompt",
           "target": {
-            "node_id": "",
+            "node_id": "5",
             "field": "prompt"
           },
-          "node_id": "",
+          "node_id": "5",
           "field": "prompt",
           "value": "Synchronized footsteps on gravel.",
           "type": "STRING",
@@ -194,29 +194,29 @@
       ],
       "public_outputs": [
         {
-          "name": null,
-          "node_id": "27",
-          "output_type": null,
-          "artifact_kind": null,
-          "mime_type": null,
-          "filename_prefix": null,
-          "expected_cardinality": null,
+          "node_id": "7",
+          "name": "audio",
+          "output_type": "SaveAudio",
+          "artifact_kind": "audio",
+          "mime_type": "audio/flac",
+          "filename_prefix": "audio/hunyuan_video_foley",
+          "expected_cardinality": "one",
           "status": "static",
-          "source": "finalize"
+          "source": "OutputSpec"
         }
       ],
       "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
       "artifact_expectations": [
         {
-          "name": null,
-          "node_id": "27",
-          "output_type": null,
-          "artifact_kind": null,
-          "mime_type": null,
-          "filename_prefix": null,
-          "expected_cardinality": null,
+          "node_id": "7",
+          "name": "audio",
+          "output_type": "SaveAudio",
+          "artifact_kind": "audio",
+          "mime_type": "audio/flac",
+          "filename_prefix": "audio/hunyuan_video_foley",
+          "expected_cardinality": "one",
           "status": "static",
-          "source": "finalize"
+          "source": "OutputSpec"
         }
       ],
       "static_diagnostics": [],
