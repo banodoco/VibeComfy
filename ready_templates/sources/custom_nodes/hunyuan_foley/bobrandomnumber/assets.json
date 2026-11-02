@@ -1,0 +1,99 @@
+{
+  "node_pack": {
+    "name": "ComfyUI-HunyuanVideo_Foley",
+    "url": "https://github.com/BobRandomNumber/ComfyUI-HunyuanVideo_Foley.git",
+    "commit": "b94f7aca877ff2be5bc264b057abee3dac682c1b"
+  },
+  "assets": [
+    {
+      "name": "hunyuanvideo_foley_xl.pth",
+      "repository": "tencent/HunyuanVideo-Foley",
+      "url": "https://huggingface.co/tencent/HunyuanVideo-Foley/resolve/3abd4e833b95b8db0fc9c687afc52483a48e9a97/hunyuanvideo_foley_xl.pth",
+      "subdir": "hunyuan_foley",
+      "hf_revision": "3abd4e833b95b8db0fc9c687afc52483a48e9a97",
+      "sha256": "cf7e93dca93063942bc22b53d4fe888e9d9d5a1ad7977873b7b2c6b126cf00ca",
+      "size_bytes": 5854140970
+    },
+    {
+      "name": "synchformer_state_dict.pth",
+      "repository": "tencent/HunyuanVideo-Foley",
+      "url": "https://huggingface.co/tencent/HunyuanVideo-Foley/resolve/3abd4e833b95b8db0fc9c687afc52483a48e9a97/synchformer_state_dict.pth",
+      "subdir": "hunyuan_foley",
+      "hf_revision": "3abd4e833b95b8db0fc9c687afc52483a48e9a97",
+      "sha256": "8aff082f2df5c3bc52759db0c865c7ee772ae6400b860d1b7e90413f2defb67c",
+      "size_bytes": 950058171
+    },
+    {
+      "name": "vae_128d_48k.pth",
+      "repository": "tencent/HunyuanVideo-Foley",
+      "url": "https://huggingface.co/tencent/HunyuanVideo-Foley/resolve/3abd4e833b95b8db0fc9c687afc52483a48e9a97/vae_128d_48k.pth",
+      "subdir": "hunyuan_foley",
+      "hf_revision": "3abd4e833b95b8db0fc9c687afc52483a48e9a97",
+      "sha256": "07e6139ff33bd21ba8a7a7f40ed24aab13ac0d100cd686f8a9f3e03dc5251cb1",
+      "size_bytes": 1486465965
+    },
+    {
+      "name": "model.safetensors",
+      "repository": "google/siglip2-base-patch16-512",
+      "url": "https://huggingface.co/google/siglip2-base-patch16-512/resolve/a89f5c5093f902bf39d3cd4d81d2c09867f0724b/model.safetensors",
+      "subdir": "hunyuan_foley/siglip2",
+      "hf_revision": "a89f5c5093f902bf39d3cd4d81d2c09867f0724b",
+      "sha256": "fe0e601c625e69eed8e73500d39e9b6164403fe03db8048e87913c3cefbbb3fe",
+      "size_bytes": 1503344520
+    },
+    {
+      "name": "config.json",
+      "repository": "google/siglip2-base-patch16-512",
+      "url": "https://huggingface.co/google/siglip2-base-patch16-512/resolve/a89f5c5093f902bf39d3cd4d81d2c09867f0724b/config.json",
+      "subdir": "hunyuan_foley/siglip2",
+      "hf_revision": "a89f5c5093f902bf39d3cd4d81d2c09867f0724b",
+      "sha256": "a15bc39fbcd92498dea6d5d3cb2b0d8b9ba389d6a3f2b565ea66128a2d141934",
+      "size_bytes": 276
+    },
+    {
+      "name": "preprocessor_config.json",
+      "repository": "google/siglip2-base-patch16-512",
+      "url": "https://huggingface.co/google/siglip2-base-patch16-512/resolve/a89f5c5093f902bf39d3cd4d81d2c09867f0724b/preprocessor_config.json",
+      "subdir": "hunyuan_foley/siglip2",
+      "hf_revision": "a89f5c5093f902bf39d3cd4d81d2c09867f0724b",
+      "sha256": "63ff380d3e424f93e6fbca5cc8e74eeed882e96fd6be2b7728aed308f3ad1513",
+      "size_bytes": 394
+    },
+    {
+      "name": "model.safetensors",
+      "repository": "laion/larger_clap_general",
+      "url": "https://huggingface.co/laion/larger_clap_general/resolve/16c8cc3159a3c8a31e8ff5ef1f66b0d9ab3667db/model.safetensors",
+      "subdir": "hunyuan_foley/clap",
+      "hf_revision": "16c8cc3159a3c8a31e8ff5ef1f66b0d9ab3667db",
+      "sha256": "c3d0e564a97cb5eccea412f11d5c51c8a1ccceb80c51e3c6957bb5a796b423b6",
+      "size_bytes": 776327440
+    },
+    {
+      "name": "config.json",
+      "repository": "laion/larger_clap_general",
+      "url": "https://huggingface.co/laion/larger_clap_general/resolve/16c8cc3159a3c8a31e8ff5ef1f66b0d9ab3667db/config.json",
+      "subdir": "hunyuan_foley/clap",
+      "hf_revision": "16c8cc3159a3c8a31e8ff5ef1f66b0d9ab3667db",
+      "sha256": "6268f76a067e3104bf9001e97d7dcc0fcfb16f3086cfb478ee72d95900d7fc1d",
+      "size_bytes": 643
+    },
+    {
+      "name": "merges.txt",
+      "repository": "laion/larger_clap_general",
+      "url": "https://huggingface.co/laion/larger_clap_general/resolve/16c8cc3159a3c8a31e8ff5ef1f66b0d9ab3667db/merges.txt",
+      "subdir": "hunyuan_foley/clap",
+      "hf_revision": "16c8cc3159a3c8a31e8ff5ef1f66b0d9ab3667db",
+      "sha256": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+      "size_bytes": 456318
+    },
+    {
+      "name": "vocab.json",
+      "repository": "laion/larger_clap_general",
+      "url": "https://huggingface.co/laion/larger_clap_general/resolve/16c8cc3159a3c8a31e8ff5ef1f66b0d9ab3667db/vocab.json",
+      "subdir": "hunyuan_foley/clap",
+      "hf_revision": "16c8cc3159a3c8a31e8ff5ef1f66b0d9ab3667db",
+      "sha256": "ed19656ea1707df69134c4af35c8ceda2cc9860bf2c3495026153a133670ab5e",
+      "size_bytes": 798293
+    }
+  ]
+}

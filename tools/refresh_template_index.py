@@ -106,6 +106,8 @@ def build_template_index(*, generated_at: str | None = None) -> dict[str, Any]:
             or ("manual" if coverage_row.get("path") == "manual" else None),
             "source_sha256": _extract_source_sha256(source_path),
         }
+        if metadata.get("license_notice"):
+            row["license_notice"] = metadata["license_notice"]
         custom_node_refs = static_contract.get("custom_node_refs") or _list_items(requirements.get("custom_node_refs"))
         if custom_node_refs:
             row["custom_node_refs"] = custom_node_refs

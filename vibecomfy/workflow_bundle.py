@@ -2559,6 +2559,23 @@ def _approval_preconditions(
             subdir = reference.get("subdir")
             if (value, subdir or "") in target_references:
                 continue
+            asset = authored_asset(str(value), str(subdir or ""))
+            if (asset is not None and isinstance(schema_provider, TargetSchemaProvider)
+                    and schema_provider.auxiliary_model_custody == "target"):
+                declaration = schema_provider.target_model_asset(str(value), str(subdir or ""))
+                if declaration is None:
+                    raise WorkflowBundleError(f"selected target does not declare auxiliary model asset: {value}")
+                digest, size = asset.get("sha256"), asset.get("size_bytes")
+                if (not isinstance(digest, str) or type(size) is not int
+                        or declaration["sha256"] != digest.removeprefix("sha256:")
+                        or declaration["size"] != size):
+                    raise WorkflowBundleError(f"selected target auxiliary model identity mismatch: {value}")
+                approval_diagnostics.append({
+                    "code": "target_model_asset", "status": "available_on_target",
+                    **dict(declaration), "target_server_url": schema_provider.server_url,
+                    "model_bytes_status": "verified_target_provisioning",
+                })
+                continue
             # Preserve historical managed/local filesystem reconciliation;
             # these normalized paths never become target model names.
             value = str(value).replace("\\", "/")
@@ -2573,6 +2590,11 @@ def _approval_preconditions(
                         f"model reference is not locally registered and has no source URL: {value}"
                     )
                 local_root = Path(models_root) if models_root is not None else None
+                if local_root is None and isinstance(metadata, Mapping) and metadata.get("models_root") is not None:
+                    raw_root = metadata["models_root"]
+                    if not isinstance(raw_root, (str, Path)) or not Path(raw_root).is_absolute():
+                        raise WorkflowBundleError("workflow models_root must be an absolute path")
+                    local_root = Path(raw_root)
                 try:
                     if not is_present(
                         {"name": value, "subdir": subdir or ""}, root=local_root
@@ -2603,6 +2625,8 @@ def _approval_preconditions(
                     root = Path(raw_root)
             if not is_present({"name": value, "subdir": effective_subdir}, root=root):
                 raise WorkflowBundleError(f"registered model is not present locally: {value}")
+            if asset is not None and asset.get("sha256"):
+                verify(asset, root=root)
     except WorkflowBundleError:
         raise
     except Exception as exc:
@@ -2964,12 +2988,14 @@ def load_bundle(
         inherited_import = isinstance(source_path, (str, Path)) and Path(
             source_path
         ).suffix.lower() == ".json"
+        operation = "imported" if inherited_import else "ephemeral"
+        source_provenance = getattr(reference.source, "provenance", None)
         return _make_bundle(
             reference,
             python_path=None,
             ui_sidecar=None,
-            provenance={"operation": "imported" if inherited_import else "ephemeral"},
-            operation="imported" if inherited_import else "ephemeral",
+            provenance=source_provenance or {"operation": operation},
+            operation=operation,
             authority_kind="import_evidence" if inherited_import else "canonical",
         )
     if not isinstance(reference, (str, Path)):

@@ -1,0 +1,247 @@
+{
+  "DACHunyuanVAEDecode": {
+    "pack": "ComfyUI-HunyuanVideo_Foley",
+    "pack_version": "b94f7aca877ff2be5bc264b057abee3dac682c1b",
+    "python_module": "hunyuan_foley",
+    "category": "",
+    "name": "DACHunyuanVAEDecode",
+    "display_name": "DACHunyuanVAEDecode",
+    "description": "",
+    "inputs": {
+      "required": {
+        "samples": [
+          "LATENT"
+        ],
+        "vae": [
+          "VAE"
+        ]
+      },
+      "optional": {
+        "unload_models_after_use": [
+          "BOOLEAN",
+          {
+            "default": false
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "samples",
+        "vae"
+      ],
+      "optional": [
+        "unload_models_after_use"
+      ]
+    },
+    "input_order_all": [
+      "samples",
+      "vae",
+      "unload_models_after_use"
+    ],
+    "object_info_widget_order": [
+      null,
+      null,
+      "unload_models_after_use"
+    ],
+    "outputs": [
+      {
+        "type": "AUDIO",
+        "name": "AUDIO",
+        "is_list": false
+      }
+    ],
+    "function": "execute"
+  },
+  "HunyuanFoleyModelLoader": {
+    "pack": "ComfyUI-HunyuanVideo_Foley",
+    "pack_version": "b94f7aca877ff2be5bc264b057abee3dac682c1b",
+    "python_module": "hunyuan_foley",
+    "category": "",
+    "name": "HunyuanFoleyModelLoader",
+    "display_name": "HunyuanFoleyModelLoader",
+    "description": "",
+    "inputs": {
+      "required": {
+        "model_path_name": [
+          [
+            "hunyuan_foley"
+          ]
+        ],
+        "foley_checkpoint_name": [
+          [
+            "hunyuanvideo_foley.pth",
+            "hunyuanvideo_foley_xl.pth"
+          ]
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "model_path_name",
+        "foley_checkpoint_name"
+      ]
+    },
+    "input_order_all": [
+      "model_path_name",
+      "foley_checkpoint_name"
+    ],
+    "object_info_widget_order": [
+      "model_path_name",
+      "foley_checkpoint_name"
+    ],
+    "outputs": [
+      {
+        "type": "FOLEY_MODEL",
+        "name": "FOLEY_MODEL",
+        "is_list": false
+      }
+    ],
+    "function": "execute"
+  },
+  "HunyuanFoleySampler": {
+    "pack": "ComfyUI-HunyuanVideo_Foley",
+    "pack_version": "b94f7aca877ff2be5bc264b057abee3dac682c1b",
+    "python_module": "hunyuan_foley",
+    "category": "",
+    "name": "HunyuanFoleySampler",
+    "display_name": "HunyuanFoleySampler",
+    "description": "",
+    "inputs": {
+      "required": {
+        "foley_model": [
+          "FOLEY_MODEL"
+        ],
+        "video_frames": [
+          "IMAGE"
+        ],
+        "fps": [
+          "FLOAT",
+          {
+            "default": 24.0,
+            "min": 1.0,
+            "max": 240.0,
+            "step": 1.0
+          }
+        ],
+        "prompt": [
+          "STRING",
+          {
+            "default": "A person walks on frozen ice",
+            "multiline": true
+          }
+        ],
+        "negative_prompt": [
+          "STRING",
+          {
+            "default": "noisy, harsh",
+            "multiline": true
+          }
+        ],
+        "guidance_scale": [
+          "FLOAT",
+          {
+            "default": 4.5,
+            "min": 1.0,
+            "max": 10.0,
+            "step": 0.1
+          }
+        ],
+        "steps": [
+          "INT",
+          {
+            "default": 50,
+            "min": 10,
+            "max": 100,
+            "step": 1
+          }
+        ],
+        "seed": [
+          "INT",
+          {
+            "default": 0,
+            "min": 0,
+            "max": 18446744073709551615
+          }
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "foley_model",
+        "video_frames",
+        "fps",
+        "prompt",
+        "negative_prompt",
+        "guidance_scale",
+        "steps",
+        "seed"
+      ]
+    },
+    "input_order_all": [
+      "foley_model",
+      "video_frames",
+      "fps",
+      "prompt",
+      "negative_prompt",
+      "guidance_scale",
+      "steps",
+      "seed"
+    ],
+    "object_info_widget_order": [
+      "foley_model",
+      null,
+      "fps",
+      "prompt",
+      "negative_prompt",
+      "guidance_scale",
+      "steps",
+      "seed"
+    ],
+    "outputs": [
+      {
+        "type": "LATENT",
+        "name": "LATENT",
+        "is_list": false
+      }
+    ],
+    "function": "execute"
+  },
+  "LoadDACHunyuanVAE": {
+    "pack": "ComfyUI-HunyuanVideo_Foley",
+    "pack_version": "b94f7aca877ff2be5bc264b057abee3dac682c1b",
+    "python_module": "hunyuan_foley",
+    "category": "",
+    "name": "LoadDACHunyuanVAE",
+    "display_name": "LoadDACHunyuanVAE",
+    "description": "",
+    "inputs": {
+      "required": {
+        "vae_name": [
+          [
+            "hunyuan_foley/vae_128d_48k.pth"
+          ]
+        ]
+      }
+    },
+    "input_order": {
+      "required": [
+        "vae_name"
+      ]
+    },
+    "input_order_all": [
+      "vae_name"
+    ],
+    "object_info_widget_order": [
+      "vae_name"
+    ],
+    "outputs": [
+      {
+        "type": "VAE",
+        "name": "VAE",
+        "is_list": false
+      }
+    ],
+    "function": "execute"
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "source": "https://github.com/BobRandomNumber/ComfyUI-HunyuanVideo_Foley/blob/b94f7aca877ff2be5bc264b057abee3dac682c1b/hunyuan_foley.py",
+  "note": "Static source-derived authoring schemas. Folder choices describe this locked layout; live target object_info remains execution authority. No ComfyUI was booted.",
+  "inputs": {
+    "HunyuanFoleyModelLoader": {
+      "required": {
+        "model_path_name": [
+          [
+            "hunyuan_foley"
+          ]
+        ],
+        "foley_checkpoint_name": [
+          [
+            "hunyuanvideo_foley.pth",
+            "hunyuanvideo_foley_xl.pth"
+          ]
+        ]
+      }
+    },
+    "LoadDACHunyuanVAE": {
+      "required": {
+        "vae_name": [
+          [
+            "hunyuan_foley/vae_128d_48k.pth"
+          ]
+        ]
+      }
+    },
+    "HunyuanFoleySampler": {
+      "required": {
+        "foley_model": [
+          "FOLEY_MODEL"
+        ],
+        "video_frames": [
+          "IMAGE"
+        ],
+        "fps": [
+          "FLOAT",
+          {
+            "default": 24.0,
+            "min": 1.0,
+            "max": 240.0,
+            "step": 1.0
+          }
+        ],
+        "prompt": [
+          "STRING",
+          {
+            "default": "A person walks on frozen ice",
+            "multiline": true
+          }
+        ],
+        "negative_prompt": [
+          "STRING",
+          {
+            "default": "noisy, harsh",
+            "multiline": true
+          }
+        ],
+        "guidance_scale": [
+          "FLOAT",
+          {
+            "default": 4.5,
+            "min": 1.0,
+            "max": 10.0,
+            "step": 0.1
+          }
+        ],
+        "steps": [
+          "INT",
+          {
+            "default": 50,
+            "min": 10,
+            "max": 100,
+            "step": 1
+          }
+        ],
+        "seed": [
+          "INT",
+          {
+            "default": 0,
+            "min": 0,
+            "max": 18446744073709551615
+          }
+        ]
+      }
+    },
+    "DACHunyuanVAEDecode": {
+      "required": {
+        "samples": [
+          "LATENT"
+        ],
+        "vae": [
+          "VAE"
+        ]
+      },
+      "optional": {
+        "unload_models_after_use": [
+          "BOOLEAN",
+          {
+            "default": false
+          }
+        ]
+      }
+    }
+  },
+  "outputs": {
+    "HunyuanFoleyModelLoader": [
+      "FOLEY_MODEL"
+    ],
+    "LoadDACHunyuanVAE": [
+      "VAE"
+    ],
+    "HunyuanFoleySampler": [
+      "LATENT"
+    ],
+    "DACHunyuanVAEDecode": [
+      "AUDIO"
+    ]
+  }
+}
