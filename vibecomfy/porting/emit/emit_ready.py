@@ -1110,18 +1110,17 @@ def _emit_ready_template_python_inner(
     finalize_line = f"    wf = wf.finalize({input_expr}{_v2_output_args(workflow, var_names, metadata)})"
     # Finalization owns compact identity/schema rebinding.  Runtime values and
     # topology are already authoritative in the constructor calls above.
-    tail_lines = [
-        *tail_lines[:-1],
-        finalize_line,
-        *(
-            f"    {line}"
-            for line in _canonical_graph_semantic_lines(
-                workflow,
-                definitions_expr=definitions_expr,
-            )
-        ),
-        "    return wf",
-    ]
+    semantic_lines = _canonical_graph_semantic_lines(workflow, definitions_expr=definitions_expr)
+    if external_custody and semantic_lines == ["wf.strict_types = False"]:
+        # A flat companion-backed graph has only the default graph state.
+        # Finalize directly at return; there is no post-binding declaration.
+        tail_lines = [*tail_lines[:-1], finalize_line.replace("wf = wf.finalize(", "return wf.finalize(", 1)]
+    else:
+        tail_lines = [
+            *tail_lines[:-1], finalize_line,
+            *(f"    {line}" for line in semantic_lines),
+            "    return wf",
+        ]
     out_lines.extend(
         _emit_build_function(
             prepared,
