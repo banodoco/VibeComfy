@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-08T22:52:12+00:00",
+  "generated_at": "2026-11-03T07:10:29+00:00",
   "generated_from": "repo-only ready template discovery",
   "include_rule": "find ready_templates -type f -name '*.py' ! -name '_*' | sort",
   "exclude_rule": "exclude __init__.py and files whose basename starts with '_' to match vibecomfy.registry.ready._template_paths",

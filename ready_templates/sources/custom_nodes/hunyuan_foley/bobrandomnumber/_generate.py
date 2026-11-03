@@ -27,6 +27,7 @@ def generate() -> None:
     from vibecomfy.schema import get_authoring_schema_provider
     from vibecomfy.schema.extract import normalize_entry
     from vibecomfy.security.provenance import Provenance
+    from vibecomfy.templates import _hydrate_native_schema_carriers
     from vibecomfy.workflow_bundle import emit_bundle_with_candidate, load_bundle
 
     lock = json.loads((SOURCE / "assets.json").read_text())
@@ -52,6 +53,67 @@ def generate() -> None:
     source = SOURCE / "hunyuan_video_foley.json"
     raw = json.loads(source.read_text())
     workflow = from_api(raw, workflow_id=TEMPLATE_ID, schema_provider=provider)
+    # Keep native edge port ownership on the Python workflow.  API ingestion
+    # retains the UI graph but does not attach a roster to this core wrapper;
+    # the existing offline schema carrier supplies the exact names and types.
+    video_components = workflow.nodes.get("24")
+    video_schema = provider.get_schema("GetVideoComponents")
+    if video_components is None or video_schema is None:
+        raise RuntimeError("GetVideoComponents schema or canonical node 24 is missing")
+    video_inputs = raw["24"].get("inputs", {})
+    video_outputs = tuple(
+        str(output.name) for output in (getattr(video_schema, "outputs", None) or ())
+        if getattr(output, "name", None) is not None
+    )
+    _hydrate_native_schema_carriers(
+        video_components,
+        "GetVideoComponents",
+        video_outputs,
+        authored_input_names=tuple(str(name) for name in video_inputs),
+    )
+    # Keep the already-authored output-slot mapping and Python references
+    # intact; this repair is only for the missing native input roster.
+    video_components.native_output_names = None
+    video_components.native_output_types = None
+    video_components.__post_init__()
+    sampler = workflow.nodes.get("22")
+    sampler_schema = provider.get_schema("HunyuanFoleySampler")
+    if sampler is None or sampler_schema is None:
+        raise RuntimeError("HunyuanFoleySampler schema or canonical node 22 is missing")
+    sampler_inputs = raw["22"].get("inputs", {})
+    sampler_outputs = tuple(
+        str(output.name) for output in (getattr(sampler_schema, "outputs", None) or ())
+        if getattr(output, "name", None) is not None
+    )
+    _hydrate_native_schema_carriers(
+        sampler,
+        "HunyuanFoleySampler",
+        sampler_outputs,
+        authored_input_names=tuple(str(name) for name in sampler_inputs),
+    )
+    # Keep the authored output-slot mapping and Python references intact.
+    sampler.native_output_names = None
+    sampler.native_output_types = None
+    sampler.__post_init__()
+    decoder = workflow.nodes.get("14")
+    decoder_schema = provider.get_schema("DACHunyuanVAEDecode")
+    if decoder is None or decoder_schema is None:
+        raise RuntimeError("DACHunyuanVAEDecode schema or canonical node 14 is missing")
+    decoder_inputs = raw["14"].get("inputs", {})
+    decoder_outputs = tuple(
+        str(output.name) for output in (getattr(decoder_schema, "outputs", None) or ())
+        if getattr(output, "name", None) is not None
+    )
+    _hydrate_native_schema_carriers(
+        decoder,
+        "DACHunyuanVAEDecode",
+        decoder_outputs,
+        authored_input_names=tuple(str(name) for name in decoder_inputs),
+    )
+    # Keep the authored output-slot mapping and Python references intact.
+    decoder.native_output_names = None
+    decoder.native_output_types = None
+    decoder.__post_init__()
     workflow.register_input("video_ref", "23", "file", "foley-input.mp4", type="COMBO",
                             required=True, media_semantics="video")
     workflow.register_input("prompt", "22", "prompt", raw["22"]["inputs"]["prompt"],
