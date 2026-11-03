@@ -8,8 +8,7 @@ from typing import TYPE_CHECKING
 from typing import Any, Iterable, Mapping
 
 from vibecomfy.porting.report import PortIssue
-from vibecomfy.errors import CheckoutRequiredError
-from vibecomfy.utils import find_repo_root
+from vibecomfy import resources
 
 if TYPE_CHECKING:
     from vibecomfy.workflow import VibeWorkflow
@@ -62,10 +61,7 @@ def __getattr__(name: str) -> Path:
 
 
 def _default_exception_path() -> Path:
-    try:
-        return find_repo_root() / "docs" / "templates" / "strict_ready_exceptions.json"
-    except CheckoutRequiredError:
-        return Path(__file__).resolve().parent / "strict_ready_exceptions.json"
+    return resources._resource_path("strict_ready_exceptions")
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,14 +133,13 @@ class StrictReadyException:
 
 
 def load_strict_ready_exceptions(path: Path | str | None = None) -> tuple[StrictReadyException, ...]:
-    exception_path = (
-        Path(path)
-        if path is not None
-        else _default_exception_path()
-    )
-    if not exception_path.exists():
-        return ()
-    payload = json.loads(exception_path.read_text())
+    if path is None or resources._is_resource_path("strict_ready_exceptions", Path(path)):
+        payload = resources.strict_ready_exceptions()
+    else:
+        exception_path = Path(path)
+        if not exception_path.exists():
+            return ()
+        payload = json.loads(exception_path.read_text(encoding="utf-8"))
     if payload.get("match_keys") and list(payload["match_keys"]) != list(EXCEPTION_MATCH_KEYS):
         raise ValueError(
             f"strict-ready exception match_keys must be {list(EXCEPTION_MATCH_KEYS)!r}; "

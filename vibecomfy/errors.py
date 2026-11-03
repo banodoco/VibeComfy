@@ -84,6 +84,17 @@ class CheckoutRequiredError(VibeComfyError):
     default_next_action = "Clone VibeComfy and install it with `pip install -e .`."
 
 
+class ShippedResourceMissingError(VibeComfyError):
+    """Required runtime data is absent from the selected distribution layout."""
+
+    default_next_action = "Reinstall VibeComfy from a complete distribution."
+
+    def __init__(self, resource: str, path: object) -> None:
+        self.resource = resource
+        self.path = str(path)
+        super().__init__(f"Shipped VibeComfy resource {resource!r} is missing at {self.path}")
+
+
 # ---------------------------------------------------------------------------
 # Block A error classes
 # ---------------------------------------------------------------------------

@@ -86,6 +86,8 @@ packages = ["vibecomfy"]
 artifacts = [
   "vibecomfy/py.typed",
   "vibecomfy/**/*.pyi",
+  "vibecomfy/comfy_metadata.json",
+  "vibecomfy/**/schemas/**/*.json",
 ]
 exclude = [
   "/vibecomfy/comfy_nodes/web_dist/**",
@@ -98,6 +100,15 @@ exclude = [
 "template_index.json" = "vibecomfy/template_index.json"
 
 [tool.hatch.build.targets.sdist]
+artifacts = [
+  "ready_templates/**/*.py",
+  "ready_templates/**/*.json",
+  "template_index.json",
+  "custom_nodes.lock",
+  "docs/templates/strict_ready_exceptions.json",
+  "vibecomfy/comfy_metadata.json",
+  "vibecomfy/**/schemas/**/*.json",
+]
 exclude = [
   "/vibecomfy/comfy_nodes/web_dist/**",
 ]

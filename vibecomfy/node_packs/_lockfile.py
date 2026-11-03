@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
 
+from vibecomfy import resources
+
 try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover - Python < 3.11 compatibility
@@ -16,18 +18,12 @@ def resolve_lockfile_path(path: str | Path | None = None, *, repo_root: Path | N
     """Resolve the authoritative node-pack lockfile independently of cwd.
 
     An explicit path keeps its historical meaning (relative to the caller's
-    cwd); the implicit project lockfile is anchored to the VibeComfy checkout.
+    cwd); the implicit lockfile is VibeComfy's shipped runtime resource.
     """
     if path is not None:
         return Path(path).expanduser()
     if repo_root is None:
-        from vibecomfy.errors import CheckoutRequiredError
-        from vibecomfy.utils import find_repo_root
-
-        try:
-            repo_root = find_repo_root()
-        except CheckoutRequiredError:
-            return Path(__file__).resolve().parents[1] / "custom_nodes.lock"
+        return resources._resource_path("custom_nodes_lock")
     return Path(repo_root) / "custom_nodes.lock"
 
 
@@ -64,7 +60,9 @@ class LockEntry:
         self.pip_packages = tuple(sorted({str(item) for item in self.pip_packages}))
 
 
-def read_lockfile(path: Path = Path("custom_nodes.lock")) -> list[LockEntry]:
+def read_lockfile(path: Path | None = None) -> list[LockEntry]:
+    if path is None or resources._is_resource_path("custom_nodes_lock", path):
+        return _read_toml_lockfile_payload(resources.custom_nodes_lock())
     if not path.exists():
         return []
     text = path.read_text(encoding="utf-8")
@@ -201,7 +199,10 @@ def _read_legacy_lockfile(text: str) -> list[LockEntry]:
 
 
 def _read_toml_lockfile(text: str) -> list[LockEntry]:
-    data = tomllib.loads(text)
+    return _read_toml_lockfile_payload(tomllib.loads(text))
+
+
+def _read_toml_lockfile_payload(data: dict[str, Any]) -> list[LockEntry]:
     entries: list[LockEntry] = []
     if isinstance(data.get("entries"), list):
         for raw in data["entries"]:

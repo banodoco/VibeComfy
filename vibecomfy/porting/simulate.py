@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
+from vibecomfy import resources
 from vibecomfy.analysis.corpus import build_corpus_snapshot
 from vibecomfy.porting.convert import port_convert_workflow
 from vibecomfy.porting.parity import compile_equivalent
@@ -36,7 +37,6 @@ from vibecomfy.schema import (
     schema_snapshot_to_payload,
     schemas_for,
 )
-from vibecomfy.utils import find_repo_root
 from vibecomfy.workflow import VibeWorkflow
 
 _SOURCE_LIMIT = 2 * 1024 * 1024
@@ -627,13 +627,8 @@ def _materialize_transformed_source(source_path: Path, transformed: str, destina
 
 def _worker_environment() -> dict[str, str]:
     env = dict(os.environ)
-    from vibecomfy.errors import CheckoutRequiredError
-
-    try:
-        root = str(find_repo_root())
-    except CheckoutRequiredError:
-        pass  # The worker uses this interpreter's installed distribution.
-    else:
+    if resources.layout() == "checkout":
+        root = str(resources._layout_root())
         env["PYTHONPATH"] = root if not env.get("PYTHONPATH") else root + os.pathsep + env["PYTHONPATH"]
     env["PYTHONHASHSEED"] = "0"
     return env
@@ -1004,9 +999,7 @@ def simulate_rule(rule_spec: str, template_ids: list[str] | None = None, *, sche
     caller_schema_provider = schema_provider
     if schema_provider is None:
         schema_provider = get_schema_provider("auto")
-    from vibecomfy.registry.ready import repo_ready_template_root
-
-    snapshot = build_corpus_snapshot(repo_ready_template_root())
+    snapshot = build_corpus_snapshot(resources.ready_templates_root())
     templates_by_id = {template["id"]: template for template in snapshot.templates_list}
     target_ids = (
         [template["id"] for template in snapshot.templates_list if template["marker"] == "generated"]
