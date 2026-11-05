@@ -1722,6 +1722,10 @@ def _finalize_impl(
     for name, spec in inputs.items():
         spec.register(wf, name, namespace=caller_locals)
 
+    unbound = wf.metadata.get("unbound_inputs")
+    if isinstance(unbound, dict):
+        wf.metadata["unbound_inputs"] = {name: value for name, value in unbound.items() if name not in wf.inputs}
+
     _drop_shadowed_auto_inputs(wf, inputs, namespace=caller_locals)
     _assert_public_input_invariant(wf, inputs, namespace=caller_locals)
 

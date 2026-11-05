@@ -46,6 +46,12 @@ def test_edit_required_image_default_survives_first_canonical_publication(tmp_pa
     assert reopened.workflow.compile('api')['4']['inputs']['image'] == 'reference.png'
 
 
+@pytest.mark.parametrize('template_id', ['image/qwen_image_2_1_turbo', 'edit/qwen_image_2_1_turbo_edit'])
+def test_qwen_bound_inputs_are_not_reported_as_unbound(template_id):
+    workflow = workflow_from_ready(template_id)
+    assert not (set(workflow.inputs) & set(workflow.metadata.get('unbound_inputs', {})))
+
+
 @pytest.mark.parametrize('template_id', BINDINGS)
 def test_default_public_overrides_and_canonical_roundtrip(template_id, tmp_path):
     assert template_id in ready_template_ids()
