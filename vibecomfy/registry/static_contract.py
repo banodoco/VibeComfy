@@ -4,14 +4,12 @@ import ast
 import hashlib
 import json
 import re
-import tomllib
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 from urllib.parse import urlsplit
 from vibecomfy.contracts.runtime import RuntimeDependencyError, RuntimeRequirements
 from vibecomfy.custom_node_refs import normalize_custom_node_requirements
-from vibecomfy.errors import CheckoutRequiredError
-from vibecomfy.utils import find_repo_root
+from vibecomfy import resources
 
 from vibecomfy.metadata import (
     MODEL_KEYS,
@@ -105,14 +103,16 @@ def extract_ready_template_contract(
     public_inputs: list[dict[str, Any]] = []
     public_outputs: list[dict[str, Any]] = []
     public_inputs_dict = assignments.get("PUBLIC_INPUT_METADATA") or assignments.get("PUBLIC_INPUTS")
+    node_assignments = _node_assignment_ids(tree)
     if isinstance(public_inputs_dict, dict):
         for name, spec in public_inputs_dict.items():
             if not isinstance(spec, dict):
                 continue
+            node_id = node_assignments.get(str(spec.get("node", "")), str(spec.get("node", "")))
             descriptor: dict[str, Any] = {
                 "name": str(name),
-                "target": {"node_id": str(spec.get("node", "")), "field": str(spec.get("field", ""))},
-                "node_id": str(spec.get("node", "")),
+                "target": {"node_id": node_id, "field": str(spec.get("field", ""))},
+                "node_id": node_id,
                 "field": str(spec.get("field", "")),
                 "value": spec.get("default"),
                 "type": spec.get("type"),
@@ -260,6 +260,23 @@ def _extract_finalize_outputs(
             continue
         call_name = _call_name(node.func)
         if call_name != "finalize" and not call_name.endswith(".finalize"):
+            continue
+        typed_outputs = next((kw.value for kw in node.keywords if kw.arg == "outputs"), None)
+        if isinstance(typed_outputs, (ast.List, ast.Tuple)):
+            for item in typed_outputs.elts:
+                if not isinstance(item, ast.Call) or _call_name(item.func) != "OutputSpec":
+                    continue
+                output_node = _keyword_node_ref(item, "node", node_assignments)
+                if output_node is None:
+                    output_node = _keyword_literal(item, "node", diagnostics, "OutputSpec")
+                if not isinstance(output_node, str):
+                    continue
+                public_outputs.append({
+                    "node_id": output_node,
+                    **{key: _keyword_literal(item, key, diagnostics, "OutputSpec") for key in (
+                        "name", "output_type", "artifact_kind", "mime_type", "filename_prefix", "expected_cardinality")},
+                    "status": "static", "source": "OutputSpec",
+                })
             continue
         output_type = _keyword_literal(node, "output_type", diagnostics, "finalize")
         output_node = _keyword_literal(node, "output_node", diagnostics, "finalize")
@@ -910,6 +927,8 @@ def _evaluate_call(node: ast.Call, assignments: dict[str, Any]) -> Any:
         return _eval_input_spec_call(node, assignments)
     if func_name in ("ModelAsset",):
         return _eval_model_asset_call(node, assignments)
+    if func_name == "ref" and len(node.args) == 1:
+        return _literal_value(node.args[0], assignments)
     return _UNSUPPORTED
 
 
@@ -1046,9 +1065,7 @@ def _metadata_with_static_derivations(metadata: dict[str, Any], path: Path, sour
 
 
 def _ready_root() -> Path:
-    from vibecomfy.registry.ready import repo_ready_template_root
-
-    return repo_ready_template_root()
+    return resources.ready_templates_root()
 
 
 def _template_id_from_path(path: Path) -> str:
@@ -1072,11 +1089,7 @@ def _category_qualified_template_id(template_id: str, path: Path | None = None) 
 
 
 def _coverage_manifest_row(template_id: str) -> dict[str, Any]:
-    path = _ready_root() / "sources" / "manifests" / "coverage.json"
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
+    data = resources.coverage_manifest()
     rows = data.get("workflows") if isinstance(data, dict) else data
     if not isinstance(rows, list):
         return {}
@@ -1108,27 +1121,16 @@ def _source_workflow_from_static(metadata: dict[str, Any], row: dict[str, Any], 
 
 
 def _project_version() -> str:
-    try:
-        data = tomllib.loads((find_repo_root() / "pyproject.toml").read_text(encoding="utf-8"))
-    except CheckoutRequiredError:
-        from importlib import metadata
+    from importlib import metadata
 
-        try:
-            return metadata.version("vibecomfy")
-        except metadata.PackageNotFoundError:
-            return "0"
-    except (OSError, tomllib.TOMLDecodeError):
+    try:
+        return metadata.version("vibecomfy")
+    except metadata.PackageNotFoundError:
         return "0"
-    project = data.get("project") if isinstance(data, dict) else None
-    version = project.get("version") if isinstance(project, dict) else None
-    return str(version) if version else "0"
 
 
 def _comfy_core_metadata() -> dict[str, Any]:
-    try:
-        data = json.loads((Path(__file__).resolve().parents[1] / "comfy_metadata.json").read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
+    data = resources.comfy_metadata()
     core = data.get("core") if isinstance(data, dict) and isinstance(data.get("core"), dict) else data
     if not isinstance(core, dict):
         return {}

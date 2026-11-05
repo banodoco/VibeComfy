@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
-
-import json
 from typing import Any
 
+from vibecomfy import resources
 from vibecomfy.contracts.model import build_contract
 from vibecomfy.porting.strict_ready import (
     STRICT_READY_COMPILE_FAILED,
@@ -12,7 +10,6 @@ from vibecomfy.porting.strict_ready import (
     validate_strict_ready_workflow,
 )
 from vibecomfy.porting.widgets.aliases import widget_alias_analysis
-from vibecomfy.utils import find_repo_root
 from vibecomfy.workflow import VibeWorkflow
 
 
@@ -77,18 +74,7 @@ def _ready_id(workflow: VibeWorkflow, contract: dict[str, Any]) -> str | None:
 
 
 def _template_index_row(ready_id: str) -> dict[str, Any]:
-    from vibecomfy.errors import CheckoutRequiredError
-
-    try:
-        template_index_path = find_repo_root() / "template_index.json"
-    except CheckoutRequiredError:
-        template_index_path = Path(__file__).resolve().parents[1] / "template_index.json"
-    if not template_index_path.exists():
-        return {}
-    try:
-        payload = json.loads(template_index_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
+    payload = resources.template_index()
     templates = payload.get("templates") if isinstance(payload, dict) else None
     if not isinstance(templates, list):
         return {}

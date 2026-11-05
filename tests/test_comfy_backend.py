@@ -61,8 +61,8 @@ def test_load_checked_in_version_matrix() -> None:
 
     assert isinstance(matrix, VersionMatrix)
     assert matrix.schema_version == "1.0"
-    assert matrix.supported_comfyui_version == "0.26.0"
-    assert matrix.pinned_comfyui_commit is None
+    assert matrix.supported_comfyui_version == "0.43.0.2"
+    assert matrix.pinned_comfyui_commit == "ff7644a70dba1707f4caee52576496ce848792f8"
     assert matrix.vendor_path == "vibecomfy[comfy]"
     assert matrix.object_info_fingerprint is None
 
@@ -369,8 +369,9 @@ def test_check_comfy_compatibility_uses_version_when_vendor_missing(monkeypatch)
     import vibecomfy.comfy_backend as cb
 
     reset_matrix_cache()
+    expected_version = load_version_matrix().supported_comfyui_version
     monkeypatch.setattr(cb, "read_vendored_commit", lambda: None)
-    monkeypatch.setattr(cb, "read_live_comfy_version", lambda: _VALID_MATRIX["supported_comfyui_version"])
+    monkeypatch.setattr(cb, "read_live_comfy_version", lambda: expected_version)
 
     compatibility = check_comfy_compatibility()
 
@@ -378,7 +379,7 @@ def test_check_comfy_compatibility_uses_version_when_vendor_missing(monkeypatch)
     assert compatibility.reason_code == "ok"
     assert compatibility.actual == {
         "commit": None,
-        "version": _VALID_MATRIX["supported_comfyui_version"],
+        "version": expected_version,
     }
 
 

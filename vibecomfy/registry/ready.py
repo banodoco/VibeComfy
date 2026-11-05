@@ -7,24 +7,18 @@ from pathlib import Path
 import unicodedata
 from typing import Any, Iterable
 
-from vibecomfy.errors import CheckoutRequiredError, WorkflowBuildError
+from vibecomfy.errors import WorkflowBuildError
+from vibecomfy.resources import ready_templates_root
 from vibecomfy.registry.ready_template import apply_ready_template_policy
 from vibecomfy.security.agent_generated_loader import ScanReport, scan_agent_generated_python
 from vibecomfy.security import current_gate_context, require_confirmation
 from vibecomfy.security.loader_provenance import _provenance_for_path
-from vibecomfy.utils import find_repo_root
 from vibecomfy.workflow import VibeWorkflow
 
 
 def repo_ready_template_root() -> Path:
     """Return the ready-template corpus from a checkout or installed wheel."""
-    try:
-        return find_repo_root() / "ready_templates"
-    except CheckoutRequiredError:
-        packaged_root = Path(__file__).resolve().parents[1] / "ready_templates"
-        if packaged_root.is_dir():
-            return packaged_root
-        raise
+    return ready_templates_root()
 
 
 def __getattr__(name: str) -> Path:

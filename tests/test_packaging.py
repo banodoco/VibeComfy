@@ -130,7 +130,7 @@ def installed_wheel(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Pat
     )
     venv_dir = clone_dir / ".venv"
     created = subprocess.run(
-        [sys.executable, "-m", "venv", "--system-site-packages", str(venv_dir)],
+        [sys.executable, "-m", "venv", str(venv_dir)],
         capture_output=True,
         text=True,
     )
@@ -139,7 +139,7 @@ def installed_wheel(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Pat
     if os.name == "nt":
         venv_python = venv_dir / "Scripts" / "python.exe"
     installed = subprocess.run(
-        [str(venv_python), "-m", "pip", "install", "--no-deps", "--disable-pip-version-check", str(wheels[0])],
+        [str(venv_python), "-m", "pip", "install", "--disable-pip-version-check", str(wheels[0])],
         cwd=root,
         capture_output=True,
         text=True,
@@ -150,7 +150,7 @@ def installed_wheel(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Pat
 
 def _install_wheel_in_venv(wheel: Path, venv_dir: Path) -> Path:
     created = subprocess.run(
-        [sys.executable, "-m", "venv", "--system-site-packages", str(venv_dir)],
+        [sys.executable, "-m", "venv", str(venv_dir)],
         capture_output=True,
         text=True,
     )
@@ -159,7 +159,7 @@ def _install_wheel_in_venv(wheel: Path, venv_dir: Path) -> Path:
     if os.name == "nt":
         venv_python = venv_dir / "Scripts" / "python.exe"
     installed = subprocess.run(
-        [str(venv_python), "-m", "pip", "install", "--no-deps", "--disable-pip-version-check", str(wheel)],
+        [str(venv_python), "-m", "pip", "install", "--disable-pip-version-check", str(wheel)],
         cwd=venv_dir.parent,
         capture_output=True,
         text=True,

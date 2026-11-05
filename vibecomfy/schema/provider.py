@@ -1534,12 +1534,34 @@ class TargetSchemaProvider(RuntimeSchemaProvider):
         cache_dir: str | Path = "out/cache",
         log_path: str | Path | None = None,
         model_availability: Literal["local", "target"] = "local",
+        auxiliary_model_custody: Literal["local", "target"] = "local",
+        target_model_assets: Sequence[Mapping[str, Any]] = (),
     ) -> None:
         if not isinstance(server_url, str) or not server_url.strip():
             raise ValueError("server_url must be a non-empty string")
         if model_availability not in {"local", "target"}:
             raise ValueError("model_availability must be 'local' or 'target'")
+        if auxiliary_model_custody not in {"local", "target"}:
+            raise ValueError("auxiliary_model_custody must be 'local' or 'target'")
         self.model_availability = model_availability
+        self.auxiliary_model_custody = auxiliary_model_custody
+        self._target_model_assets: dict[tuple[str, str], dict[str, Any]] = {}
+        for asset in target_model_assets:
+            if not isinstance(asset, Mapping):
+                raise ValueError("target model asset must be an object")
+            name, subdir = asset.get("name"), asset.get("subdir", "")
+            size, digest = asset.get("size"), asset.get("sha256")
+            if (not isinstance(name, str) or not name or not isinstance(subdir, str)
+                    or type(size) is not int or size < 0 or not isinstance(digest, str)):
+                raise ValueError("target model asset requires exact name, subdir, size and sha256")
+            digest = digest.removeprefix("sha256:")
+            if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
+                raise ValueError("target model asset requires a lowercase SHA-256")
+            key = (name, subdir)
+            if key in self._target_model_assets:
+                raise ValueError("duplicate target model asset identity")
+            self._target_model_assets[key] = {"name": name, "subdir": subdir,
+                                              "size": size, "sha256": digest}
         self._external_capture = False
         self._refresh_object_info: Callable[[], dict[str, Any]] | None = None
         super().__init__(server_url=server_url, cache_dir=cache_dir, log_path=log_path)
@@ -1551,6 +1573,8 @@ class TargetSchemaProvider(RuntimeSchemaProvider):
         *,
         server_url: str,
         model_availability: Literal["local", "target"] = "local",
+        auxiliary_model_custody: Literal["local", "target"] = "local",
+        target_model_assets: Sequence[Mapping[str, Any]] = (),
         refresh_object_info: Callable[[], dict[str, Any]] | None = None,
     ) -> "TargetSchemaProvider":
         """Bind a caller's fresh target capture without querying another client.
@@ -1559,14 +1583,18 @@ class TargetSchemaProvider(RuntimeSchemaProvider):
         prevents later inventory mutation from changing this approval witness.
         Target model availability is an explicit opt-in: it proves only that
         the server advertises the exact picker value, never local model bytes.
-        Existing managed callers keep the default local model checks.  Supply
+        Auxiliary custody is independent: local checks remain the default.
+        Opting into target custody requires an explicit provisioner inventory
+        with exact names, subdirectories, sizes and SHA-256 identities. Supply
         ``refresh_object_info`` using that same target transport when executing:
         final reconciliation refreshes this capture immediately before queueing.
         A capture without a callback can compile but cannot queue stale evidence.
         """
         if refresh_object_info is not None and not callable(refresh_object_info):
             raise ValueError("refresh_object_info must be callable")
-        provider = cls(server_url=server_url, model_availability=model_availability)
+        provider = cls(server_url=server_url, model_availability=model_availability,
+                       auxiliary_model_custody=auxiliary_model_custody,
+                       target_model_assets=target_model_assets)
         provider._external_capture = True
         provider._refresh_object_info = refresh_object_info
         provider._accept_external_capture(data)
@@ -1579,6 +1607,15 @@ class TargetSchemaProvider(RuntimeSchemaProvider):
         self._active_server_url = self.server_url
         self._object_info_digest = object_info_payload_checksum(snapshot)
         return self._object_info
+
+    def target_model_asset(self, name: str, subdir: str) -> Mapping[str, Any] | None:
+        """Return a detached declaration from this selected target's provisioner.
+
+        The composition root supplies inventory only after target-side byte
+        verification. Schema/picker discovery never manufactures these rows.
+        """
+        asset = self._target_model_assets.get((name, subdir))
+        return dict(asset) if asset is not None else None
 
     def target_model_reference(self, class_type: str, field: str, value: str) -> bool:
         """Check one exact model-picker name in this target's captured schema."""
@@ -1677,6 +1714,8 @@ def get_target_schema_provider(
     *,
     cache_dir: str | Path = "out/cache",
     log_path: str | Path | None = None,
+    auxiliary_model_custody: Literal["local", "target"] = "local",
+    target_model_assets: Sequence[Mapping[str, Any]] = (),
 ) -> TargetSchemaProvider:
     """Build a fresh, target-bound schema provider for an explicit server."""
     if not isinstance(server_url, str) or not server_url.strip():
@@ -1685,6 +1724,8 @@ def get_target_schema_provider(
         server_url=server_url,
         cache_dir=cache_dir,
         log_path=log_path,
+        auxiliary_model_custody=auxiliary_model_custody,
+        target_model_assets=target_model_assets,
     )
 
 

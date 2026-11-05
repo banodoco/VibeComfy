@@ -4,6 +4,7 @@ from importlib import import_module
 from typing import Any
 
 _LAZY_EXPORTS = {
+    "resources": ("vibecomfy.resources", None),
     "Artifact": ("vibecomfy.artifacts", "Artifact"),
     "Image": ("vibecomfy.artifacts", "Image"),
     "Video": ("vibecomfy.artifacts", "Video"),

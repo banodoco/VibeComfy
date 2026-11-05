@@ -39,6 +39,18 @@ last_seen_at = "2026-09-15T15:40:00+00:00"
 class_set = ["H3V2VGranularFractionalDenoise", "MiniMaxH3AVExtensionController", "MiniMaxH3AVSourceAudioModeParam", "MiniMaxH3AVStartModeParam", "MiniMaxH3AssembleExtension", "MiniMaxH3AssembleInterior", "MiniMaxH3AudioVAECompatibility", "MiniMaxH3ClearAVNoiseMask", "MiniMaxH3CropTo32", "MiniMaxH3CustomKeyframes", "MiniMaxH3CustomKeyframesMasked", "MiniMaxH3ExistingVideoMaskedContext", "MiniMaxH3ExtensionStartMode", "MiniMaxH3FanRecoveredContext", "MiniMaxH3FinalizeVHSOutput", "MiniMaxH3GeneratedAVMaskedContext", "MiniMaxH3LastActiveVHSPreviewBarrier", "MiniMaxH3MaskedAVBridge", "MiniMaxH3MotionContext", "MiniMaxH3MotionContextLoadLatent", "MiniMaxH3MotionContextSaveLatent", "MiniMaxH3MotionContextTrim", "MiniMaxH3MusicVideoController", "MiniMaxH3OptionalReferenceImage", "MiniMaxH3OptionalStartFrame", "MiniMaxH3ReferenceToVideo", "MiniMaxH3SetAVNoiseMask", "MiniMaxH3SigmaShift", "MiniMaxH3SongMaskedAVContext", "MiniMaxH3SourceAudioPolicy", "MiniMaxH3SourceAudioRegenLength", "MiniMaxH3SourceAudioRegenMask", "MiniMaxH3StartCanvasSelector", "MiniMaxH3StartMaskedContext", "MiniMaxH3StreamLiveExtensionAVToVHS", "MiniMaxH3StreamLiveMusicVideoToVHS", "MiniMaxH3Validate24FPSVideo"]
 pip_packages = ["safetensors"]
 
+[nodepacks.ComfyUI-HunyuanVideo_Foley]
+name = "ComfyUI-HunyuanVideo_Foley"
+slug = "ComfyUI-HunyuanVideo_Foley"
+source = "git"
+commit = "b94f7aca877ff2be5bc264b057abee3dac682c1b"
+git_commit_sha = "b94f7aca877ff2be5bc264b057abee3dac682c1b"
+url = "https://github.com/BobRandomNumber/ComfyUI-HunyuanVideo_Foley.git"
+schema_hash = "b997f40ea6ff56898d81210bcec94811396be39dc6192608ff5318f020ea6c0c"
+class_schema_sha256 = "b997f40ea6ff56898d81210bcec94811396be39dc6192608ff5318f020ea6c0c"
+class_set = ["DACHunyuanVAEDecode", "HunyuanFoleyModelLoader", "HunyuanFoleySampler", "LoadDACHunyuanVAE"]
+pip_packages = ["descript-audiotools", "diffusers", "omegaconf", "timm", "transformers>=4.49.0"]
+
 [nodepacks.ComfyUI-KJNodes]
 name = "ComfyUI-KJNodes"
 slug = "ComfyUI-KJNodes"
@@ -105,7 +117,7 @@ url = "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git"
 schema_hash = "8391e679554eecd5d324a3e34a713ff240e619e3a07476587845ba18c9fae310"
 class_schema_sha256 = "8391e679554eecd5d324a3e34a713ff240e619e3a07476587845ba18c9fae310"
 last_seen_at = "2026-05-20T09:08:36.504684+00:00"
-class_set = ["VHS_LoadAudio", "VHS_LoadAudioUpload", "VHS_LoadVideo", "VHS_LoadVideoFFmpeg", "VHS_LoadVideoFFmpegPath", "VHS_SelectEveryNthImage", "VHS_SelectEveryNthLatent", "VHS_SelectEveryNthMask", "VHS_SplitImages", "VHS_VideoInfo", "VHS_VideoInfoLoaded", "VHS_VideoInfoSource", "VHS_VideoCombine"]
+class_set = ["VHS_LoadAudio", "VHS_LoadAudioUpload", "VHS_LoadVideo", "VHS_LoadVideoFFmpeg", "VHS_LoadVideoFFmpegPath", "VHS_SelectEveryNthImage", "VHS_SelectEveryNthLatent", "VHS_SelectEveryNthMask", "VHS_SplitImages", "VHS_VideoCombine", "VHS_VideoInfo", "VHS_VideoInfoLoaded", "VHS_VideoInfoSource"]
 
 [nodepacks.ComfyUI-WanAnimatePreprocess]
 name = "ComfyUI-WanAnimatePreprocess"

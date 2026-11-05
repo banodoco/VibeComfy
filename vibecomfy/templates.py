@@ -3,7 +3,6 @@ from __future__ import annotations
 import warnings
 import json
 import re
-import tomllib
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass
@@ -13,10 +12,9 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any, Mapping
 from urllib.parse import urlsplit
 
-from vibecomfy.errors import CheckoutRequiredError
+from vibecomfy import resources
 from vibecomfy.handles import Handle
 from vibecomfy.registry.ready_template import apply_ready_template_policy, bind_input, bind_output, ready_node, ready_workflow
-from vibecomfy.utils import find_repo_root
 from vibecomfy.workflow import VibeInput, VibeOutput, VibeWorkflow
 from vibecomfy.custom_node_refs import normalize_custom_node_requirements
 from vibecomfy.workflow_context import _current_workflow_or_raise
@@ -2036,7 +2034,7 @@ def _model_asset_metadata(model: ModelAsset) -> dict[str, Any]:
 
 
 def _repo_root() -> Path:
-    return find_repo_root()
+    return resources._checkout_root()
 
 
 def _caller_source_path() -> Path | None:
@@ -2061,25 +2059,14 @@ def _derive_template_id(template_id: str | None, source_path: Path | None) -> st
         return template_id
     if source_path is not None:
         try:
-            from vibecomfy.registry.ready import repo_ready_template_root
-
-            return source_path.resolve().relative_to(repo_ready_template_root()).with_suffix("").as_posix()
-        except (ValueError, CheckoutRequiredError):
+            return source_path.resolve().relative_to(resources.ready_templates_root()).with_suffix("").as_posix()
+        except ValueError:
             return source_path.stem
     return "ready_template"
 
 
 def _coverage_manifest_row(template_id: str) -> dict[str, Any]:
-    try:
-        from vibecomfy.registry.ready import repo_ready_template_root
-
-        path = repo_ready_template_root() / "sources" / "manifests" / "coverage.json"
-    except CheckoutRequiredError:
-        return {}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
+    data = resources.coverage_manifest()
     rows = data.get("workflows") if isinstance(data, Mapping) else None
     if not isinstance(rows, list):
         rows = data if isinstance(data, list) else []
@@ -2131,30 +2118,16 @@ def _derive_source_workflow(
 
 
 def _project_version() -> str:
-    try:
-        data = tomllib.loads((_repo_root() / "pyproject.toml").read_text(encoding="utf-8"))
-    except CheckoutRequiredError:
-        from importlib import metadata
+    from importlib import metadata
 
-        try:
-            return metadata.version("vibecomfy")  # an installed wheel: its own metadata
-        except metadata.PackageNotFoundError:
-            return "0"
-    except (OSError, tomllib.TOMLDecodeError):
+    try:
+        return metadata.version("vibecomfy")
+    except metadata.PackageNotFoundError:
         return "0"
-    project = data.get("project") if isinstance(data, Mapping) else None
-    version = project.get("version") if isinstance(project, Mapping) else None
-    return str(version) if version else "0"
 
 
 def _comfy_core_metadata() -> dict[str, Any]:
-    try:
-        # Package data: the same file in a checkout and in an installed wheel.
-        data = json.loads((Path(__file__).resolve().parent / "comfy_metadata.json").read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    if not isinstance(data, Mapping):
-        return {}
+    data = resources.comfy_metadata()
     core = data.get("core") if isinstance(data.get("core"), Mapping) else data
     return {
         key: value

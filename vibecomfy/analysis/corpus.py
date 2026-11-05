@@ -15,7 +15,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from vibecomfy.registry.ready import repo_ready_template_id_for_path, repo_ready_template_paths, repo_ready_template_root
+from vibecomfy.registry.ready import repo_ready_template_id_for_path, repo_ready_template_paths
+from vibecomfy.resources import ready_templates_root
 
 
 @dataclass
@@ -63,7 +64,7 @@ def build_corpus_snapshot(root: Path | None = None) -> CorpusSnapshot:
     Uses ``repo_ready_template_paths()`` for template discovery — no
     duplication of the template-discovery logic.
     """
-    ready_root = root if root is not None else repo_ready_template_root()
+    ready_root = root if root is not None else ready_templates_root()
     paths = repo_ready_template_paths(ready_root)
 
     snapshot = CorpusSnapshot()

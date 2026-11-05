@@ -1,8 +1,9 @@
 {
-  "captured_at": "2026-07-09T09:32:35.945439+00:00",
-  "commit": "unknown",
-  "install_dir": null,
-  "status": "unavailable",
-  "tested_at": "2026-07-09T09:32:35.945439+00:00",
-  "version": "unknown"
+  "captured_at": "2026-11-02",
+  "version": "0.43.0",
+  "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+  "source_repository": "https://github.com/Comfy-Org/ComfyUI",
+  "release_tag": "v0.43.0",
+  "status": "static_source_schema_only",
+  "install_dir": null
 }

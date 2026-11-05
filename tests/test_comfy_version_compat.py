@@ -1,123 +1,101 @@
+"""CPU schema qualification against immutable v0.43.0 source definitions.
+
+This checks canonical API graphs and socket types, not imports, installed-node
+ABI, dynamic file choices, model loads, inference, or GPU capacity.
+"""
 from __future__ import annotations
 
-"""Marker-only collection tests for multi-ComfyUI version compatibility.
-
-All tests in this module are skipped by default unless an explicit
-environment variable or config flag is set (COMFY_VERSION_COMPAT=1).
-This keeps them out of the default CI suite.
-
-Collection must work offline:
-    python -m pytest -m comfy_version_compat --collect-only
-
-Cross-version execution is Sprint 4 scope.
-"""
-
-import os
+import json
+from pathlib import Path
+import tomllib
 
 import pytest
 
+from vibecomfy.porting.object_info import get_class
+from vibecomfy.registry.ready import workflow_from_ready
+from vibecomfy.schema import ObjectInfoSchemaProvider, socket_types_compatible, validate_node_call
 
-# ---------------------------------------------------------------------------
-# Skip guard: only run when explicitly opted in
-# ---------------------------------------------------------------------------
-
-def _compat_enabled() -> bool:
-    """Check if ComfyUI version compat tests are explicitly enabled."""
-    env_val = os.environ.get("COMFY_VERSION_COMPAT", "")
-    return env_val.strip() in ("1", "true", "yes", "on")
-
-
-# Mark all tests in this module with the comfy_version_compat marker
-pytestmark = [
-    pytest.mark.comfy_version_compat,
-    pytest.mark.skipif(
-        not _compat_enabled(),
-        reason="Cross-version execution is Sprint 4 scope. Set COMFY_VERSION_COMPAT=1 to enable.",
-    ),
-]
+ROOT = Path(__file__).resolve().parents[1]
+CORE_PATH = ROOT / 'vibecomfy/porting/cache/object_info/comfy_core@zz-official-426f5eea.json'
+DEFAULTS = (
+    'audio/qwen3_tts_custom_voice', 'audio/minimax_music_3',
+    'audio/hunyuan_video_foley', 'image/qwen_image_2_1_turbo',
+    'edit/qwen_image_2_1_turbo_edit',
+)
 
 
-# ---------------------------------------------------------------------------
-# Four target ComfyUI channels
-# ---------------------------------------------------------------------------
-
-# Channel descriptions are documented in docs/comfy_version_support.md.
-# These tests describe the contracts that Sprint 4 will implement.
-
-CHANNEL_CURRENT = "comfyui-0.26.0"
-"""Currently pinned pip-installable ComfyUI package — the active development target."""
-
-CHANNEL_PREVIOUS = "previous-release"
-"""One previous release pin — backward compatibility baseline."""
-
-CHANNEL_AHEAD = "ahead-candidate"
-"""One ahead candidate commit — forward compatibility smoke test."""
-
-CHANNEL_UPSTREAM_HEAD = "upstream-main-head"
-"""Upstream main HEAD — bleeding edge compatibility check."""
-
-ALL_CHANNELS = [
-    CHANNEL_CURRENT,
-    CHANNEL_PREVIOUS,
-    CHANNEL_AHEAD,
-    CHANNEL_UPSTREAM_HEAD,
-]
+def _wire(row):
+    return {'input': row['inputs'], 'input_order': row['input_order'],
+            'output': [item['type'] for item in row['outputs']],
+            'output_name': [item['name'] for item in row['outputs']],
+            'output_is_list': [item['is_list'] for item in row['outputs']],
+            'output_node': row.get('output_node', False)}
 
 
-# ---------------------------------------------------------------------------
-# Marker-only tests (contract descriptions)
-# ---------------------------------------------------------------------------
+@pytest.mark.parametrize('template_id', DEFAULTS)
+def test_default_api_matches_exact_release_schemas(template_id, tmp_path):
+    workflow = workflow_from_ready(template_id)
+    api = workflow.compile('api')
+    core = json.loads(CORE_PATH.read_text())
+    rows = {}
+    for node in api.values():
+        name = node['class_type']
+        row = core.get(name)
+        if row is None:
+            row = get_class(name)
+            assert row is not None, name
+            assert name in {
+                'AILab_Qwen3TTSCustomVoice', 'HunyuanFoleyModelLoader',
+                'HunyuanFoleySampler', 'LoadDACHunyuanVAE', 'DACHunyuanVAEDecode',
+            }, name
+        else:
+            assert row['source_commit'] == '426f5eea52a7ece1dd599fff4cb6cd1f352ddd24'
+            assert row['source_kind'] == 'static_ast'
+        rows[name] = _wire(row)
+    path = tmp_path / 'selected-source-schemas.json'
+    path.write_text(json.dumps(rows))
+    provider = ObjectInfoSchemaProvider(path)
+    for node_id, node in api.items():
+        report = validate_node_call(node['class_type'], node['inputs'], provider)
+        assert report.ok, (template_id, node_id, report.to_json())
+        schema = provider.get_schema(node['class_type'])
+        # Required names must be present even when an authoring provider has
+        # defaults: this is the graph actually sent to ComfyUI.
+        required = set(rows[node['class_type']]['input'].get('required', {}))
+        assert required <= set(node['inputs']), (node_id, required - set(node['inputs']))
+        for field, value in node['inputs'].items():
+            if not (isinstance(value, list) and len(value) == 2 and isinstance(value[1], int)):
+                continue
+            upstream = api[str(value[0])]
+            source_schema = provider.get_schema(upstream['class_type'])
+            assert 0 <= value[1] < len(source_schema.outputs), (node_id, field, value)
+            assert socket_types_compatible(source_schema.outputs[value[1]].type, schema.inputs[field].type), (node_id, field, value)
 
 
-@pytest.mark.comfy_version_compat
-def test_channel_current_pip_package_contract() -> None:
-    """Sprint 4 will verify: currently pinned pip-installable ComfyUI package passes
-    the full port_convert_workflow + strict-ready validation suite.
-
-    This is the primary development target.
-    """
-    pass
-
-
-@pytest.mark.comfy_version_compat
-def test_channel_previous_release_contract() -> None:
-    """Sprint 4 will verify: one previous release pin (backward compat baseline)
-    passes the port_convert_workflow validation suite.
-
-    Guards against regressions in older-but-still-used ComfyUI versions.
-    """
-    pass
+def test_official_release_qualification_tuple_is_immutable():
+    metadata = json.loads((ROOT / 'vibecomfy/comfy_metadata.json').read_text())
+    assert metadata['version'] == '0.43.0'
+    assert metadata['commit'] == '426f5eea52a7ece1dd599fff4cb6cd1f352ddd24'
+    assert metadata['status'] == 'static_source_schema_only'
+    assert metadata['install_dir'] is None
+    for row in json.loads(CORE_PATH.read_text()).values():
+        assert row['source_commit'] == metadata['commit']
+        assert len(row['source_sha256']) == 64
+        assert metadata['commit'] in row['source_url']
 
 
-@pytest.mark.comfy_version_compat
-def test_channel_ahead_candidate_contract() -> None:
-    """Sprint 4 will verify: one ahead candidate commit (forward compat smoke)
-    produces results that are at least importable and buildable.
-
-    Early warning for upcoming breaking changes.
-    """
-    pass
-
-
-@pytest.mark.comfy_version_compat
-def test_channel_upstream_main_head_contract() -> None:
-    """Sprint 4 will verify: upstream main HEAD (bleeding edge) can at minimum
-    load and validate without hard crashes.
-
-    Informs Sprint planning for ComfyUI version upgrades.
-    """
-    pass
-
-
-@pytest.mark.comfy_version_compat
-def test_all_channels_enumerated() -> None:
-    """Sprint 4 will verify: all four channels are enumerated and individually
-    testable via pytest markers or CLI flags.
-
-    Validates that the channel selection mechanism works correctly.
-    """
-    assert len(ALL_CHANNELS) == 4
-    assert CHANNEL_CURRENT == "comfyui-0.26.0"
-    assert CHANNEL_PREVIOUS == "previous-release"
-    assert CHANNEL_AHEAD == "ahead-candidate"
-    assert CHANNEL_UPSTREAM_HEAD == "upstream-main-head"
+def test_packaged_fork_pin_is_explicit_and_locked():
+    project = tomllib.loads((ROOT / 'pyproject.toml').read_text())
+    lock = tomllib.loads((ROOT / 'uv.lock').read_text())
+    matrix = json.loads((ROOT / 'vibecomfy/registry/comfy_version_matrix.json').read_text())
+    assert 'comfyui==0.43.0.2' in project['project']['optional-dependencies']['comfy']
+    package = next(row for row in lock['package'] if row['name'] == 'comfyui')
+    assert package['version'] == matrix['supported_comfyui_version'] == '0.43.0.2'
+    assert matrix['pinned_comfyui_commit'] == 'ff7644a70dba1707f4caee52576496ce848792f8'
+    assert package['source']['registry'] == 'https://nodes.appmana.com/simple/'
+    artifacts = [package['sdist'], *package['wheels']]
+    assert artifacts
+    for artifact in artifacts:
+        assert '/hiddenswitch/forks-pip-and-uv-installable-ComfyUI/releases/download/v0.43.0.2/' in artifact['url']
+        assert artifact['hash'].startswith('sha256:')
+        assert len(artifact['hash']) == len('sha256:') + 64

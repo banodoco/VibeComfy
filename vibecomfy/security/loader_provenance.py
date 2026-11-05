@@ -16,9 +16,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from vibecomfy import resources
 from vibecomfy.errors import CheckoutRequiredError
 from vibecomfy.security.provenance import Provenance
-from vibecomfy.utils import find_repo_root
 
 
 def _trusted_roots() -> list[Path]:
@@ -29,25 +29,28 @@ def _trusted_roots() -> list[Path]:
     to catch traversal and symlink escapes.
     """
     roots: list[Path] = []
+    # Resolve the required resource before considering trust. A missing shipped
+    # corpus is an installation error, rather than an empty set of trusted data.
+    ready_root = resources.ready_templates_root().resolve()
+    container = resources._layout_root().resolve()
+    if ready_root.is_relative_to(container):
+        roots.append(ready_root)
+
+    if resources.layout() != "checkout":
+        return roots
     try:
-        repo = find_repo_root()
+        repo = resources._checkout_root()
     except CheckoutRequiredError:
-        # A wheel ships templates inside the package; scratchpads remain
-        # checkout-only. Never let a symlinked corpus root widen this trust.
-        package = Path(__file__).resolve().parents[1]
-        try:
-            packaged = (package / "ready_templates").resolve()
-            if packaged.is_relative_to(package) and packaged.is_dir():
-                roots.append(packaged)
-        except OSError:
-            pass
         return roots
 
-    for candidate in (repo / "out" / "scratchpads", repo / "ready_templates"):
-        try:
-            roots.append(candidate.resolve())
-        except OSError:
-            continue
+    # Only actual checkout scratchpads receive this additional trust. Resolve
+    # and contain the root too, so a symlink cannot widen its authority.
+    try:
+        scratchpads = (repo / "out" / "scratchpads").resolve()
+        if scratchpads.is_relative_to(repo.resolve()):
+            roots.append(scratchpads)
+    except OSError:
+        pass
     return roots
 
 
