@@ -32,7 +32,8 @@ temp/
 
 # Tool working directories
 .agents/
-.claude/
+.claude/*
+!.claude/settings.json
 .desloppify/
 .megaplan/*
 !.megaplan/briefs/

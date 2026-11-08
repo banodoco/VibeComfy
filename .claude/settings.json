@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash /home/user/astrid-dev/env/vc-setup.sh:*)",
+      "Bash(bash /home/user/astrid-dev/env/vc-pytest.sh:*)",
+      "Bash(bash /home/user/astrid-dev/env/smoke.sh:*)",
+      "Bash(bash /home/user/astrid-dev/plans/02-consistent-generation/env/vc-setup.sh:*)",
+      "Bash(bash /home/user/astrid-dev/plans/02-consistent-generation/env/vc-pytest.sh:*)",
+      "Bash(bash /home/user/astrid-dev/plans/*/env/vc-setup.sh:*)",
+      "Bash(bash /home/user/astrid-dev/plans/*/env/vc-pytest.sh:*)",
+      "Bash(uv venv:*)",
+      "Bash(make PYTHON=.venv/bin/python install-ci:*)",
+      "Bash(make PYTHON=.venv/bin/python ci:*)",
+      "Bash(make PYTHON=.venv/bin/python broad-pytest:*)",
+      "Bash(npm ci:*)",
+      "Bash(npx playwright install:*)",
+      "Bash(node tests/e2e/run.mjs:*)"
+    ]
+  }
+}

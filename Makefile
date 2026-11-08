@@ -85,6 +85,7 @@ CORRECTIVE_GATE_INVENTORY ?= tests/corrective_gate_inventory.json
 CORRECTIVE_GATE_ARTIFACTS ?= test-results/corrective-trust-gate
 
 ROOT_ALLOWLIST := \
+	.claude \
 	.env.example \
 	.gitattributes \
 	.github \
