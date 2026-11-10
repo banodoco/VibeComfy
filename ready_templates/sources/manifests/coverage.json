@@ -725,7 +725,6 @@
       "media": "audio",
       "coverage_tier": "required",
       "ready_template": "audio/hunyuan_video_foley",
-      "license_notice": "Tencent Hunyuan Community license excludes the EU, UK, and South Korea.",
       "approach": "Pinned community workflow adapted to SaveAudio with native video/FPS bindings; CPU contract only, GPU qualification pending."
     },
     {

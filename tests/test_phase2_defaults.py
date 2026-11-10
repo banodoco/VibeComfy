@@ -156,5 +156,5 @@ def test_coverage_and_generated_index_include_five_defaults():
             assert actual[name] == binding
         assert index[identity]['public_outputs'][0]['name'] == ('audio' if identity.startswith('audio/') else 'image')
         assert index[identity]['model_count'] == len(_model_assets_from_workflow(workflow_from_ready(identity)))
-    assert index['audio/hunyuan_video_foley']['license_notice'] == 'Tencent Hunyuan Community license excludes the EU, UK, and South Korea.'
+    assert 'license_notice' not in index['audio/hunyuan_video_foley']
     assert 'video/h3_av' not in ready_template_ids()

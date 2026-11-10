@@ -122,11 +122,8 @@ def generate() -> None:
     bind_output(workflow, "27", name="audio", output_type="SaveAudio", artifact_kind="audio",
                 mime_type="audio/flac", expected_cardinality="one", filename_prefix="audio/hunyuan_video_foley")
     workflow.register_input("seed", "22", "seed", 123, type="INT", default=123)
-    coverage = json.loads((ROOT / "ready_templates/sources/manifests/coverage.json").read_text())
-    declaration = next(row for row in coverage["workflows"] if row.get("ready_template") == TEMPLATE_ID)
     assets = [{key: value for key, value in asset.items() if key != "repository"} for asset in lock["assets"]]
-    workflow.metadata.update(license_notice=declaration["license_notice"],
-        model_assets=assets,
+    workflow.metadata.update(model_assets=assets,
         source_workflow=str(source.relative_to(ROOT)))
     result = port_convert_workflow(workflow, ready_id=TEMPLATE_ID,
         source_path=str(source.relative_to(ROOT)), source_hash=hashlib.sha256(source.read_bytes()).hexdigest(),

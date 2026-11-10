@@ -79,7 +79,7 @@ def test_generated_foley_roundtrip_keeps_public_media_assets_and_node_pin(tmp_pa
     video = next(row for row in indexed['public_inputs'] if row['name'] == 'video_ref')
     assert video['node_id'] == '23' and video['field'] == 'file'
     assert indexed['public_outputs'][0]['name'] == 'audio'
-    assert indexed['license_notice'] == 'Tencent Hunyuan Community license excludes the EU, UK, and South Korea.'
+    assert 'license_notice' not in indexed
 
 
 def _model_names(models: object) -> set[str]:
