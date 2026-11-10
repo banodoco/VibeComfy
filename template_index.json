@@ -428,8 +428,7 @@
         "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/hunyuan_video_foley.json",
-      "source_sha256": null,
-      "license_notice": "Tencent Hunyuan Community license excludes the EU, UK, and South Korea."
+      "source_sha256": null
     },
     {
       "id": "audio/minimax_music_3",
