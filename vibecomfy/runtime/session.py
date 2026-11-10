@@ -1294,7 +1294,8 @@ def _model_assets_from_workflow(
             continue
         seen.add(key)
         entries.append(entry)
-    return entries
+    # Reconcile the complete staging union, including registry-backed assets.
+    return validate_authored_asset_declarations(entries, root=local_root)
 
 
 @dataclass(slots=True)

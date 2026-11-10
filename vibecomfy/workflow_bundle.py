@@ -2556,6 +2556,7 @@ def _approval_preconditions(
             if root is None:
                 root = Path(raw_root)
         authored_assets = validate_authored_asset_declarations(authored_assets, root=root)
+        registry_assets: list[dict[str, Any]] = []
 
         for reference in references:
             value = reference.get("value")
@@ -2610,6 +2611,20 @@ def _approval_preconditions(
                 effective_subdir = target_path.rsplit("/", 1)[0] if "/" in target_path else ""
             if not effective_subdir:
                 raise WorkflowBundleError(f"model reference has no deterministic local target: {value}")
+            if asset is None:
+                registry_asset: dict[str, Any] = {"name": value, "subdir": effective_subdir}
+                for field in ("sha256", "size_bytes"):
+                    expected = getattr(entry, field, None)
+                    if expected is not None:
+                        registry_asset[field] = expected
+                if registry_asset not in registry_assets:
+                    # Repeated graph/requirements witnesses may describe the
+                    # same asset. Distinct declarations must retain unique
+                    # destinations across the authored and registry union.
+                    validate_authored_asset_declarations(
+                        [*authored_assets, *registry_assets, registry_asset], root=root,
+                    )
+                    registry_assets.append(registry_asset)
             presence_asset = asset if asset is not None else {"name": value, "subdir": effective_subdir}
             if not is_present(presence_asset, root=root):
                 raise WorkflowBundleError(f"registered model is not present locally: {value}")

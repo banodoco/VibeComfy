@@ -410,6 +410,9 @@ def validate_authored_asset_declarations(
                 alternative = _relative_asset_path(raw[alias], field=alias)
                 if relative != alternative:
                     raise ValueError(f"conflicting workflow model asset {primary}/{alias} aliases")
+                # All consumers must see the primary spelling after accepting
+                # equivalent aliases; normalization may prefer the alias.
+                asset[alias] = value
             asset[primary] = value
         identity = (
             _relative_asset_path(asset["subdir"], field="subdir").as_posix(),

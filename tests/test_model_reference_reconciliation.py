@@ -72,6 +72,34 @@ def test_declared_subdirectory_is_normalized_without_repairing_picker_prefix():
     assert resolved[0]['subdir'] == asset['subdir']
 
 
+@pytest.mark.parametrize('subdir,directory', [
+    ('diffusion_models', './diffusion_models'),
+    ('./diffusion_models', 'diffusion_models'),
+])
+@pytest.mark.parametrize('target_path', [None, 'custom_nodes/pack/model.pth'])
+def test_runtime_stages_equivalent_aliases_once_without_changing_destination(
+    tmp_path, monkeypatch, subdir, directory, target_path,
+):
+    from vibecomfy.fetch import local_path
+    from vibecomfy.runtime.session import _model_assets_from_workflow
+
+    asset = {**ASSET, 'subdir': subdir, 'directory': directory,
+             'filename': './nested/model.pth'}
+    if target_path is not None:
+        asset['target_path'] = target_path
+    workflow = _workflow(asset['name'], [asset])
+    monkeypatch.setattr('vibecomfy.registry.models_loader.load_registry', lambda: ())
+    before = dict(asset)
+    destination = local_path(asset, root=tmp_path)
+    entries = _model_assets_from_workflow(workflow, models_root=tmp_path)
+    assert len(entries) == 1
+    assert entries[0]['name'] == asset['name']
+    assert entries[0]['subdir'] == subdir
+    assert entries[0].get('target_path') == target_path
+    assert local_path(entries[0], root=tmp_path) == destination
+    assert asset == before
+
+
 @pytest.mark.parametrize('value', ['/models/nested/model.pth', '../nested/model.pth',
                                    'other/../nested/model.pth', r'nested\model.pth',
                                    r'C:\models\nested\model.pth'])
@@ -216,6 +244,45 @@ def test_all_foley_declarations_reject_conflicting_custody_before_deduplication(
             load_bundle(workflow).compile(schema_provider=provider, models_root=root)
         else:
             _model_assets_from_workflow(workflow, models_root=root)
+
+
+@pytest.mark.parametrize('consumer', ['runtime', 'approval'])
+def test_authored_and_registry_assets_cannot_claim_one_destination(tmp_path, monkeypatch, consumer):
+    from vibecomfy.registry.models_loader import ModelEntry, ModelSource, ModelTarget
+    from vibecomfy.runtime.session import _model_assets_from_workflow
+
+    root = tmp_path / 'models'
+    workflow, _ = _local_foley(root, monkeypatch)
+    content = b'model'
+    workflow.metadata['model_assets'].append({
+        'name': 'a.pth', 'subdir': 'diffusion_models',
+        'target_path': 'models/diffusion_models/b.pth',
+        'url': 'https://example.invalid/a.pth', 'size_bytes': len(content),
+        'sha256': hashlib.sha256(content).hexdigest(),
+    })
+    workflow.nodes['90'] = VibeNode(
+        '90', 'UNETLoader', inputs={'unet_name': 'a.pth', 'weight_dtype': 'default'}, uid='custody-a')
+    workflow.nodes['91'] = VibeNode(
+        '91', 'UNETLoader', inputs={'unet_name': 'b.pth', 'weight_dtype': 'default'}, uid='custody-b')
+    destination = root / 'diffusion_models/b.pth'
+    destination.parent.mkdir()
+    destination.write_bytes(content)
+    registry = [ModelEntry(
+        id='registry-collision', source=ModelSource(kind='url', url='https://example.invalid/b.pth'),
+        canonical_name='b.pth', sha256='2' * 64, size_bytes=len(content), min_size=1,
+        targets=(ModelTarget('comfy_core', 'diffusion_models/b.pth'),),
+    )]
+    monkeypatch.setattr('vibecomfy.registry.models_loader.load_registry', lambda: registry)
+    info = _target_info(workflow)
+    info['UNETLoader']['input']['required']['unet_name'] = [['a.pth', 'b.pth']]
+    provider = TargetSchemaProvider.from_object_info(
+        info, server_url='http://local.invalid:8188', model_availability='local')
+    expected = ValueError if consumer == 'runtime' else WorkflowBundleError
+    with pytest.raises(expected, match='ambiguous.*model asset'):
+        if consumer == 'runtime':
+            _model_assets_from_workflow(workflow, models_root=root)
+        else:
+            load_bundle(workflow).compile(schema_provider=provider, models_root=root)
 
 
 @pytest.mark.parametrize('custody', ['local', 'target'])
