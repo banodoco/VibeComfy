@@ -1216,9 +1216,9 @@ def _model_assets_from_workflow(
 ) -> list[dict[str, str]]:
     from vibecomfy.model_assets import (
         _asset_entry_key,
-        _looks_like_runtime_input,
         _normalise_requirement_entries,
         resolve_referenced_assets,
+        validate_authored_asset_declarations,
     )
 
     def _norm(value: str) -> str:
@@ -1230,6 +1230,9 @@ def _model_assets_from_workflow(
 
     raw_assets = workflow.metadata.get("model_assets", [])
     local_root = Path(models_root).expanduser().resolve(strict=False) if models_root is not None else None
+    raw_assets = validate_authored_asset_declarations(
+        raw_assets if isinstance(raw_assets, list) else (), root=local_root,
+    )
     from vibecomfy import fetch as fetch_assets
     unresolved_authored = [
         asset
@@ -1253,30 +1256,9 @@ def _model_assets_from_workflow(
             next_action=MODEL_DOCTOR_NEXT_ACTION,
         )
     authored = _normalise_requirement_entries(raw_assets) if isinstance(raw_assets, list) else []
-    resolved, unresolved = resolve_referenced_assets(workflow)
-    authored_keys = {
-        (_norm(str(entry.get("name", ""))), _norm(str(entry.get("subdir", ""))))
-        for entry in authored
-        if isinstance(entry.get("name"), str) and isinstance(entry.get("subdir"), str)
-    }
-    authored_identity_keys = {
-        _entry_key(entry)
-        for entry in authored
-        if isinstance(entry.get("name"), str) and isinstance(entry.get("subdir"), str)
-    }
-    authored_paths = {
-        f"{_norm(entry['subdir'])}/{_norm(entry['name'])}"
-        for entry in authored
-        if isinstance(entry.get("name"), str) and isinstance(entry.get("subdir"), str)
-    }
-    unresolved = [
-        item
-        for item in unresolved
-        if not _looks_like_runtime_input(item["value"])
-        and (_norm(item["value"]), _norm(item["subdir"])) not in authored_keys
-        and (Path(_norm(item["value"])).name, _norm(item["subdir"])) not in authored_keys
-        and f"{_norm(item['subdir'])}/{_norm(item['value'])}" not in authored_paths
-    ]
+    resolved, unresolved = resolve_referenced_assets(workflow, models_root=local_root)
+    # The shared resolver already reconciles exact authored spellings. Never
+    # discharge a rejected picker through a basename or filesystem-path hint.
     if unresolved:
         summary = ", ".join(
             f"{item['class_type']} {item['node_id']}.{item['field']}={item['value']!r}"
@@ -1296,13 +1278,12 @@ def _model_assets_from_workflow(
             # do not let a truthiness fallback or this merge hide it.
             entries.append(entry)
             continue
-        if key not in authored_identity_keys and f"{_norm(entry['subdir'])}/{_norm(entry['name'])}" in authored_paths:
-            continue
         if key in seen:
             continue
         seen.add(key)
         entries.append(entry)
-    return entries
+    # Reconcile the complete staging union, including registry-backed assets.
+    return validate_authored_asset_declarations(entries, root=local_root)
 
 
 @dataclass(slots=True)
