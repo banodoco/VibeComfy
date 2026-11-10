@@ -76,7 +76,7 @@ def test_turbo_compiles_via_canonical_approval_with_exact_graph_bindings(templat
     assert all('sha256' not in d for d in refs)
 
 
-def test_literal_backslash_model_name_roundtrips_without_name_repair():
+def test_literal_backslash_model_name_serializes_but_fails_approval():
     workflow = workflow_from_ready('image/z_image_turbo')
     workflow.set_input('vae', EXACT_VAE)
     # Remove the old source-backed asset, preserving exact picker authority.
@@ -90,11 +90,12 @@ def test_literal_backslash_model_name_roundtrips_without_name_repair():
     data = target_info(workflow)
     data['VAELoader']['input']['required']['vae_name'] = [[EXACT_VAE]]
     target = provider(data, model_availability='target')
-    record = load_bundle(workflow).compile(schema_provider=target)
-    vae = next(n for n in record.api_projection.values() if n['class_type'] == 'VAELoader')
+    graph = workflow.compile('api')
+    vae = next(n for n in graph.values() if n['class_type'] == 'VAELoader')
     assert vae['inputs']['vae_name'] == EXACT_VAE
-    assert json.loads(record.to_canonical_bytes())['api_projection']['3']['inputs']['vae_name'] == EXACT_VAE
-    assert next(d for d in target._approval_diagnostics if d.get('field') == 'vae_name')['value'] == EXACT_VAE
+    assert json.loads(json.dumps(graph))['3']['inputs']['vae_name'] == EXACT_VAE
+    with pytest.raises(WorkflowBundleError, match='model asset reference must be.*relative path'):
+        load_bundle(workflow).compile(schema_provider=target)
 
 
 def test_capture_is_detached_and_target_model_mode_is_explicit(tmp_path):

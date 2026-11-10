@@ -331,14 +331,23 @@ def test_resolve_referenced_assets_preserves_classified_unresolved_references() 
     assert all({"node_id", "class_type", "field", "value", "subdir"} <= set(item) for item in unresolved)
 
 
-def test_ensure_models_resolves_historical_qualified_wan_alias_to_exact_workflow_path(tmp_path: Path) -> None:
+@pytest.mark.parametrize('value', [
+    'WanVid/wan2.1-1.3b-control-lora-tile-v0.1_comfy.safetensors',
+    r'WanVid\wan2.1-1.3b-control-lora-tile-v0.1_comfy.safetensors',
+])
+def test_ensure_models_resolves_qualified_wan_alias_only_with_safe_separators(tmp_path: Path, value: str) -> None:
     workflow = VibeWorkflow("wan-alias", WorkflowSource("wan-alias"))
     workflow.nodes["98"] = VibeNode(
         "98",
         "WanVideoLoraSelect",
-        inputs={"lora": r"WanVid\wan2.1-1.3b-control-lora-tile-v0.1_comfy.safetensors"},
+        inputs={"lora": value},
     )
 
+    if '\\' in value:
+        with pytest.raises(ModelAssetError, match='unresolved workflow model assets'):
+            _model_assets_from_workflow(workflow)
+        assert workflow.nodes['98'].inputs['lora'] == value
+        return
     entries = _model_assets_from_workflow(workflow)
 
     assert len(entries) == 1
@@ -406,15 +415,13 @@ def test_ensure_models_resolves_pinned_klein_9b_vae_to_unique_target_name() -> N
     assert _asset_for_reference({**reference, "value": "flux2-vae.safetensors"}, registry=registry) is None
 
 
-def test_model_asset_install_policy_still_ignores_non_registry_url_and_path_values() -> None:
+@pytest.mark.parametrize("value", [
+    "https://example.test/model.safetensors", "/models/vae/local.safetensors",
+    "./loras/patch.safetensors", "missing.safetensors",
+])
+def test_model_asset_install_policy_rejects_unresolved_url_and_path_values(value: str) -> None:
     workflow = VibeWorkflow("models", WorkflowSource("models"))
-    workflow.nodes["1"] = VibeNode("1", "UNETLoader", inputs={"unet_name": "https://example.test/model.safetensors"})
-    workflow.nodes["2"] = VibeNode("2", "VAELoader", inputs={"vae_name": "/models/vae/local.safetensors"})
-    workflow.nodes["3"] = VibeNode("3", "LoraLoader", inputs={"lora_name": "./loras/patch.safetensors"})
-
-    assert _model_assets_from_workflow(workflow) == []
-
-    workflow.nodes["4"] = VibeNode("4", "CheckpointLoaderSimple", inputs={"ckpt_name": "missing.safetensors"})
+    workflow.nodes["1"] = VibeNode("1", "UNETLoader", inputs={"unet_name": value})
     with pytest.raises(ModelAssetError, match="unresolved workflow model assets"):
         _model_assets_from_workflow(workflow)
 
@@ -487,7 +494,7 @@ def test_attempt_report_serializes_only_approved_model_references(
         inputs={"unet_name": "https://example.test/external.safetensors"},
         uid="unapproved-model-1",
     )
-    with pytest.raises(WorkflowBundleError, match="model reference"):
+    with pytest.raises(WorkflowBundleError, match="model asset reference"):
         load_bundle(refused).compile(schema_provider=Provider())
 
 def test_attempt_hash_uses_fetch_target_path_and_not_models_subdir(
@@ -585,13 +592,6 @@ def test_model_install_policy_only_requires_registry_or_authored_downloadables(
         }
     ]
     workflow.nodes["1"] = VibeNode("1", "UNETLoader", inputs={"unet_name": "registry.safetensors"})
-    workflow.nodes["2"] = VibeNode(
-        "2",
-        "UNETLoader",
-        inputs={"unet_name": "https://example.test/models/external.safetensors"},
-    )
-    workflow.nodes["3"] = VibeNode("3", "VAELoader", inputs={"vae_name": "/models/vae/local.safetensors"})
-    workflow.nodes["4"] = VibeNode("4", "LoraLoader", inputs={"lora_name": "./loras/patch.safetensors"})
     registry = [
         ModelEntry(
             id="registry",
@@ -622,14 +622,19 @@ def test_model_install_policy_only_requires_registry_or_authored_downloadables(
         },
     ]
 
+    workflow.nodes["2"] = VibeNode(
+        "2", "UNETLoader", inputs={"unet_name": "https://example.test/models/external.safetensors"},
+    )
+    workflow.nodes["3"] = VibeNode("3", "VAELoader", inputs={"vae_name": "/models/vae/local.safetensors"})
+    workflow.nodes["4"] = VibeNode("4", "LoraLoader", inputs={"lora_name": "./loras/patch.safetensors"})
     workflow.nodes["5"] = VibeNode("5", "CheckpointLoaderSimple", inputs={"ckpt_name": "missing.safetensors"})
     with pytest.raises(ModelAssetError) as exc_info:
         _model_assets_from_workflow(workflow)
     message = str(exc_info.value)
     assert "CheckpointLoaderSimple 5.ckpt_name='missing.safetensors'" in message
-    assert "external.safetensors" not in message
-    assert "local.safetensors" not in message
-    assert "patch.safetensors" not in message
+    assert "external.safetensors" in message
+    assert "local.safetensors" in message
+    assert "patch.safetensors" in message
 
 
 def test_workflow_local_nested_model_asset_does_not_require_registry(
