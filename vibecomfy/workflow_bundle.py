@@ -2455,7 +2455,11 @@ def _approval_preconditions(
 
     try:
         from vibecomfy.fetch import is_present, verify
-        from vibecomfy.model_assets import _referenced_model_values
+        from vibecomfy.model_assets import (
+            _referenced_model_values,
+            resolve_authored_asset_reference,
+            validate_model_reference,
+        )
         from vibecomfy.registry.models_loader import load_registry, resolve_model_entry
 
         references: list[dict[str, Any]] = []
@@ -2466,9 +2470,7 @@ def _approval_preconditions(
                 raise WorkflowBundleError("workflow model reference is malformed")
             if subdir is not None and not isinstance(subdir, str):
                 raise WorkflowBundleError("workflow model reference subdir is malformed")
-            # Comfy picker names are opaque target values, including literal
-            # backslashes.  Local path compatibility is handled only below,
-            # after the target-reference decision has been made.
+            validate_model_reference(value)
             key = (value, subdir or "")
             if key not in seen:
                 seen.add(key)
@@ -2546,23 +2548,15 @@ def _approval_preconditions(
             else []
         )
 
-        def authored_asset(value: str, subdir: str) -> Mapping[str, Any] | None:
-            for asset in authored_assets:
-                name = asset.get("name", asset.get("filename"))
-                asset_subdir = asset.get("subdir", asset.get("directory", ""))
-                if str(name) == value and str(asset_subdir or "") == subdir:
-                    return asset
-            return None
-
         for reference in references:
             value = reference.get("value")
             subdir = reference.get("subdir")
+            asset = resolve_authored_asset_reference(str(value), str(subdir or ""), authored_assets)
             if (value, subdir or "") in target_references:
                 continue
-            asset = authored_asset(str(value), str(subdir or ""))
             if (asset is not None and isinstance(schema_provider, TargetSchemaProvider)
                     and schema_provider.auxiliary_model_custody == "target"):
-                declaration = schema_provider.target_model_asset(str(value), str(subdir or ""))
+                declaration = schema_provider.target_model_asset(asset["name"], asset["subdir"])
                 if declaration is None:
                     raise WorkflowBundleError(f"selected target does not declare auxiliary model asset: {value}")
                 digest, size = asset.get("sha256"), asset.get("size_bytes")
@@ -2576,13 +2570,11 @@ def _approval_preconditions(
                     "model_bytes_status": "verified_target_provisioning",
                 })
                 continue
-            # Preserve historical managed/local filesystem reconciliation;
-            # these normalized paths never become target model names.
-            value = str(value).replace("\\", "/")
-            subdir = str(subdir or "").replace("\\", "/")
+            value = str(value)
+            subdir = str(subdir or "")
             entry = resolve_model_entry(value, registry=registry, subdir=subdir or None)
             if entry is None:
-                local_asset = authored_asset(str(value), str(subdir or ""))
+                local_asset = asset
                 if local_asset is None:
                     raise WorkflowBundleError(f"model reference is not locally registered: {value}")
                 if local_asset.get("gated") is not True and not local_asset.get("url"):
@@ -2596,9 +2588,7 @@ def _approval_preconditions(
                         raise WorkflowBundleError("workflow models_root must be an absolute path")
                     local_root = Path(raw_root)
                 try:
-                    if not is_present(
-                        {"name": value, "subdir": subdir or ""}, root=local_root
-                    ):
+                    if not is_present(local_asset, root=local_root):
                         raise WorkflowBundleError(
                             f"workflow-local model is not present locally: {value}"
                         )
@@ -2623,9 +2613,10 @@ def _approval_preconditions(
                     raise WorkflowBundleError("workflow models_root must be an absolute path")
                 if root is None:
                     root = Path(raw_root)
-            if not is_present({"name": value, "subdir": effective_subdir}, root=root):
+            presence_asset = asset if asset is not None else {"name": value, "subdir": effective_subdir}
+            if not is_present(presence_asset, root=root):
                 raise WorkflowBundleError(f"registered model is not present locally: {value}")
-            if asset is not None and asset.get("sha256"):
+            if asset is not None:
                 verify(asset, root=root)
     except WorkflowBundleError:
         raise

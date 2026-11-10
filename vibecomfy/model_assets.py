@@ -129,10 +129,9 @@ def resolve_referenced_assets(
     ``--ensure-models``.
     """
     authored_raw = getattr(workflow, "metadata", {}).get("model_assets", [])
-    authored = tuple(
-        item for item in _normalise_requirement_entries(authored_raw)
-        if isinstance(item, Mapping)
-    ) if isinstance(authored_raw, (list, tuple)) else ()
+    # Reconcile before normalization/deduplication: those operations can erase
+    # competing declarations with different hashes, URLs or destinations.
+    authored = tuple(authored_raw) if isinstance(authored_raw, (list, tuple)) else ()
     entries: tuple[ModelEntry, ...] = tuple(registry) if registry is not None else ()
     registry_loaded = registry is not None
 
@@ -149,6 +148,11 @@ def resolve_referenced_assets(
     unresolved: list[dict[str, Any]] = []
     seen: set[tuple[str, str, str]] = set()
     for reference in _referenced_model_values(workflow):
+        try:
+            validate_model_reference(reference["value"])
+        except ValueError:
+            unresolved.append(_unresolved_asset_for_reference(reference))
+            continue
         asset = _asset_for_authored_reference(reference, authored)
         if asset is None:
             asset = _asset_for_reference(reference, registry=registry_entries())
@@ -320,31 +324,67 @@ def _asset_for_authored_reference(
     does not belong in the global registry. Matching is path-aware so nested
     model names and category/subdirectory custody survive the runtime pass.
     """
-    value = reference["value"].replace("\\", "/")
-    subdir = reference["subdir"].replace("\\", "/")
+    raw = resolve_authored_asset_reference(reference["value"], reference["subdir"], authored)
+    if raw is None:
+        return None
+    asset = dict(raw)
+    asset.update(
+        _reference_metadata(
+            reference,
+            reference_type="workflow-local",
+            downloadable=isinstance(asset.get("url"), str) and bool(asset["url"].strip()),
+        )
+    )
+    return asset
+
+
+def validate_model_reference(value: str) -> None:
+    """Validate a local model spelling without repairing or changing it."""
+    from vibecomfy.fetch import _relative_asset_path
+
+    _relative_asset_path(value, field="reference")
+    if urlsplit(value).scheme:
+        raise ValueError(f"model asset reference must be a relative path: {value!r}")
+
+
+def resolve_authored_asset_reference(
+    value: str, subdir: str, authored: Sequence[Mapping[str, Any]]
+) -> dict[str, Any] | None:
+    """Bind an exact name or declared subdir/name to one authored asset.
+
+    Picker spelling never changes destination custody. Reject competing
+    declarations before any caller can discard their identity fields.
+    An empty subdir is an unqualified requirements.models reference and must
+    still select exactly one declaration across all subdirectories.
+    """
+    from vibecomfy.fetch import _relative_asset_path
+
+    validate_model_reference(value)
+    requested_subdir = _relative_asset_path(subdir, field="subdir").as_posix() if subdir else ""
+    matches: list[dict[str, Any]] = []
+    destinations: dict[str, int] = {}
+    matching_destinations: list[str] = []
     for raw in authored:
+        if not isinstance(raw, Mapping):
+            raise ValueError("workflow model asset is malformed")
         name = raw.get("name", raw.get("filename"))
-        declared_subdir = raw.get("subdir", raw.get("directory"))
-        if not isinstance(name, str) or not isinstance(declared_subdir, str):
+        declared_subdir = raw.get("subdir", raw.get("directory", ""))
+        relative_name = _relative_asset_path(name, field="name")
+        relative_subdir = _relative_asset_path(declared_subdir, field="subdir")
+        destination = (relative_subdir / relative_name).as_posix()
+        destinations[destination] = destinations.get(destination, 0) + 1
+        if requested_subdir and relative_subdir.as_posix() != requested_subdir:
             continue
-        name = name.replace("\\", "/")
-        declared_subdir = declared_subdir.replace("\\", "/")
-        if declared_subdir != subdir:
-            continue
-        if value != name and value.rsplit("/", 1)[-1] != name.rsplit("/", 1)[-1]:
+        if value not in (name, destination):
             continue
         asset = dict(raw)
         asset["name"] = name
         asset["subdir"] = declared_subdir
-        asset.update(
-            _reference_metadata(
-                reference,
-                reference_type="workflow-local",
-                downloadable=isinstance(asset.get("url"), str) and bool(asset["url"].strip()),
-            )
-        )
-        return asset
-    return None
+        matches.append(asset)
+        matching_destinations.append(destination)
+    if len(matches) > 1 or any(destinations[path] > 1 for path in matching_destinations):
+        raise ValueError(f"ambiguous workflow model asset reference: {value!r} (subdir={subdir!r})")
+    return matches[0] if matches else None
 
 
 def _url_for_registry_entry(entry: ModelEntry) -> str | None:
@@ -535,5 +575,7 @@ __all__ = [
     "HF_SPLIT_FILES_DIRS",
     "entries_from_scratchpad_path",
     "extract_from_raw_workflow",
+    "resolve_authored_asset_reference",
     "resolve_referenced_assets",
+    "validate_model_reference",
 ]
