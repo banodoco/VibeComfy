@@ -153,6 +153,71 @@ def test_actual_foley_runtime_stages_canonical_asset_once(tmp_path, monkeypatch)
     assert vaes[0]['subdir'] == 'hunyuan_foley'
 
 
+@pytest.mark.parametrize('value', ['other/vae_128d_48k.pth', '../vae_128d_48k.pth',
+                                   '/models/vae_128d_48k.pth',
+                                   r'hunyuan_foley\vae_128d_48k.pth'])
+def test_actual_foley_runtime_rejects_unresolved_picker_without_basename_repair(
+    tmp_path, monkeypatch, value,
+):
+    from vibecomfy.errors import ModelAssetError
+    from vibecomfy.runtime.session import _model_assets_from_workflow
+
+    workflow, _ = _local_foley(tmp_path, monkeypatch)
+    workflow.nodes['12'].inputs['vae_name'] = value
+    with pytest.raises(ModelAssetError, match='unresolved workflow model assets'):
+        _model_assets_from_workflow(workflow, models_root=tmp_path)
+
+
+@pytest.mark.parametrize('consumer', ['runtime', 'approval', 'target_approval'])
+@pytest.mark.parametrize('conflict', ['auxiliary_duplicate', 'directory_alias', 'filename_alias',
+                                      'target_path', 'cross_kind'])
+def test_all_foley_declarations_reject_conflicting_custody_before_deduplication(
+    tmp_path, monkeypatch, consumer, conflict,
+):
+    from vibecomfy.runtime.session import _model_assets_from_workflow
+
+    root = tmp_path / 'models'
+    workflow, provider = _local_foley(root, monkeypatch)
+    assets = workflow.metadata['model_assets']
+    if consumer == 'target_approval':
+        provider = TargetSchemaProvider.from_object_info(
+            _target_info(workflow), server_url='http://target.invalid:8188',
+            model_availability='target', auxiliary_model_custody='target',
+            target_model_assets=[{'name': asset['name'], 'subdir': asset['subdir'],
+                                  'sha256': asset['sha256'], 'size': asset['size_bytes']}
+                                 for asset in assets],
+        )
+    auxiliary = next(a for a in assets if a['name'] == 'synchformer_state_dict.pth')
+    if conflict == 'auxiliary_duplicate':
+        assets.append({**auxiliary, 'sha256': '0' * 64})
+    elif conflict == 'directory_alias':
+        auxiliary['directory'] = 'other_models'
+    elif conflict == 'filename_alias':
+        auxiliary['filename'] = 'other.pth'
+    else:
+        content = b'model'
+        first = {'name': 'custody-a.pth', 'subdir': 'hunyuan_foley',
+                 'url': 'https://example.invalid/model.pth', 'size_bytes': len(content),
+                 'sha256': hashlib.sha256(content).hexdigest()}
+        if conflict == 'target_path':
+            first['target_path'] = 'custom_nodes/pack/shared.pth'
+            destination = tmp_path / first['target_path']
+        else:
+            destination = root / first['subdir'] / first['name']
+        second = {**first, 'name': 'custody-b.pth', 'sha256': '0' * 64,
+                  'target_path': 'custom_nodes/pack/shared.pth' if conflict == 'target_path'
+                  else 'models/hunyuan_foley/custody-a.pth'}
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(content)
+        assets.extend([first, second])
+    expected = ValueError if consumer == 'runtime' else WorkflowBundleError
+    with pytest.raises(expected, match='(ambiguous.*model asset|conflicting.*model asset)'):
+        if consumer != 'runtime':
+            load_bundle(workflow).compile(schema_provider=provider, models_root=root)
+        else:
+            _model_assets_from_workflow(workflow, models_root=root)
+
+
 @pytest.mark.parametrize('custody', ['local', 'target'])
 @pytest.mark.parametrize('value', ['/models/vae_128d_48k.pth', '../vae_128d_48k.pth',
                                    'other/../vae_128d_48k.pth', r'hunyuan_foley\vae_128d_48k.pth'])

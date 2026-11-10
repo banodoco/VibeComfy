@@ -2458,6 +2458,7 @@ def _approval_preconditions(
         from vibecomfy.model_assets import (
             _referenced_model_values,
             resolve_authored_asset_reference,
+            validate_authored_asset_declarations,
             validate_model_reference,
         )
         from vibecomfy.registry.models_loader import load_registry, resolve_model_entry
@@ -2547,11 +2548,19 @@ def _approval_preconditions(
             if isinstance(metadata, Mapping) and isinstance(metadata.get("model_assets"), list)
             else []
         )
+        root = Path(models_root) if models_root is not None else None
+        if isinstance(metadata, Mapping) and metadata.get("models_root") is not None:
+            raw_root = metadata["models_root"]
+            if not isinstance(raw_root, (str, Path)) or not Path(raw_root).is_absolute():
+                raise WorkflowBundleError("workflow models_root must be an absolute path")
+            if root is None:
+                root = Path(raw_root)
+        authored_assets = validate_authored_asset_declarations(authored_assets, root=root)
 
         for reference in references:
             value = reference.get("value")
             subdir = reference.get("subdir")
-            asset = resolve_authored_asset_reference(str(value), str(subdir or ""), authored_assets)
+            asset = resolve_authored_asset_reference(str(value), str(subdir or ""), authored_assets, root=root)
             if (value, subdir or "") in target_references:
                 continue
             if (asset is not None and isinstance(schema_provider, TargetSchemaProvider)
@@ -2581,12 +2590,7 @@ def _approval_preconditions(
                     raise WorkflowBundleError(
                         f"model reference is not locally registered and has no source URL: {value}"
                     )
-                local_root = Path(models_root) if models_root is not None else None
-                if local_root is None and isinstance(metadata, Mapping) and metadata.get("models_root") is not None:
-                    raw_root = metadata["models_root"]
-                    if not isinstance(raw_root, (str, Path)) or not Path(raw_root).is_absolute():
-                        raise WorkflowBundleError("workflow models_root must be an absolute path")
-                    local_root = Path(raw_root)
+                local_root = root
                 try:
                     if not is_present(local_asset, root=local_root):
                         raise WorkflowBundleError(
@@ -2606,13 +2610,6 @@ def _approval_preconditions(
                 effective_subdir = target_path.rsplit("/", 1)[0] if "/" in target_path else ""
             if not effective_subdir:
                 raise WorkflowBundleError(f"model reference has no deterministic local target: {value}")
-            root = Path(models_root) if models_root is not None else None
-            if isinstance(metadata, Mapping) and metadata.get("models_root") is not None:
-                raw_root = metadata["models_root"]
-                if not isinstance(raw_root, (str, Path)) or not Path(raw_root).is_absolute():
-                    raise WorkflowBundleError("workflow models_root must be an absolute path")
-                if root is None:
-                    root = Path(raw_root)
             presence_asset = asset if asset is not None else {"name": value, "subdir": effective_subdir}
             if not is_present(presence_asset, root=root):
                 raise WorkflowBundleError(f"registered model is not present locally: {value}")

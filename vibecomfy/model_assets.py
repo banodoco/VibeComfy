@@ -120,6 +120,7 @@ def resolve_referenced_assets(
     workflow: VibeWorkflow,
     *,
     registry: Sequence[ModelEntry] | None = None,
+    models_root: Path | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Resolve model-picker inputs in a built workflow to downloadable assets.
 
@@ -131,7 +132,9 @@ def resolve_referenced_assets(
     authored_raw = getattr(workflow, "metadata", {}).get("model_assets", [])
     # Reconcile before normalization/deduplication: those operations can erase
     # competing declarations with different hashes, URLs or destinations.
-    authored = tuple(authored_raw) if isinstance(authored_raw, (list, tuple)) else ()
+    authored = validate_authored_asset_declarations(
+        authored_raw if isinstance(authored_raw, (list, tuple)) else (), root=models_root,
+    )
     entries: tuple[ModelEntry, ...] = tuple(registry) if registry is not None else ()
     registry_loaded = registry is not None
 
@@ -153,7 +156,7 @@ def resolve_referenced_assets(
         except ValueError:
             unresolved.append(_unresolved_asset_for_reference(reference))
             continue
-        asset = _asset_for_authored_reference(reference, authored)
+        asset = _asset_for_authored_reference(reference, authored, models_root=models_root)
         if asset is None:
             asset = _asset_for_reference(reference, registry=registry_entries())
         if asset is None:
@@ -316,7 +319,8 @@ def _asset_for_reference(
 
 
 def _asset_for_authored_reference(
-    reference: Mapping[str, str], authored: Sequence[Mapping[str, Any]]
+    reference: Mapping[str, str], authored: Sequence[Mapping[str, Any]],
+    *, models_root: Path | None = None,
 ) -> dict[str, Any] | None:
     """Resolve a picker value against workflow-local ModelAsset declarations.
 
@@ -324,7 +328,9 @@ def _asset_for_authored_reference(
     does not belong in the global registry. Matching is path-aware so nested
     model names and category/subdirectory custody survive the runtime pass.
     """
-    raw = resolve_authored_asset_reference(reference["value"], reference["subdir"], authored)
+    raw = resolve_authored_asset_reference(
+        reference["value"], reference["subdir"], authored, root=models_root,
+    )
     if raw is None:
         return None
     asset = dict(raw)
@@ -348,7 +354,7 @@ def validate_model_reference(value: str) -> None:
 
 
 def resolve_authored_asset_reference(
-    value: str, subdir: str, authored: Sequence[Mapping[str, Any]]
+    value: str, subdir: str, authored: Sequence[Mapping[str, Any]], *, root: Path | None = None,
 ) -> dict[str, Any] | None:
     """Bind an exact name or declared subdir/name to one authored asset.
 
@@ -362,17 +368,11 @@ def resolve_authored_asset_reference(
     validate_model_reference(value)
     requested_subdir = _relative_asset_path(subdir, field="subdir").as_posix() if subdir else ""
     matches: list[dict[str, Any]] = []
-    destinations: dict[str, int] = {}
-    matching_destinations: list[str] = []
-    for raw in authored:
-        if not isinstance(raw, Mapping):
-            raise ValueError("workflow model asset is malformed")
-        name = raw.get("name", raw.get("filename"))
-        declared_subdir = raw.get("subdir", raw.get("directory", ""))
+    for raw in validate_authored_asset_declarations(authored, root=root):
+        name, declared_subdir = raw["name"], raw["subdir"]
         relative_name = _relative_asset_path(name, field="name")
         relative_subdir = _relative_asset_path(declared_subdir, field="subdir")
         destination = (relative_subdir / relative_name).as_posix()
-        destinations[destination] = destinations.get(destination, 0) + 1
         if requested_subdir and relative_subdir.as_posix() != requested_subdir:
             continue
         if value not in (name, destination):
@@ -381,10 +381,47 @@ def resolve_authored_asset_reference(
         asset["name"] = name
         asset["subdir"] = declared_subdir
         matches.append(asset)
-        matching_destinations.append(destination)
-    if len(matches) > 1 or any(destinations[path] > 1 for path in matching_destinations):
+    if len(matches) > 1:
         raise ValueError(f"ambiguous workflow model asset reference: {value!r} (subdir={subdir!r})")
     return matches[0] if matches else None
+
+
+def validate_authored_asset_declarations(
+    authored: Sequence[Mapping[str, Any]], *, root: Path | None = None,
+) -> list[dict[str, Any]]:
+    """Validate every declaration before normalization can erase custody.
+
+    Fetch owns destination authorization, including target_path's different
+    root and symlinks. Use its canonical destination for collision checks.
+    """
+    from vibecomfy.fetch import _relative_asset_path, local_path
+
+    identities: set[tuple[str, str]] = set()
+    destinations: set[Path] = set()
+    assets: list[dict[str, Any]] = []
+    for raw in authored:
+        if not isinstance(raw, Mapping):
+            raise ValueError("workflow model asset is malformed")
+        asset = dict(raw)
+        for primary, alias in (("name", "filename"), ("subdir", "directory")):
+            value = raw.get(primary, raw.get(alias))
+            relative = _relative_asset_path(value, field=primary)
+            if primary in raw and alias in raw:
+                alternative = _relative_asset_path(raw[alias], field=alias)
+                if relative != alternative:
+                    raise ValueError(f"conflicting workflow model asset {primary}/{alias} aliases")
+            asset[primary] = value
+        identity = (
+            _relative_asset_path(asset["subdir"], field="subdir").as_posix(),
+            _relative_asset_path(asset["name"], field="name").as_posix(),
+        )
+        destination = local_path(asset, root=root)
+        if identity in identities or destination in destinations:
+            raise ValueError(f"ambiguous workflow model asset declaration: {asset['name']!r}")
+        identities.add(identity)
+        destinations.add(destination)
+        assets.append(asset)
+    return assets
 
 
 def _url_for_registry_entry(entry: ModelEntry) -> str | None:
@@ -399,10 +436,6 @@ def _url_for_registry_entry(entry: ModelEntry) -> str | None:
 
 def _is_none_model_value(value: str) -> bool:
     return value in {"none", "None"}
-
-
-def _looks_like_runtime_input(value: str) -> bool:
-    return value.startswith(("http://", "https://", "/", "./", "../")) or value in {"none", "None"}
 
 
 def _unresolved_asset_for_reference(reference: Mapping[str, str]) -> dict[str, str | bool]:
@@ -578,4 +611,5 @@ __all__ = [
     "resolve_authored_asset_reference",
     "resolve_referenced_assets",
     "validate_model_reference",
+    "validate_authored_asset_declarations",
 ]
