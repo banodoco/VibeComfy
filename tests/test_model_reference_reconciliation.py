@@ -247,34 +247,43 @@ def test_all_foley_declarations_reject_conflicting_custody_before_deduplication(
 
 
 @pytest.mark.parametrize('consumer', ['runtime', 'approval'])
-def test_authored_and_registry_assets_cannot_claim_one_destination(tmp_path, monkeypatch, consumer):
+@pytest.mark.parametrize('representation', ['target_path', 'nested_subdir'])
+def test_authored_and_registry_assets_cannot_claim_one_destination(
+    tmp_path, monkeypatch, consumer, representation,
+):
     from vibecomfy.registry.models_loader import ModelEntry, ModelSource, ModelTarget
     from vibecomfy.runtime.session import _model_assets_from_workflow
 
     root = tmp_path / 'models'
     workflow, _ = _local_foley(root, monkeypatch)
     content = b'model'
-    workflow.metadata['model_assets'].append({
+    asset = {
         'name': 'a.pth', 'subdir': 'diffusion_models',
         'target_path': 'models/diffusion_models/b.pth',
         'url': 'https://example.invalid/a.pth', 'size_bytes': len(content),
         'sha256': hashlib.sha256(content).hexdigest(),
-    })
+    }
+    authored_picker, registry_picker = 'a.pth', 'b.pth'
+    if representation == 'nested_subdir':
+        asset.pop('target_path')
+        asset['subdir'] = 'diffusion_models/nested'
+        authored_picker = registry_picker = 'nested/a.pth'
+    workflow.metadata['model_assets'].append(asset)
     workflow.nodes['90'] = VibeNode(
-        '90', 'UNETLoader', inputs={'unet_name': 'a.pth', 'weight_dtype': 'default'}, uid='custody-a')
+        '90', 'UNETLoader', inputs={'unet_name': authored_picker, 'weight_dtype': 'default'}, uid='custody-a')
     workflow.nodes['91'] = VibeNode(
-        '91', 'UNETLoader', inputs={'unet_name': 'b.pth', 'weight_dtype': 'default'}, uid='custody-b')
-    destination = root / 'diffusion_models/b.pth'
-    destination.parent.mkdir()
+        '91', 'UNETLoader', inputs={'unet_name': registry_picker, 'weight_dtype': 'default'}, uid='custody-b')
+    destination = root / 'diffusion_models' / registry_picker
+    destination.parent.mkdir(parents=True)
     destination.write_bytes(content)
     registry = [ModelEntry(
         id='registry-collision', source=ModelSource(kind='url', url='https://example.invalid/b.pth'),
-        canonical_name='b.pth', sha256='2' * 64, size_bytes=len(content), min_size=1,
-        targets=(ModelTarget('comfy_core', 'diffusion_models/b.pth'),),
+        canonical_name=registry_picker, sha256='2' * 64, size_bytes=len(content), min_size=1,
+        targets=(ModelTarget('comfy_core', f'diffusion_models/{registry_picker}'),),
     )]
     monkeypatch.setattr('vibecomfy.registry.models_loader.load_registry', lambda: registry)
     info = _target_info(workflow)
-    info['UNETLoader']['input']['required']['unet_name'] = [['a.pth', 'b.pth']]
+    info['UNETLoader']['input']['required']['unet_name'] = [[authored_picker, registry_picker]]
     provider = TargetSchemaProvider.from_object_info(
         info, server_url='http://local.invalid:8188', model_availability='local')
     expected = ValueError if consumer == 'runtime' else WorkflowBundleError

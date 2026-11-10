@@ -1257,16 +1257,6 @@ def _model_assets_from_workflow(
         )
     authored = _normalise_requirement_entries(raw_assets) if isinstance(raw_assets, list) else []
     resolved, unresolved = resolve_referenced_assets(workflow, models_root=local_root)
-    authored_identity_keys = {
-        _entry_key(entry)
-        for entry in authored
-        if isinstance(entry.get("name"), str) and isinstance(entry.get("subdir"), str)
-    }
-    authored_paths = {
-        f"{_norm(entry['subdir'])}/{_norm(entry['name'])}"
-        for entry in authored
-        if isinstance(entry.get("name"), str) and isinstance(entry.get("subdir"), str)
-    }
     # The shared resolver already reconciles exact authored spellings. Never
     # discharge a rejected picker through a basename or filesystem-path hint.
     if unresolved:
@@ -1287,8 +1277,6 @@ def _model_assets_from_workflow(
             # Keep malformed authored metadata visible to the fetch owner;
             # do not let a truthiness fallback or this merge hide it.
             entries.append(entry)
-            continue
-        if key not in authored_identity_keys and f"{_norm(entry['subdir'])}/{_norm(entry['name'])}" in authored_paths:
             continue
         if key in seen:
             continue
