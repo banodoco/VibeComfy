@@ -11,8 +11,7 @@ Node input names were taken from the pack at commit
 ``example_workflows/Hunyuan-Foley.json``. They must be checked against live
 ``/object_info`` on the 5090 run; any mismatch is a bug to report.
 
-Licence: Tencent Hunyuan Community; the licence excludes the EU, UK and South
-Korea. This is disclosed here, not enforced by region detection.
+Licence: Tencent Hunyuan Community.
 """
 from __future__ import annotations
 
