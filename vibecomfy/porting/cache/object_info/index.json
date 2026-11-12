@@ -1981,6 +1981,9 @@
     "[\"ComfyUI-Qwen3-TTS\",\"legacy\",\"ComfyUI-Qwen3-TTS@local-17c22ad.json\"]": [
       "ComfyUI-Qwen3-TTS@local-17c22ad.json"
     ],
+    "[\"ComfyUI-QwenTTS\",\"git_commit\",\"d8122a8ba835b65fd65c113d2b273b1ad1579293\"]": [
+      "ComfyUI-QwenTTS@cpu-runtime.json"
+    ],
     "[\"ComfyUI-SubjectStyle-CSV\",\"git_commit\",\"47667313d3d489603b98d93b9811d68a63a0d7d1\"]": [
       "ComfyUI-SubjectStyle-CSV@on_demand_static-4766731.json"
     ],

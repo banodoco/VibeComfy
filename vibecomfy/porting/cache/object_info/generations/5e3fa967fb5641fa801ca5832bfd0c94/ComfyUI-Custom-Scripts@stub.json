@@ -1,0 +1,87 @@
+{
+  "MathExpression|pysssss": {
+    "category": "utils",
+    "description": "Evaluate a math expression",
+    "display_name": "Math Expression 🐍",
+    "input_order": {
+      "required": [
+        "expression"
+      ]
+    },
+    "input_order_all": [
+      "expression",
+      "a",
+      "b",
+      "c"
+    ],
+    "inputs": {
+      "optional": {
+        "a": [
+          "INT,FLOAT",
+          {
+            "default": 0
+          }
+        ],
+        "b": [
+          "INT,FLOAT",
+          {
+            "default": 0
+          }
+        ],
+        "c": [
+          "INT,FLOAT",
+          {
+            "default": 0
+          }
+        ]
+      },
+      "required": {
+        "expression": [
+          "STRING",
+          {
+            "default": ""
+          }
+        ]
+      }
+    },
+    "output": [
+      "INT",
+      "FLOAT"
+    ],
+    "output_name": [
+      "int",
+      "float"
+    ],
+    "output_node": false
+  },
+  "ShowText|pysssss": {
+    "category": "text",
+    "description": "Show text output",
+    "display_name": "Show Text 🐍",
+    "input_order": {
+      "required": [
+        "text"
+      ]
+    },
+    "input_order_all": [
+      "text"
+    ],
+    "inputs": {
+      "required": {
+        "text": [
+          "STRING",
+          {
+            "forceInput": true
+          }
+        ]
+      }
+    },
+    "output": [
+      "STRING"
+    ],
+    "output_name": [
+      "text"
+    ],
+    "output_node": true
+  }
+}

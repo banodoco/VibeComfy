@@ -140,6 +140,14 @@
       "repo": "https://github.com/DarioFT/ComfyUI-Qwen3-TTS.git",
       "schema_sha256": "e1e936d1fb13d4c87f7d49c935b7d9a0c1d5860306c5a5b4233c125d769a0be0"
     },
+    "ComfyUI-QwenTTS@cpu-runtime.json": {
+      "classes": 12,
+      "locked_commit": "d8122a8ba835b65fd65c113d2b273b1ad1579293",
+      "pack": "ComfyUI-QwenTTS",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "b9ec8e326a302a5015157c1f80dfdc1a93130aef9dc59084c37182f3711983e9",
+      "source_kind": "runtime_object_info"
+    },
     "ComfyUI-SubjectStyle-CSV@on_demand_static-4766731.json": {
       "captured_at": "2026-08-26T17:00:11.041+00:00",
       "extraction_rung": "ast",
