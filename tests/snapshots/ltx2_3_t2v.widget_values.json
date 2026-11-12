@@ -174,24 +174,6 @@
     1
   ],
   [
-    "LTXVImgToVideoConditionOnly",
-    "bypass",
-    "True",
-    1
-  ],
-  [
-    "LTXVImgToVideoConditionOnly",
-    "strength",
-    "0.7",
-    1
-  ],
-  [
-    "LTXVPreprocess",
-    "img_compression",
-    "18",
-    1
-  ],
-  [
     "LTXVScheduler",
     "base_shift",
     "0.95",
@@ -246,12 +228,6 @@
     2
   ],
   [
-    "LoadImage",
-    "image",
-    "'example.png'",
-    1
-  ],
-  [
     "LoraLoaderModelOnly",
     "lora_name",
     "'ltxv/ltx2/ltx-2.3-22b-distilled-lora-384-1.1.safetensors'",
@@ -297,30 +273,6 @@
     "RandomNoise",
     "noise_seed",
     "43",
-    1
-  ],
-  [
-    "ResizeImageMaskNode",
-    "longer_size",
-    "384",
-    1
-  ],
-  [
-    "ResizeImageMaskNode",
-    "resize_type",
-    "'scale longer dimension'",
-    1
-  ],
-  [
-    "ResizeImageMaskNode",
-    "resize_type.longer_size",
-    "384",
-    1
-  ],
-  [
-    "ResizeImageMaskNode",
-    "scale_method",
-    "'lanczos'",
     1
   ],
   [
