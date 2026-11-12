@@ -88,6 +88,14 @@
       "source": "direct_url",
       "source_kind": "on_demand_import"
     },
+    "ComfyUI-GGUF@cpu-runtime.json": {
+      "classes": 6,
+      "locked_commit": "6ea2651e7df66d7585f6ffee804b20e92fb38b8a",
+      "pack": "ComfyUI-GGUF",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "afe2840951e7897f33b80473ce2c99cf25bd2e76049b9f767b0fc55c65bc5345",
+      "source_kind": "runtime_object_info"
+    },
     "ComfyUI-GGUF@local-6ea2651.json": {
       "classes": 2,
       "locked_commit": "6ea2651e7df66d7585f6ffee804b20e92fb38b8a",
