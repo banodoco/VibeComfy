@@ -59,10 +59,18 @@ def test_template_enum_fields_admit_public_inputs_against_combo_schema(template_
 
 @pytest.mark.parametrize("template_id", ready_template_ids())
 def test_ready_template_offline_schemas_by_identity(template_id: str) -> None:
+    check_ready_template_offline_schemas_by_identity(template_id)
+
+
+def check_ready_template_offline_schemas_by_identity(
+    template_id: str, *, pack_identity_commits: dict[str, str] | None = None,
+) -> None:
+    """Check offline coverage with optional engine recipe pack-to-commit pins."""
     from vibecomfy.custom_node_refs import effective_lock_entries
     from vibecomfy.node_packs import read_lockfile
     from vibecomfy.node_packs._lockfile import resolve_lockfile_path
     from vibecomfy.porting.object_info.consume import get_class, resolve_class_entry
+    from vibecomfy.porting.object_info.identity import select_object_info_identity
     from vibecomfy.workflow import _types_match
 
     workflow = workflow_from_template_fixture(template_id)
@@ -78,18 +86,13 @@ def test_ready_template_offline_schemas_by_identity(template_id: str) -> None:
         locked = locks_by_class.get(class_type) or locks_by_name.get(str(slug))
         target = workflow.nodes.get(str(node_id))
         metadata = target.metadata if target is not None else {}
-        identity = metadata.get("object_info_identity")
-        source = metadata.get("schema_source")
-        if identity is None and isinstance(source, dict) and (
-            source.get("git_commit") or source.get("evidence_identity")
-        ):
-            identity = source
-        if identity is None and locked is not None and (locked.commit or locked.git_commit_sha):
-            identity = {"pack_slug": locked.slug or locked.name,
-                        "git_commit": locked.commit or locked.git_commit_sha}
-        if identity is None:
-            pin = "git_commit" if cached.get("git_commit") else "evidence_identity"
-            identity = {"pack_slug": slug, pin: cached.get(pin)}
+        locked_identity = None
+        if locked is not None and (locked.commit or locked.git_commit_sha):
+            locked_identity = {"pack_slug": locked.slug or locked.name,
+                               "git_commit": locked.commit or locked.git_commit_sha}
+        identity = select_object_info_identity(
+            cached, metadata, locked_identity, pack_identity_commits=pack_identity_commits,
+        )
         if not identity.get("pack_slug") or not (
             identity.get("git_commit") or identity.get("evidence_identity")
         ):
@@ -1447,3 +1450,25 @@ def test_sfx_template_preparation_declares_every_pinned_manifest_asset() -> None
     for row in manifest:
         assert all(actual[(row["subdir"], row["name"])][field] == row[field]
                    for field in ("url", "sha256", "size_bytes", "hf_revision"))
+
+
+def test_recipe_pack_identity_commits_override_workflow_lock_and_cache():
+    from vibecomfy.porting.object_info.identity import select_object_info_identity
+
+    cached = {"pack_slug": "comfy_core", "git_commit": "cache"}
+    locked = {"pack_slug": "comfy_core", "git_commit": "lock"}
+    for metadata in (
+        {},
+        {"object_info_identity": {"pack_slug": "comfy_core", "git_commit": "workflow"}},
+        {"schema_source": {"pack_slug": "comfy_core", "evidence_identity": "workflow-evidence"}},
+    ):
+        expected = metadata.get("object_info_identity") or metadata.get("schema_source") or locked
+        assert select_object_info_identity(cached, metadata, locked) == expected
+        assert select_object_info_identity(
+            cached, metadata, locked, pack_identity_commits={"comfy_core": "recipe"},
+        ) == {"pack_slug": "comfy_core", "git_commit": "recipe"}
+    assert select_object_info_identity(cached, {}) == cached
+    assert select_object_info_identity(
+        {"pack_slug": "ComfyUI-QwenTTS", "git_commit": "cache"}, {},
+        pack_identity_commits={"ComfyUI-QwenTTS": "recipe-pack", "comfy_core": "recipe-core"},
+    ) == {"pack_slug": "ComfyUI-QwenTTS", "git_commit": "recipe-pack"}
