@@ -2068,6 +2068,9 @@
     "[\"comfyui-advanced-controlnet\",\"git_commit\",\"27a67fee80cf46c198b10588a5651f23d67d1e95\"]": [
       "comfyui-advanced-controlnet@on_demand_static-27a67fe.json"
     ],
+    "[\"comfyui_controlnet_aux\",\"git_commit\",\"e8b689a513c3e6b63edc44066560ca5919c0576e\"]": [
+      "comfyui_controlnet_aux@cpu-runtime.json"
+    ],
     "[\"comfyui_controlnet_aux\",\"legacy\",\"comfyui_controlnet_aux@stub.json\"]": [
       "comfyui_controlnet_aux@stub.json"
     ],

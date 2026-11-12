@@ -343,6 +343,14 @@
       "schema_sha256": "5bda7ec10a451109e0c15a0c0a678b6752548064358d3ae55ac4aacb106cd234",
       "source_kind": "on_demand_static"
     },
+    "comfyui_controlnet_aux@cpu-runtime.json": {
+      "classes": 64,
+      "locked_commit": "e8b689a513c3e6b63edc44066560ca5919c0576e",
+      "pack": "comfyui_controlnet_aux",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "0ee0c6567d84abc82a821b8137340d29b9f6432febec030c390d29fb25b0a0d6",
+      "source_kind": "runtime_object_info"
+    },
     "comfyui_ryanonyheinside@on_demand_import-52daf66.json": {
       "captured_at": "2026-08-26T17:00:14.879+00:00",
       "extraction_rung": "import",
