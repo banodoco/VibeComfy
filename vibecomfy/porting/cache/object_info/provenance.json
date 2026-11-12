@@ -172,6 +172,17 @@
       "repo": "https://github.com/DarioFT/ComfyUI-Qwen3-TTS.git",
       "schema_sha256": "e1e936d1fb13d4c87f7d49c935b7d9a0c1d5860306c5a5b4233c125d769a0be0"
     },
+    "ComfyUI-Qwen3-TTS@on_demand_import-17c22ad.json": {
+      "captured_at": "2026-11-12T18:22:33.649+00:00",
+      "extraction_rung": "import",
+      "locked_commit": "17c22adb80a63c1c51bf74549e71a5cf218f4e1b",
+      "pack": "ComfyUI-Qwen3-TTS",
+      "registry_pack_version": null,
+      "repo": "https://github.com/DarioFT/ComfyUI-Qwen3-TTS.git",
+      "schema_sha256": "dd89cf2a653170614c514b1dd999856b14b751b754b7ce1ed3aa7287aaccdd4d",
+      "source": "pinned_repository_extract",
+      "source_kind": "on_demand_import"
+    },
     "ComfyUI-QwenTTS@cpu-runtime.json": {
       "classes": 12,
       "locked_commit": "d8122a8ba835b65fd65c113d2b273b1ad1579293",

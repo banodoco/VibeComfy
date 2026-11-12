@@ -1990,6 +1990,9 @@
     "[\"ComfyUI-MelBandRoformer\",\"legacy\",\"ComfyUI-MelBandRoformer@stub.json\"]": [
       "ComfyUI-MelBandRoformer@stub.json"
     ],
+    "[\"ComfyUI-Qwen3-TTS\",\"git_commit\",\"17c22adb80a63c1c51bf74549e71a5cf218f4e1b\"]": [
+      "ComfyUI-Qwen3-TTS@on_demand_import-17c22ad.json"
+    ],
     "[\"ComfyUI-Qwen3-TTS\",\"legacy\",\"ComfyUI-Qwen3-TTS@local-17c22ad.json\"]": [
       "ComfyUI-Qwen3-TTS@local-17c22ad.json"
     ],
