@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Any, Iterable, Mapping, Sequence
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from vibecomfy._compile._graph import node_id_sort_key
+_OPTIONAL_MODEL_RECORD_DEFAULTS = {"sha256": None, "size_bytes": None}
+
 HF_SPLIT_FILES_DIRS = {
     "text_encoders",
     "diffusion_models",
@@ -266,8 +268,8 @@ def canonical_model_requirement(value: Any) -> Any:
     if not isinstance(value, Mapping):
         return copy.deepcopy(value)
     record = copy.deepcopy(dict(value))
-    record.setdefault("sha256", None)
-    record.setdefault("size_bytes", None)
+    for field, default in _OPTIONAL_MODEL_RECORD_DEFAULTS.items():
+        record.setdefault(field, default)
     return record
 
 
@@ -537,8 +539,7 @@ def _normalise_model_entry(model: Any, *, class_type: str) -> dict[str, Any] | N
         "name": name,
         "url": _strip_download_true(url) if isinstance(url, str) else None,
         "subdir": subdir,
-        "sha256": None,
-        "size_bytes": None,
+        **_OPTIONAL_MODEL_RECORD_DEFAULTS,
     }
     if url is None:
         entry["unresolved"] = True
