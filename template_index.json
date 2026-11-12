@@ -3482,6 +3482,27 @@
           "source": "InputSpec"
         },
         {
+          "name": "start_image",
+          "target": {
+            "node_id": "5",
+            "field": "image"
+          },
+          "node_id": "5",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [
+            "image",
+            "input_image"
+          ],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
           "name": "image",
           "target": {
             "node_id": "5",
@@ -3489,15 +3510,13 @@
           },
           "node_id": "5",
           "field": "image",
-          "value": "example.png",
-          "type": null,
-          "default": "example.png",
-          "required": false,
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
           "range": null,
-          "aliases": [
-            "input_image"
-          ],
-          "media_semantics": null,
+          "aliases": [],
+          "media_semantics": "image",
           "status": "static",
           "source": "InputSpec"
         },
@@ -3509,13 +3528,31 @@
           },
           "node_id": "5",
           "field": "image",
-          "value": "example.png",
-          "type": null,
-          "default": "example.png",
-          "required": false,
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
           "range": null,
           "aliases": [],
-          "media_semantics": null,
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "end_image",
+          "target": {
+            "node_id": "6",
+            "field": "image"
+          },
+          "node_id": "6",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "image",
           "status": "static",
           "source": "InputSpec"
         }
@@ -3853,7 +3890,7 @@
       "model_count": 2,
       "public_inputs": [
         {
-          "name": "image",
+          "name": "start_image",
           "target": {
             "node_id": "1",
             "field": "image"
@@ -3866,8 +3903,27 @@
           "required": true,
           "range": null,
           "aliases": [
+            "image",
             "input_image"
           ],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "image",
+          "target": {
+            "node_id": "1",
+            "field": "image"
+          },
+          "node_id": "1",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
           "media_semantics": "image",
           "status": "static",
           "source": "InputSpec"
@@ -3879,6 +3935,24 @@
             "field": "image"
           },
           "node_id": "1",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "end_image",
+          "target": {
+            "node_id": "2",
+            "field": "image"
+          },
+          "node_id": "2",
           "field": "image",
           "value": "",
           "type": "IMAGE",
@@ -4064,7 +4138,7 @@
       "model_count": 3,
       "public_inputs": [
         {
-          "name": "image",
+          "name": "start_image",
           "target": {
             "node_id": "1",
             "field": "image"
@@ -4077,8 +4151,27 @@
           "required": true,
           "range": null,
           "aliases": [
+            "image",
             "input_image"
           ],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "image",
+          "target": {
+            "node_id": "1",
+            "field": "image"
+          },
+          "node_id": "1",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
           "media_semantics": "image",
           "status": "static",
           "source": "InputSpec"
@@ -4090,6 +4183,24 @@
             "field": "image"
           },
           "node_id": "1",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "end_image",
+          "target": {
+            "node_id": "2",
+            "field": "image"
+          },
+          "node_id": "2",
           "field": "image",
           "value": "",
           "type": "IMAGE",
@@ -5213,7 +5324,7 @@
           "source": "InputSpec"
         },
         {
-          "name": "image",
+          "name": "start_image",
           "target": {
             "node_id": "45",
             "field": "image"
@@ -5226,8 +5337,27 @@
           "required": true,
           "range": null,
           "aliases": [
+            "image",
             "input_image"
           ],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "image",
+          "target": {
+            "node_id": "45",
+            "field": "image"
+          },
+          "node_id": "45",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
           "media_semantics": "image",
           "status": "static",
           "source": "InputSpec"
@@ -5239,6 +5369,24 @@
             "field": "image"
           },
           "node_id": "45",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "end_image",
+          "target": {
+            "node_id": "47",
+            "field": "image"
+          },
+          "node_id": "47",
           "field": "image",
           "value": "",
           "type": "IMAGE",
@@ -5374,7 +5522,7 @@
           "source": "InputSpec"
         },
         {
-          "name": "image",
+          "name": "start_image",
           "target": {
             "node_id": "6",
             "field": "image"
@@ -5387,8 +5535,27 @@
           "required": true,
           "range": null,
           "aliases": [
+            "image",
             "input_image"
           ],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "image",
+          "target": {
+            "node_id": "6",
+            "field": "image"
+          },
+          "node_id": "6",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
           "media_semantics": "image",
           "status": "static",
           "source": "InputSpec"
@@ -5400,6 +5567,24 @@
             "field": "image"
           },
           "node_id": "6",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "end_image",
+          "target": {
+            "node_id": "7",
+            "field": "image"
+          },
+          "node_id": "7",
           "field": "image",
           "value": "",
           "type": "IMAGE",
