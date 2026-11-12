@@ -271,7 +271,7 @@ def persist_on_demand_pack(
                 cache_dir=cache_root,
                 identity=CacheIdentity(
                     pack_slug=pack_slug,
-                    pack_version=f"{source_kind}-{sha7}",
+                    pack_version=source_kind,
                     git_commit=locked_commit,
                     evidence_identity=evidence_identity,
                     source_kind=source_kind,
@@ -281,34 +281,9 @@ def persist_on_demand_pack(
         finally:
             tmp_path.unlink(missing_ok=True)
 
-        # --- Hygiene layer (a): strip non-newly-captured classes from file ---
-        # Classes already indexed into THIS same versioned file (a prior
-        # extract of the same pack at the same tier+commit) stay; stripping
-        # them would orphan their index rows.
+        # The writer applies identity-scoped merge and index hygiene once.
         filepath = cache_root / filename
-        pack_data = json.loads(filepath.read_text(encoding="utf-8"))
-        keep = set(captured) | {ct for ct, f in index_before.items() if f == filename}
-        stripped = OrderedDict((ct, e) for ct, e in sorted(pack_data.items()) if ct in keep)
-        filepath.write_text(
-            json.dumps(stripped, indent=2, sort_keys=True, ensure_ascii=False),
-            encoding="utf-8",
-        )
-
-        # --- Hygiene layer (b): restore pre-existing index mappings ----------
-        index_path = cache_root / "index.json"
-        index: dict[str, Any] = {}
-        try:
-            loaded = json.loads(index_path.read_text(encoding="utf-8"))
-            index = loaded if isinstance(loaded, dict) else {}
-        except (OSError, json.JSONDecodeError):
-            pass
-        for class_type, previous_file in index_before.items():
-            if class_type not in captured and index.get(class_type) == filename:
-                index[class_type] = previous_file
-        index_path.write_text(
-            json.dumps(index, indent=2, sort_keys=True, ensure_ascii=False),
-            encoding="utf-8",
-        )
+        index = _read_existing_index(cache_root)
 
         # --- Attest provenance -----------------------------------------------
         from vibecomfy.commands.schemas import _write_provenance as _schemas_write

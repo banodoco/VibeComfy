@@ -235,7 +235,9 @@ def test_build_cache_is_deterministic(tmp_path: Path) -> None:
     idx2 = json.loads((cache2 / "index.json").read_text())
     assert idx1 == idx2
 
-    for name in idx1.values():
+    from vibecomfy.porting.object_info.index import split_index
+    _, captures = split_index(idx1)
+    for name in {filename for files in captures.values() for filename in files}:
         assert json.loads((cache1 / name).read_text()) == json.loads((cache2 / name).read_text())
 
 
@@ -1638,3 +1640,54 @@ def _patch_consume_paths(monkeypatch: pytest.MonkeyPatch, cache_root: Path) -> N
     monkeypatch.setattr(_consume, "INDEX_PATH", cache_root / "index.json")
     monkeypatch.setattr(_consume, "_index", None)
     monkeypatch.setattr(_consume, "_pack_cache", {})
+
+
+def test_commit_captures_coexist_republish_and_replace_only_their_identity(tmp_path, monkeypatch):
+    from vibecomfy.porting.object_info.consume import get_class, get_class_by_identity
+    from vibecomfy.porting.object_info.generation import active_cache_root, validate_generation
+    from vibecomfy.porting.object_info.serialize import republish_cache_root
+
+    source = tmp_path / 'source.json'
+    cache = tmp_path / 'cache'
+
+    def capture(commit, names, *, select_default=True, label='runtime'):
+        source.write_text(json.dumps({name: _object_info_entry(
+            python_module='Pack.nodes', name=name, output_names=[output],
+        ) for name, output in names.items()}))
+        build_cache(source, version=label, cache_dir=cache, identity=CacheIdentity(
+            pack_slug='Pack', pack_version='runtime', git_commit=commit,
+            source_kind='runtime_object_info',
+        ), full_pack_refresh=True, select_default=select_default)
+
+    capture('a' * 40, {'Shared': 'IMAGE', 'Old': 'STRING'})
+    _patch_consume_paths(monkeypatch, cache)
+    before = json.dumps(get_class('Shared'), sort_keys=True)
+    capture('b' * 40, {'Shared': 'VIDEO'}, select_default=False)
+    republish_cache_root(cache)
+    assert json.dumps(get_class('Shared'), sort_keys=True) == before
+    assert get_class_by_identity('Shared', pack_slug='Pack', git_commit='a' * 40)['outputs'][0]['type'] == 'IMAGE'
+    assert get_class_by_identity('Shared', pack_slug='Pack', git_commit='b' * 40)['outputs'][0]['type'] == 'VIDEO'
+    capture('b' * 40, {'New': 'FLOAT'}, select_default=False, label='another-label')
+    republish_cache_root(cache)
+    assert get_class_by_identity('Shared', pack_slug='Pack', git_commit='b' * 40) is None
+    assert get_class_by_identity('Old', pack_slug='Pack', git_commit='a' * 40) is not None
+    assert get_class_by_identity('New', pack_slug='Pack', git_commit='b' * 40) is not None
+    root = active_cache_root(cache)
+    manifest = validate_generation(root)
+    for filename in manifest['files']:
+        if filename in {'index.json', 'provenance.json'}:
+            continue
+        entries = json.loads((root / filename).read_text())
+        assert len({(e['pack_slug'], e['git_commit']) for e in entries.values()}) == 1
+
+
+def test_committed_provider_files_hold_one_pack_commit():
+    from vibecomfy.porting.object_info.generation import active_cache_root
+    root = active_cache_root(_PROD_CACHE_DIR)
+    for path in root.glob('*.json'):
+        if path.name in {'index.json', 'provenance.json', 'manifest.json'}:
+            continue
+        entries = json.loads(path.read_text())
+        identities = {(e.get('pack_slug') or e.get('pack') or path.name.split('@')[0], e.get('git_commit'))
+                      for e in entries.values() if isinstance(e, dict)}
+        assert len(identities) == 1, (path.name, identities)

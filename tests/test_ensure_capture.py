@@ -737,3 +737,13 @@ def test_fallback_owner_identity_distinguishes_dead_and_pid_reused_records(
         encoding="utf-8",
     )
     assert not serialize_module._fallback_lock_is_stale(directory)
+
+
+def test_on_demand_pack_version_does_not_embed_commit(tmp_path):
+    cache = tmp_path / 'cache'
+    result = _persist(cache, {'GapNode': _extract_entry('GapNode')}, rung='ast')
+    entry = json.loads((cache / result.filename).read_text())['GapNode']
+    assert entry['pack_version'] == 'on_demand_static'
+    assert COMMIT not in entry['pack_version']
+    assert SHA7 not in entry['pack_version']
+    assert entry['git_commit'] == COMMIT
