@@ -94,6 +94,14 @@
       "repo": "https://github.com/hunzmusic/ComfyUI-Hunyuan3DTools.git",
       "schema_sha256": "82ca443f2e25b682fce0eea380dbd4de5ae0c0010009d4a39c8eaca727d97104"
     },
+    "ComfyUI-HunyuanVideo_Foley@source-b94f7ac.json": {
+      "classes": 4,
+      "locked_commit": "b94f7aca877ff2be5bc264b057abee3dac682c1b",
+      "pack": "ComfyUI-HunyuanVideo_Foley",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "b5c2f5f3cae432d7b78a9e994ce71f07de0c086c1de5bd5440f23728ed0f7be0",
+      "source_kind": "runtime_object_info"
+    },
     "ComfyUI-IndexTTS@local.json": {
       "classes": 5,
       "locked_commit": "f8faab1215ea478bf952c3ae4cce37c26183a0b0",
