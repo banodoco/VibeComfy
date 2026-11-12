@@ -2014,6 +2014,9 @@
     "[\"ComfyUI-WanAnimatePreprocess\",\"legacy\",\"ComfyUI-WanAnimatePreprocess@local-1a35b81.json\"]": [
       "ComfyUI-WanAnimatePreprocess@local-1a35b81.json"
     ],
+    "[\"ComfyUI-WanVideoWrapper\",\"git_commit\",\"df8f3e49daaad117cf3090cc916c83f3d001494c\"]": [
+      "ComfyUI-WanVideoWrapper@cpu-runtime.json"
+    ],
     "[\"ComfyUI-WanVideoWrapper\",\"legacy\",\"ComfyUI-WanVideoWrapper@runpod-snapshot.json\"]": [
       "ComfyUI-WanVideoWrapper@runpod-snapshot.json"
     ],

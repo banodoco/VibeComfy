@@ -230,6 +230,14 @@
       "repo": "https://github.com/kijai/ComfyUI-WanAnimatePreprocess.git",
       "schema_sha256": "2037d30d5343a44a9403c928ea18688bb050b9114fc2d3741df2c6b64edaf7f5"
     },
+    "ComfyUI-WanVideoWrapper@cpu-runtime.json": {
+      "classes": 142,
+      "locked_commit": "df8f3e49daaad117cf3090cc916c83f3d001494c",
+      "pack": "ComfyUI-WanVideoWrapper",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "143b9814bbe0377573cd191bdc7ebb739c2d84dbe62d422b0ef0312a24569c40",
+      "source_kind": "runtime_object_info"
+    },
     "ComfyUI-WanVideoWrapper@runpod-snapshot.json": {
       "classes": 146,
       "locked_commit": "df8f3e49daaad117cf3090cc916c83f3d001494c",
