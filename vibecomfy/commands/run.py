@@ -773,8 +773,10 @@ def _cmd_run_attempt(args: argparse.Namespace, attempt: RunContext) -> int:
                 return 2
             run_inputs["steps"] = args.steps
         try:
+            from vibecomfy.fetch import resolve_asset_roots
+
             prepared_models_root = (
-                str(Path(runtime_root).expanduser() / "ComfyUI" / "models")
+                str(resolve_asset_roots(runtime_root=Path(runtime_root).expanduser()).models)
                 if preparation is not None and runtime_root is not None
                 else None
             )

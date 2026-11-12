@@ -14,6 +14,7 @@ import os
 import stat
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from collections.abc import Mapping
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
@@ -22,7 +23,7 @@ from urllib.parse import quote, urlsplit, urlunsplit
 import httpx
 
 
-def models_root() -> Path:
+def _configured_models_root() -> Path | None:
     for env_name in ("VIBECOMFY_MODELS_ROOT", "COMFY_MODELS_ROOT"):
         value = os.environ.get(env_name)
         if value:
@@ -45,12 +46,46 @@ def models_root() -> Path:
             return config_path
     except Exception:
         pass
+    return None
+
+
+def models_root() -> Path:
+    configured = _configured_models_root()
+    if configured is not None:
+        return configured
     try:
         from comfy.cmd.folder_paths import folder_names_and_paths
 
         return Path(folder_names_and_paths["checkpoints"][0][0]).parent
     except Exception:
         return Path("ComfyUI/models")
+
+
+@dataclass(frozen=True)
+class AssetRoots:
+    models: Path
+    comfyui: Path
+
+
+def resolve_asset_roots(
+    *, runtime_root: Path | None = None, root: Path | AssetRoots | None = None
+) -> AssetRoots:
+    """Resolve the separate authorization roots for model and target paths."""
+    if isinstance(root, AssetRoots):
+        return root
+    comfy_path = (
+        Path(runtime_root).expanduser() / "ComfyUI" if runtime_root is not None
+        else Path(os.environ["COMFYUI_PATH"]).expanduser() if os.environ.get("COMFYUI_PATH")
+        else None
+    )
+    if root is not None:
+        models = Path(root)
+    elif runtime_root is not None:
+        models = _configured_models_root() or comfy_path / "models"
+    else:
+        models = models_root()
+    models = models.expanduser()
+    return AssetRoots(models=models, comfyui=comfy_path or models.parent)
 
 
 def _relative_asset_path(value: Any, *, field: str) -> Path:
@@ -93,16 +128,15 @@ def _authorized_destination(root: Path, relative: Path, *, field: str) -> tuple[
 
 
 def _destination_for_entry(
-    entry: Mapping[str, Any], *, root: Path | None = None
+    entry: Mapping[str, Any], *, root: Path | AssetRoots | None = None
 ) -> tuple[Path, Path, str]:
-    base = Path(root) if root is not None else models_root()
-    if not base.is_absolute():
-        base = Path.cwd() / base
+    roots = resolve_asset_roots(root=root)
+    base = roots.models
     if "target_path" in entry:
         target_path = entry["target_path"]
         target = _relative_asset_path(target_path, field="target_path")
         authorized_root, destination = _authorized_destination(
-            base.parent, target, field="target_path"
+            roots.comfyui, target, field="target_path"
         )
         return authorized_root, destination, "target_path"
     if "subdir" in entry:
@@ -174,12 +208,12 @@ def _open_owned_temp(parent: Path) -> tuple[Path, Any, tuple[int, int]]:
     return tmp, handle, identity
 
 
-def local_path(entry: Mapping[str, Any], *, root: Path | None = None) -> Path:
+def local_path(entry: Mapping[str, Any], *, root: Path | AssetRoots | None = None) -> Path:
     _authorized_root, destination, _field = _destination_for_entry(entry, root=root)
     return destination
 
 
-def is_present(entry: Mapping[str, Any], *, root: Path | None = None) -> bool:
+def is_present(entry: Mapping[str, Any], *, root: Path | AssetRoots | None = None) -> bool:
     path = local_path(entry, root=root)
     if not path.is_file() or path.stat().st_size <= 0:
         return False
@@ -192,7 +226,7 @@ def verify(
     entry: Mapping[str, Any],
     path: Path | None = None,
     *,
-    root: Path | None = None,
+    root: Path | AssetRoots | None = None,
     force: bool = False,
 ) -> bool:
     """Verify an asset, returning whether a durable receipt was reused.
@@ -345,7 +379,7 @@ def _refresh_source_receipt(
 
 
 def read_resolution_receipt(
-    entry: Mapping[str, Any], *, root: Path | None = None
+    entry: Mapping[str, Any], *, root: Path | AssetRoots | None = None
 ) -> dict[str, Any] | None:
     """Read the verified URL-resolution witness for a model entry, if valid."""
     path = local_path(entry, root=root)
@@ -381,9 +415,9 @@ def _model_stat_fingerprint(path: Path) -> dict[str, int]:
     }
 
 
-def _verification_receipt_path(path: Path, *, root: Path | None = None) -> Path:
+def _verification_receipt_path(path: Path, *, root: Path | AssetRoots | None = None) -> Path:
     canonical = str(path.resolve(strict=False))
-    cache_root = (root if root is not None else models_root()).expanduser().resolve(strict=False)
+    cache_root = resolve_asset_roots(root=root).models.expanduser().resolve(strict=False)
     key = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     return cache_root / ".vibecomfy" / "model-verification" / f"{key}.json"
 
@@ -455,7 +489,7 @@ def download(
     force: bool = False,
     force_verify: bool = False,
     client: Any = None,
-    root: Path | None = None,
+    root: Path | AssetRoots | None = None,
     quiet: bool = False,
 ) -> Path:
     authorized_root, path, destination_field = _destination_for_entry(entry, root=root)
@@ -642,7 +676,7 @@ def download_many(
     *,
     force: bool = False,
     force_verify: bool = False,
-    root: Path | None = None,
+    root: Path | AssetRoots | None = None,
     max_workers: int = 2,
     quiet: bool = False,
 ) -> list[Path]:

@@ -665,8 +665,9 @@ def _check_status(report: Mapping[str, Any], path: str) -> str | None:
 
 
 def _discover_models(root: Path, expected: tuple[dict[str, Any], ...]) -> dict[str, dict[str, Any]]:
-    model_root = root / "ComfyUI" / "models"
-    comfy_root = root / "ComfyUI"
+    from vibecomfy.fetch import local_path, resolve_asset_roots
+
+    roots = resolve_asset_roots(runtime_root=root)
     result: dict[str, dict[str, Any]] = {}
     for entry in expected:
         name = str(entry.get("name", entry.get("filename", "")))
@@ -674,7 +675,10 @@ def _discover_models(root: Path, expected: tuple[dict[str, Any], ...]) -> dict[s
         subdir = str(entry.get("subdir", entry.get("directory", "")))
         declared_target = entry.get("target_path")
         target_path = str(declared_target) if declared_target is not None else f"{subdir}/{filename}".strip("/")
-        path = (comfy_root / target_path) if declared_target is not None else (model_root / subdir / filename)
+        path = local_path(
+            {"target_path": target_path} if declared_target is not None
+            else {"subdir": subdir, "name": filename}, root=roots
+        )
         item: dict[str, Any] = {
             "name": name,
             "filename": filename,

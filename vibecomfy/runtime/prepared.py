@@ -215,7 +215,9 @@ def _prepare_workflow_unlocked(
     )
     from vibecomfy import fetch as fetch_assets
 
-    model_root = root / "ComfyUI" / "models" if runtime_root is not None else fetch_assets.models_root()
+    model_root = fetch_assets.resolve_asset_roots(
+        runtime_root=root if runtime_root is not None else None
+    )
     plan = build_plan(workflow, reference=reference, ensure_models=ensure_models, ensure_packs=ensure_packs)
     from vibecomfy.runtime.dependencies import (
         RuntimeDependencyError,
@@ -434,6 +436,11 @@ def _prepare_workflow_unlocked(
             entry for entry in plan.models
             if isinstance(entry.get("url"), str) and entry.get("url", "").strip()
         ]
+        # Preserve the existing path-only download seam for model-folder entries.
+        download_root = (
+            model_root if any("target_path" in entry for entry in download_entries)
+            else model_root.models
+        )
         model_executor = (
             ThreadPoolExecutor(max_workers=1, thread_name_prefix="vibecomfy-prepare")
             if download_entries else None
@@ -443,7 +450,7 @@ def _prepare_workflow_unlocked(
             try:
                 return fetch_assets.download_many(
                     download_entries,
-                    root=model_root,
+                    root=download_root,
                     max_workers=download_workers,
                     quiet=quiet,
                 )
@@ -453,7 +460,7 @@ def _prepare_workflow_unlocked(
                 # rolls out.
                 if "max_workers" not in str(exc):
                     raise
-                return fetch_assets.download_many(download_entries, root=model_root)
+                return fetch_assets.download_many(download_entries, root=download_root)
 
         if model_executor is not None:
             model_future = model_executor.submit(download_models)

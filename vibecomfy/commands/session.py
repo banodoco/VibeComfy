@@ -14,7 +14,7 @@ from typing import Any
 
 from vibecomfy.errors import RuntimeConfigurationError
 from vibecomfy.runtime.client import ComfyClient
-from vibecomfy.runtime.model_policy import normalized_models_root
+from vibecomfy.fetch import resolve_asset_roots
 from vibecomfy.runtime.locks import resource_lock
 from vibecomfy.runtime.session import (
     ServerSession,
@@ -80,9 +80,9 @@ def _config_from_args(args: argparse.Namespace) -> dict[str, Any]:
     runtime_root = getattr(args, "runtime_root", None)
     if runtime_root is not None:
         config["runtime_root"] = str(_runtime_root(runtime_root))
-        models_root = str(_runtime_root(runtime_root) / "ComfyUI" / "models")
-    else:
-        models_root = normalized_models_root()
+    models_root = str(resolve_asset_roots(
+        runtime_root=_runtime_root(runtime_root) if runtime_root is not None else None
+    ).models.expanduser().resolve(strict=False))
     config["models_root"] = models_root
     config["models_root_normalized"] = models_root
     config["locality"] = "managed_local_server"
