@@ -239,6 +239,14 @@
       "repo": null,
       "schema_sha256": null
     },
+    "comfy_core@cpu-runtime.json": {
+      "classes": 959,
+      "locked_commit": "6bfaacc67c2103481e5f0c84d75257cd0581d86a",
+      "pack": "comfy_core",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "db79f6bda81927f696aed8a941b81a4b243a52111d9605e5267099a112091ada",
+      "source_kind": "runtime_core_object_info"
+    },
     "comfy_core@runpod-snapshot.json": {
       "classes": 533,
       "locked_commit": null,

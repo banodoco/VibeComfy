@@ -2026,6 +2026,9 @@
     "[\"comfy_core\",\"evidence_identity\",\"object_info_comfyui_0.24.0.1\"]": [
       "comfy_core@object_info_comfyui_0.24.0.1.json"
     ],
+    "[\"comfy_core\",\"git_commit\",\"6bfaacc67c2103481e5f0c84d75257cd0581d86a\"]": [
+      "comfy_core@cpu-runtime.json"
+    ],
     "[\"comfy_core\",\"legacy\",\"comfy_core@runpod-snapshot.json\"]": [
       "comfy_core@runpod-snapshot.json"
     ],
