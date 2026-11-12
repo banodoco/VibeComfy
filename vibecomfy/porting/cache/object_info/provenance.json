@@ -87,6 +87,14 @@
       "repo": "https://github.com/city96/ComfyUI-GGUF.git",
       "schema_sha256": "1336fad984841444a9559b602c34ef11d1dd4b68a9a902437aaee6771ab5d2d3"
     },
+    "ComfyUI-H3-Motion-Context-MultiRef@cpu-runtime.json": {
+      "classes": 37,
+      "locked_commit": "361624fb406b63eb6694442eac6c895fc1533a70",
+      "pack": "ComfyUI-H3-Motion-Context-MultiRef",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "73ece3e1f9cb1f4bab156438e098315d29798ff0b17eb1711631663e71914e2b",
+      "source_kind": "runtime_object_info"
+    },
     "ComfyUI-Hunyuan3DTools@local-621fb54.json": {
       "classes": 2,
       "locked_commit": "621fb54cae1917279e1fc40ed861b2191d5e6896",

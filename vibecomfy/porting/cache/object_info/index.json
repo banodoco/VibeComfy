@@ -1954,6 +1954,9 @@
     "[\"ComfyUI-GIMM-VFI\",\"legacy\",\"ComfyUI-GIMM-VFI@stub.json\"]": [
       "ComfyUI-GIMM-VFI@stub.json"
     ],
+    "[\"ComfyUI-H3-Motion-Context-MultiRef\",\"git_commit\",\"361624fb406b63eb6694442eac6c895fc1533a70\"]": [
+      "ComfyUI-H3-Motion-Context-MultiRef@cpu-runtime.json"
+    ],
     "[\"ComfyUI-Hotshot\",\"evidence_identity\",\"hotshot-workflow-stub\"]": [
       "ComfyUI-Hotshot@stub.json"
     ],
