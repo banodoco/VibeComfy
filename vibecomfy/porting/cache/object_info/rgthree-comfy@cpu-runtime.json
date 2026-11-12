@@ -1,0 +1,2726 @@
+{
+  "Any Switch (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "Any Switch (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Any Switch (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "optional": [],
+      "required": []
+    },
+    "input_order_all": [],
+    "inputs": {
+      "optional": {},
+      "required": {}
+    },
+    "name": "Any Switch (rgthree)",
+    "object_info_widget_order": [],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "*",
+        "type": "*"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Context (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "Context (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Context (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "hidden": [
+        "version"
+      ],
+      "optional": [
+        "base_ctx",
+        "model",
+        "clip",
+        "vae",
+        "positive",
+        "negative",
+        "latent",
+        "images",
+        "seed"
+      ],
+      "required": []
+    },
+    "input_order_all": [
+      "base_ctx",
+      "model",
+      "clip",
+      "vae",
+      "positive",
+      "negative",
+      "latent",
+      "images",
+      "seed"
+    ],
+    "inputs": {
+      "hidden": {
+        "version": "FLOAT"
+      },
+      "optional": {
+        "base_ctx": [
+          "RGTHREE_CONTEXT"
+        ],
+        "clip": [
+          "CLIP"
+        ],
+        "images": [
+          "IMAGE"
+        ],
+        "latent": [
+          "LATENT"
+        ],
+        "model": [
+          "MODEL"
+        ],
+        "negative": [
+          "CONDITIONING"
+        ],
+        "positive": [
+          "CONDITIONING"
+        ],
+        "seed": [
+          "INT",
+          {
+            "forceInput": true
+          }
+        ],
+        "vae": [
+          "VAE"
+        ]
+      },
+      "required": {}
+    },
+    "name": "Context (rgthree)",
+    "object_info_widget_order": [
+      "base_ctx",
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      "seed"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONTEXT",
+        "type": "RGTHREE_CONTEXT"
+      },
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      },
+      {
+        "is_list": false,
+        "name": "VAE",
+        "type": "VAE"
+      },
+      {
+        "is_list": false,
+        "name": "POSITIVE",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "NEGATIVE",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      },
+      {
+        "is_list": false,
+        "name": "IMAGE",
+        "type": "IMAGE"
+      },
+      {
+        "is_list": false,
+        "name": "SEED",
+        "type": "INT"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Context Big (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "Context Big (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Context Big (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "hidden": [],
+      "optional": [
+        "base_ctx",
+        "model",
+        "clip",
+        "vae",
+        "positive",
+        "negative",
+        "latent",
+        "images",
+        "seed",
+        "steps",
+        "step_refiner",
+        "cfg",
+        "ckpt_name",
+        "sampler",
+        "scheduler",
+        "clip_width",
+        "clip_height",
+        "text_pos_g",
+        "text_pos_l",
+        "text_neg_g",
+        "text_neg_l",
+        "mask",
+        "control_net"
+      ],
+      "required": []
+    },
+    "input_order_all": [
+      "base_ctx",
+      "model",
+      "clip",
+      "vae",
+      "positive",
+      "negative",
+      "latent",
+      "images",
+      "seed",
+      "steps",
+      "step_refiner",
+      "cfg",
+      "ckpt_name",
+      "sampler",
+      "scheduler",
+      "clip_width",
+      "clip_height",
+      "text_pos_g",
+      "text_pos_l",
+      "text_neg_g",
+      "text_neg_l",
+      "mask",
+      "control_net"
+    ],
+    "inputs": {
+      "hidden": {},
+      "optional": {
+        "base_ctx": [
+          "RGTHREE_CONTEXT"
+        ],
+        "cfg": [
+          "FLOAT",
+          {
+            "forceInput": true
+          }
+        ],
+        "ckpt_name": [
+          [],
+          {
+            "forceInput": true
+          }
+        ],
+        "clip": [
+          "CLIP"
+        ],
+        "clip_height": [
+          "INT",
+          {
+            "forceInput": true
+          }
+        ],
+        "clip_width": [
+          "INT",
+          {
+            "forceInput": true
+          }
+        ],
+        "control_net": [
+          "CONTROL_NET"
+        ],
+        "images": [
+          "IMAGE"
+        ],
+        "latent": [
+          "LATENT"
+        ],
+        "mask": [
+          "MASK"
+        ],
+        "model": [
+          "MODEL"
+        ],
+        "negative": [
+          "CONDITIONING"
+        ],
+        "positive": [
+          "CONDITIONING"
+        ],
+        "sampler": [
+          [
+            "euler",
+            "euler_cfg_pp",
+            "euler_ancestral",
+            "euler_ancestral_cfg_pp",
+            "heun",
+            "heunpp2",
+            "exp_heun_2_x0",
+            "exp_heun_2_x0_sde",
+            "dpm_2",
+            "dpm_2_ancestral",
+            "lms",
+            "dpm_fast",
+            "dpm_adaptive",
+            "dpmpp_2s_ancestral",
+            "dpmpp_2s_ancestral_cfg_pp",
+            "dpmpp_sde",
+            "dpmpp_sde_gpu",
+            "dpmpp_2m",
+            "dpmpp_2m_cfg_pp",
+            "dpmpp_2m_sde",
+            "dpmpp_2m_sde_gpu",
+            "dpmpp_2m_sde_heun",
+            "dpmpp_2m_sde_heun_gpu",
+            "dpmpp_3m_sde",
+            "dpmpp_3m_sde_gpu",
+            "ddpm",
+            "lcm",
+            "ipndm",
+            "ipndm_v",
+            "deis",
+            "cfgpp_ud10_ab",
+            "res_multistep",
+            "res_multistep_cfg_pp",
+            "res_multistep_ancestral",
+            "res_multistep_ancestral_cfg_pp",
+            "gradient_estimation",
+            "gradient_estimation_cfg_pp",
+            "er_sde",
+            "seeds_2",
+            "seeds_3",
+            "sa_solver",
+            "sa_solver_pece",
+            "ddim",
+            "uni_pc",
+            "uni_pc_bh2"
+          ],
+          {
+            "forceInput": true
+          }
+        ],
+        "scheduler": [
+          [
+            "simple",
+            "sgm_uniform",
+            "karras",
+            "exponential",
+            "ddim_uniform",
+            "beta",
+            "normal",
+            "linear_quadratic",
+            "kl_optimal"
+          ],
+          {
+            "forceInput": true
+          }
+        ],
+        "seed": [
+          "INT",
+          {
+            "forceInput": true
+          }
+        ],
+        "step_refiner": [
+          "INT",
+          {
+            "forceInput": true
+          }
+        ],
+        "steps": [
+          "INT",
+          {
+            "forceInput": true
+          }
+        ],
+        "text_neg_g": [
+          "STRING",
+          {
+            "forceInput": true
+          }
+        ],
+        "text_neg_l": [
+          "STRING",
+          {
+            "forceInput": true
+          }
+        ],
+        "text_pos_g": [
+          "STRING",
+          {
+            "forceInput": true
+          }
+        ],
+        "text_pos_l": [
+          "STRING",
+          {
+            "forceInput": true
+          }
+        ],
+        "vae": [
+          "VAE"
+        ]
+      },
+      "required": {}
+    },
+    "name": "Context Big (rgthree)",
+    "object_info_widget_order": [
+      "base_ctx",
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      "seed",
+      "steps",
+      "step_refiner",
+      "cfg",
+      "ckpt_name",
+      "sampler",
+      "scheduler",
+      "clip_width",
+      "clip_height",
+      "text_pos_g",
+      "text_pos_l",
+      "text_neg_g",
+      "text_neg_l",
+      null,
+      null
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONTEXT",
+        "type": "RGTHREE_CONTEXT"
+      },
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      },
+      {
+        "is_list": false,
+        "name": "VAE",
+        "type": "VAE"
+      },
+      {
+        "is_list": false,
+        "name": "POSITIVE",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "NEGATIVE",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      },
+      {
+        "is_list": false,
+        "name": "IMAGE",
+        "type": "IMAGE"
+      },
+      {
+        "is_list": false,
+        "name": "SEED",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "STEPS",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "STEP_REFINER",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "CFG",
+        "type": "FLOAT"
+      },
+      {
+        "is_list": false,
+        "name": "CKPT_NAME",
+        "type": []
+      },
+      {
+        "is_list": false,
+        "name": "SAMPLER",
+        "type": [
+          "euler",
+          "euler_cfg_pp",
+          "euler_ancestral",
+          "euler_ancestral_cfg_pp",
+          "heun",
+          "heunpp2",
+          "exp_heun_2_x0",
+          "exp_heun_2_x0_sde",
+          "dpm_2",
+          "dpm_2_ancestral",
+          "lms",
+          "dpm_fast",
+          "dpm_adaptive",
+          "dpmpp_2s_ancestral",
+          "dpmpp_2s_ancestral_cfg_pp",
+          "dpmpp_sde",
+          "dpmpp_sde_gpu",
+          "dpmpp_2m",
+          "dpmpp_2m_cfg_pp",
+          "dpmpp_2m_sde",
+          "dpmpp_2m_sde_gpu",
+          "dpmpp_2m_sde_heun",
+          "dpmpp_2m_sde_heun_gpu",
+          "dpmpp_3m_sde",
+          "dpmpp_3m_sde_gpu",
+          "ddpm",
+          "lcm",
+          "ipndm",
+          "ipndm_v",
+          "deis",
+          "cfgpp_ud10_ab",
+          "res_multistep",
+          "res_multistep_cfg_pp",
+          "res_multistep_ancestral",
+          "res_multistep_ancestral_cfg_pp",
+          "gradient_estimation",
+          "gradient_estimation_cfg_pp",
+          "er_sde",
+          "seeds_2",
+          "seeds_3",
+          "sa_solver",
+          "sa_solver_pece",
+          "ddim",
+          "uni_pc",
+          "uni_pc_bh2"
+        ]
+      },
+      {
+        "is_list": false,
+        "name": "SCHEDULER",
+        "type": [
+          "simple",
+          "sgm_uniform",
+          "karras",
+          "exponential",
+          "ddim_uniform",
+          "beta",
+          "normal",
+          "linear_quadratic",
+          "kl_optimal"
+        ]
+      },
+      {
+        "is_list": false,
+        "name": "CLIP_WIDTH",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP_HEIGHT",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "TEXT_POS_G",
+        "type": "STRING"
+      },
+      {
+        "is_list": false,
+        "name": "TEXT_POS_L",
+        "type": "STRING"
+      },
+      {
+        "is_list": false,
+        "name": "TEXT_NEG_G",
+        "type": "STRING"
+      },
+      {
+        "is_list": false,
+        "name": "TEXT_NEG_L",
+        "type": "STRING"
+      },
+      {
+        "is_list": false,
+        "name": "MASK",
+        "type": "MASK"
+      },
+      {
+        "is_list": false,
+        "name": "CONTROL_NET",
+        "type": "CONTROL_NET"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Context Merge (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "Context Merge (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Context Merge (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "optional": [],
+      "required": []
+    },
+    "input_order_all": [],
+    "inputs": {
+      "optional": {},
+      "required": {}
+    },
+    "name": "Context Merge (rgthree)",
+    "object_info_widget_order": [],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONTEXT",
+        "type": "RGTHREE_CONTEXT"
+      },
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      },
+      {
+        "is_list": false,
+        "name": "VAE",
+        "type": "VAE"
+      },
+      {
+        "is_list": false,
+        "name": "POSITIVE",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "NEGATIVE",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      },
+      {
+        "is_list": false,
+        "name": "IMAGE",
+        "type": "IMAGE"
+      },
+      {
+        "is_list": false,
+        "name": "SEED",
+        "type": "INT"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Context Merge Big (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "Context Merge Big (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Context Merge Big (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "optional": [],
+      "required": []
+    },
+    "input_order_all": [],
+    "inputs": {
+      "optional": {},
+      "required": {}
+    },
+    "name": "Context Merge Big (rgthree)",
+    "object_info_widget_order": [],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONTEXT",
+        "type": "RGTHREE_CONTEXT"
+      },
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      },
+      {
+        "is_list": false,
+        "name": "VAE",
+        "type": "VAE"
+      },
+      {
+        "is_list": false,
+        "name": "POSITIVE",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "NEGATIVE",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      },
+      {
+        "is_list": false,
+        "name": "IMAGE",
+        "type": "IMAGE"
+      },
+      {
+        "is_list": false,
+        "name": "SEED",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "STEPS",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "STEP_REFINER",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "CFG",
+        "type": "FLOAT"
+      },
+      {
+        "is_list": false,
+        "name": "CKPT_NAME",
+        "type": []
+      },
+      {
+        "is_list": false,
+        "name": "SAMPLER",
+        "type": [
+          "euler",
+          "euler_cfg_pp",
+          "euler_ancestral",
+          "euler_ancestral_cfg_pp",
+          "heun",
+          "heunpp2",
+          "exp_heun_2_x0",
+          "exp_heun_2_x0_sde",
+          "dpm_2",
+          "dpm_2_ancestral",
+          "lms",
+          "dpm_fast",
+          "dpm_adaptive",
+          "dpmpp_2s_ancestral",
+          "dpmpp_2s_ancestral_cfg_pp",
+          "dpmpp_sde",
+          "dpmpp_sde_gpu",
+          "dpmpp_2m",
+          "dpmpp_2m_cfg_pp",
+          "dpmpp_2m_sde",
+          "dpmpp_2m_sde_gpu",
+          "dpmpp_2m_sde_heun",
+          "dpmpp_2m_sde_heun_gpu",
+          "dpmpp_3m_sde",
+          "dpmpp_3m_sde_gpu",
+          "ddpm",
+          "lcm",
+          "ipndm",
+          "ipndm_v",
+          "deis",
+          "cfgpp_ud10_ab",
+          "res_multistep",
+          "res_multistep_cfg_pp",
+          "res_multistep_ancestral",
+          "res_multistep_ancestral_cfg_pp",
+          "gradient_estimation",
+          "gradient_estimation_cfg_pp",
+          "er_sde",
+          "seeds_2",
+          "seeds_3",
+          "sa_solver",
+          "sa_solver_pece",
+          "ddim",
+          "uni_pc",
+          "uni_pc_bh2"
+        ]
+      },
+      {
+        "is_list": false,
+        "name": "SCHEDULER",
+        "type": [
+          "simple",
+          "sgm_uniform",
+          "karras",
+          "exponential",
+          "ddim_uniform",
+          "beta",
+          "normal",
+          "linear_quadratic",
+          "kl_optimal"
+        ]
+      },
+      {
+        "is_list": false,
+        "name": "CLIP_WIDTH",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP_HEIGHT",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "TEXT_POS_G",
+        "type": "STRING"
+      },
+      {
+        "is_list": false,
+        "name": "TEXT_POS_L",
+        "type": "STRING"
+      },
+      {
+        "is_list": false,
+        "name": "TEXT_NEG_G",
+        "type": "STRING"
+      },
+      {
+        "is_list": false,
+        "name": "TEXT_NEG_L",
+        "type": "STRING"
+      },
+      {
+        "is_list": false,
+        "name": "MASK",
+        "type": "MASK"
+      },
+      {
+        "is_list": false,
+        "name": "CONTROL_NET",
+        "type": "CONTROL_NET"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Context Switch (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "Context Switch (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Context Switch (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "optional": [],
+      "required": []
+    },
+    "input_order_all": [],
+    "inputs": {
+      "optional": {},
+      "required": {}
+    },
+    "name": "Context Switch (rgthree)",
+    "object_info_widget_order": [],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONTEXT",
+        "type": "RGTHREE_CONTEXT"
+      },
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      },
+      {
+        "is_list": false,
+        "name": "VAE",
+        "type": "VAE"
+      },
+      {
+        "is_list": false,
+        "name": "POSITIVE",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "NEGATIVE",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      },
+      {
+        "is_list": false,
+        "name": "IMAGE",
+        "type": "IMAGE"
+      },
+      {
+        "is_list": false,
+        "name": "SEED",
+        "type": "INT"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Context Switch Big (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "Context Switch Big (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Context Switch Big (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "optional": [],
+      "required": []
+    },
+    "input_order_all": [],
+    "inputs": {
+      "optional": {},
+      "required": {}
+    },
+    "name": "Context Switch Big (rgthree)",
+    "object_info_widget_order": [],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONTEXT",
+        "type": "RGTHREE_CONTEXT"
+      },
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      },
+      {
+        "is_list": false,
+        "name": "VAE",
+        "type": "VAE"
+      },
+      {
+        "is_list": false,
+        "name": "POSITIVE",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "NEGATIVE",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      },
+      {
+        "is_list": false,
+        "name": "IMAGE",
+        "type": "IMAGE"
+      },
+      {
+        "is_list": false,
+        "name": "SEED",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "STEPS",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "STEP_REFINER",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "CFG",
+        "type": "FLOAT"
+      },
+      {
+        "is_list": false,
+        "name": "CKPT_NAME",
+        "type": []
+      },
+      {
+        "is_list": false,
+        "name": "SAMPLER",
+        "type": [
+          "euler",
+          "euler_cfg_pp",
+          "euler_ancestral",
+          "euler_ancestral_cfg_pp",
+          "heun",
+          "heunpp2",
+          "exp_heun_2_x0",
+          "exp_heun_2_x0_sde",
+          "dpm_2",
+          "dpm_2_ancestral",
+          "lms",
+          "dpm_fast",
+          "dpm_adaptive",
+          "dpmpp_2s_ancestral",
+          "dpmpp_2s_ancestral_cfg_pp",
+          "dpmpp_sde",
+          "dpmpp_sde_gpu",
+          "dpmpp_2m",
+          "dpmpp_2m_cfg_pp",
+          "dpmpp_2m_sde",
+          "dpmpp_2m_sde_gpu",
+          "dpmpp_2m_sde_heun",
+          "dpmpp_2m_sde_heun_gpu",
+          "dpmpp_3m_sde",
+          "dpmpp_3m_sde_gpu",
+          "ddpm",
+          "lcm",
+          "ipndm",
+          "ipndm_v",
+          "deis",
+          "cfgpp_ud10_ab",
+          "res_multistep",
+          "res_multistep_cfg_pp",
+          "res_multistep_ancestral",
+          "res_multistep_ancestral_cfg_pp",
+          "gradient_estimation",
+          "gradient_estimation_cfg_pp",
+          "er_sde",
+          "seeds_2",
+          "seeds_3",
+          "sa_solver",
+          "sa_solver_pece",
+          "ddim",
+          "uni_pc",
+          "uni_pc_bh2"
+        ]
+      },
+      {
+        "is_list": false,
+        "name": "SCHEDULER",
+        "type": [
+          "simple",
+          "sgm_uniform",
+          "karras",
+          "exponential",
+          "ddim_uniform",
+          "beta",
+          "normal",
+          "linear_quadratic",
+          "kl_optimal"
+        ]
+      },
+      {
+        "is_list": false,
+        "name": "CLIP_WIDTH",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP_HEIGHT",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "TEXT_POS_G",
+        "type": "STRING"
+      },
+      {
+        "is_list": false,
+        "name": "TEXT_POS_L",
+        "type": "STRING"
+      },
+      {
+        "is_list": false,
+        "name": "TEXT_NEG_G",
+        "type": "STRING"
+      },
+      {
+        "is_list": false,
+        "name": "TEXT_NEG_L",
+        "type": "STRING"
+      },
+      {
+        "is_list": false,
+        "name": "MASK",
+        "type": "MASK"
+      },
+      {
+        "is_list": false,
+        "name": "CONTROL_NET",
+        "type": "CONTROL_NET"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Display Any (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "Display Any (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Display Any (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "hidden": [
+        "unique_id",
+        "extra_pnginfo"
+      ],
+      "required": [
+        "source"
+      ]
+    },
+    "input_order_all": [
+      "source"
+    ],
+    "inputs": {
+      "hidden": {
+        "extra_pnginfo": "EXTRA_PNGINFO",
+        "unique_id": "UNIQUE_ID"
+      },
+      "required": {
+        "source": [
+          "*",
+          {}
+        ]
+      }
+    },
+    "name": "Display Any (rgthree)",
+    "object_info_widget_order": [
+      "source"
+    ],
+    "outputs": [],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Display Int (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "Display Int (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Display Int (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "required": [
+        "input"
+      ]
+    },
+    "input_order_all": [
+      "input"
+    ],
+    "inputs": {
+      "required": {
+        "input": [
+          "INT",
+          {
+            "forceInput": true
+          }
+        ]
+      }
+    },
+    "name": "Display Int (rgthree)",
+    "object_info_widget_order": [
+      "input"
+    ],
+    "outputs": [],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Image Comparer (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "Compares two images with a hover slider, or click from properties.",
+    "display_name": "Image Comparer (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Image Comparer (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "hidden": [
+        "prompt",
+        "extra_pnginfo"
+      ],
+      "optional": [
+        "image_a",
+        "image_b"
+      ],
+      "required": []
+    },
+    "input_order_all": [
+      "image_a",
+      "image_b"
+    ],
+    "inputs": {
+      "hidden": {
+        "extra_pnginfo": "EXTRA_PNGINFO",
+        "prompt": "PROMPT"
+      },
+      "optional": {
+        "image_a": [
+          "IMAGE"
+        ],
+        "image_b": [
+          "IMAGE"
+        ]
+      },
+      "required": {}
+    },
+    "name": "Image Comparer (rgthree)",
+    "object_info_widget_order": [
+      null,
+      null
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "images",
+        "type": "IMAGE"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Image Inset Crop (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "Image Inset Crop (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Image Inset Crop (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "required": [
+        "image",
+        "measurement",
+        "left",
+        "right",
+        "top",
+        "bottom"
+      ]
+    },
+    "input_order_all": [
+      "image",
+      "measurement",
+      "left",
+      "right",
+      "top",
+      "bottom"
+    ],
+    "inputs": {
+      "required": {
+        "bottom": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ],
+        "image": [
+          "IMAGE"
+        ],
+        "left": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ],
+        "measurement": [
+          [
+            "Pixels",
+            "Percentage"
+          ]
+        ],
+        "right": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ],
+        "top": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ]
+      }
+    },
+    "name": "Image Inset Crop (rgthree)",
+    "object_info_widget_order": [
+      null,
+      "measurement",
+      "left",
+      "right",
+      "top",
+      "bottom"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "IMAGE",
+        "type": "IMAGE"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Image Resize (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "Resize the image.",
+    "display_name": "Image Resize (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Image Resize (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "required": [
+        "image",
+        "measurement",
+        "width",
+        "height",
+        "fit",
+        "method"
+      ]
+    },
+    "input_order_all": [
+      "image",
+      "measurement",
+      "width",
+      "height",
+      "fit",
+      "method"
+    ],
+    "inputs": {
+      "required": {
+        "fit": [
+          [
+            "crop",
+            "pad",
+            "contain"
+          ],
+          {
+            "tooltip": "'crop' resizes so the image covers the desired width and height, and center-crops the excess, returning exactly the desired width and height.\n'pad' resizes so the image fits inside the desired width and height, and fills the empty space returning exactly the desired width and height.\n'contain' resizes so the image fits inside the desired width and height, and returns the image with it's new size, with one side liekly smaller than the desired.\n\nNote, if either width or height is '0', the effective fit is 'contain'."
+          }
+        ],
+        "height": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 1
+          }
+        ],
+        "image": [
+          "IMAGE"
+        ],
+        "measurement": [
+          [
+            "pixels",
+            "percentage"
+          ]
+        ],
+        "method": [
+          [
+            "nearest-exact",
+            "bilinear",
+            "area",
+            "bicubic",
+            "lanczos"
+          ]
+        ],
+        "width": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 1,
+            "tooltip": "The width of the desired resize. A pixel value if measurement is 'pixels' or a 100% scale percentage value if measurement is 'percentage'. Passing '0' will calculate the dimension based on the height."
+          }
+        ]
+      }
+    },
+    "name": "Image Resize (rgthree)",
+    "object_info_widget_order": [
+      null,
+      "measurement",
+      "width",
+      "height",
+      "fit",
+      "method"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "IMAGE",
+        "type": "IMAGE"
+      },
+      {
+        "is_list": false,
+        "name": "WIDTH",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "HEIGHT",
+        "type": "INT"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Image or Latent Size (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "Image or Latent Size (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Image or Latent Size (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "optional": [],
+      "required": []
+    },
+    "input_order_all": [],
+    "inputs": {
+      "optional": {},
+      "required": {}
+    },
+    "name": "Image or Latent Size (rgthree)",
+    "object_info_widget_order": [],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "WIDTH",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "HEIGHT",
+        "type": "INT"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "KSampler Config (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "KSampler Config (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "KSampler Config (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "required": [
+        "steps_total",
+        "refiner_step",
+        "cfg",
+        "sampler_name",
+        "scheduler"
+      ]
+    },
+    "input_order_all": [
+      "steps_total",
+      "refiner_step",
+      "cfg",
+      "sampler_name",
+      "scheduler"
+    ],
+    "inputs": {
+      "required": {
+        "cfg": [
+          "FLOAT",
+          {
+            "default": 8.0,
+            "max": 100.0,
+            "min": 0.0,
+            "step": 0.5
+          }
+        ],
+        "refiner_step": [
+          "INT",
+          {
+            "default": 24,
+            "max": 16384,
+            "min": 1,
+            "step": 1
+          }
+        ],
+        "sampler_name": [
+          [
+            "euler",
+            "euler_cfg_pp",
+            "euler_ancestral",
+            "euler_ancestral_cfg_pp",
+            "heun",
+            "heunpp2",
+            "exp_heun_2_x0",
+            "exp_heun_2_x0_sde",
+            "dpm_2",
+            "dpm_2_ancestral",
+            "lms",
+            "dpm_fast",
+            "dpm_adaptive",
+            "dpmpp_2s_ancestral",
+            "dpmpp_2s_ancestral_cfg_pp",
+            "dpmpp_sde",
+            "dpmpp_sde_gpu",
+            "dpmpp_2m",
+            "dpmpp_2m_cfg_pp",
+            "dpmpp_2m_sde",
+            "dpmpp_2m_sde_gpu",
+            "dpmpp_2m_sde_heun",
+            "dpmpp_2m_sde_heun_gpu",
+            "dpmpp_3m_sde",
+            "dpmpp_3m_sde_gpu",
+            "ddpm",
+            "lcm",
+            "ipndm",
+            "ipndm_v",
+            "deis",
+            "cfgpp_ud10_ab",
+            "res_multistep",
+            "res_multistep_cfg_pp",
+            "res_multistep_ancestral",
+            "res_multistep_ancestral_cfg_pp",
+            "gradient_estimation",
+            "gradient_estimation_cfg_pp",
+            "er_sde",
+            "seeds_2",
+            "seeds_3",
+            "sa_solver",
+            "sa_solver_pece",
+            "ddim",
+            "uni_pc",
+            "uni_pc_bh2"
+          ]
+        ],
+        "scheduler": [
+          [
+            "simple",
+            "sgm_uniform",
+            "karras",
+            "exponential",
+            "ddim_uniform",
+            "beta",
+            "normal",
+            "linear_quadratic",
+            "kl_optimal"
+          ]
+        ],
+        "steps_total": [
+          "INT",
+          {
+            "default": 30,
+            "max": 16384,
+            "min": 1,
+            "step": 1
+          }
+        ]
+      }
+    },
+    "name": "KSampler Config (rgthree)",
+    "object_info_widget_order": [
+      "steps_total",
+      "refiner_step",
+      "cfg",
+      "sampler_name",
+      "scheduler"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "STEPS",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "REFINER_STEP",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "CFG",
+        "type": "FLOAT"
+      },
+      {
+        "is_list": false,
+        "name": "SAMPLER",
+        "type": [
+          "euler",
+          "euler_cfg_pp",
+          "euler_ancestral",
+          "euler_ancestral_cfg_pp",
+          "heun",
+          "heunpp2",
+          "exp_heun_2_x0",
+          "exp_heun_2_x0_sde",
+          "dpm_2",
+          "dpm_2_ancestral",
+          "lms",
+          "dpm_fast",
+          "dpm_adaptive",
+          "dpmpp_2s_ancestral",
+          "dpmpp_2s_ancestral_cfg_pp",
+          "dpmpp_sde",
+          "dpmpp_sde_gpu",
+          "dpmpp_2m",
+          "dpmpp_2m_cfg_pp",
+          "dpmpp_2m_sde",
+          "dpmpp_2m_sde_gpu",
+          "dpmpp_2m_sde_heun",
+          "dpmpp_2m_sde_heun_gpu",
+          "dpmpp_3m_sde",
+          "dpmpp_3m_sde_gpu",
+          "ddpm",
+          "lcm",
+          "ipndm",
+          "ipndm_v",
+          "deis",
+          "cfgpp_ud10_ab",
+          "res_multistep",
+          "res_multistep_cfg_pp",
+          "res_multistep_ancestral",
+          "res_multistep_ancestral_cfg_pp",
+          "gradient_estimation",
+          "gradient_estimation_cfg_pp",
+          "er_sde",
+          "seeds_2",
+          "seeds_3",
+          "sa_solver",
+          "sa_solver_pece",
+          "ddim",
+          "uni_pc",
+          "uni_pc_bh2"
+        ]
+      },
+      {
+        "is_list": false,
+        "name": "SCHEDULER",
+        "type": [
+          "simple",
+          "sgm_uniform",
+          "karras",
+          "exponential",
+          "ddim_uniform",
+          "beta",
+          "normal",
+          "linear_quadratic",
+          "kl_optimal"
+        ]
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Lora Loader Stack (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "Lora Loader Stack (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Lora Loader Stack (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "required": [
+        "model",
+        "clip",
+        "lora_01",
+        "strength_01",
+        "lora_02",
+        "strength_02",
+        "lora_03",
+        "strength_03",
+        "lora_04",
+        "strength_04"
+      ]
+    },
+    "input_order_all": [
+      "model",
+      "clip",
+      "lora_01",
+      "strength_01",
+      "lora_02",
+      "strength_02",
+      "lora_03",
+      "strength_03",
+      "lora_04",
+      "strength_04"
+    ],
+    "inputs": {
+      "required": {
+        "clip": [
+          "CLIP"
+        ],
+        "lora_01": [
+          [
+            "None"
+          ]
+        ],
+        "lora_02": [
+          [
+            "None"
+          ]
+        ],
+        "lora_03": [
+          [
+            "None"
+          ]
+        ],
+        "lora_04": [
+          [
+            "None"
+          ]
+        ],
+        "model": [
+          "MODEL"
+        ],
+        "strength_01": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 10.0,
+            "min": -10.0,
+            "step": 0.01
+          }
+        ],
+        "strength_02": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 10.0,
+            "min": -10.0,
+            "step": 0.01
+          }
+        ],
+        "strength_03": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 10.0,
+            "min": -10.0,
+            "step": 0.01
+          }
+        ],
+        "strength_04": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 10.0,
+            "min": -10.0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    "name": "Lora Loader Stack (rgthree)",
+    "object_info_widget_order": [
+      null,
+      null,
+      "lora_01",
+      "strength_01",
+      "lora_02",
+      "strength_02",
+      "lora_03",
+      "strength_03",
+      "lora_04",
+      "strength_04"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Power Lora Loader (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "Power Lora Loader (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Power Lora Loader (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "hidden": [],
+      "optional": [
+        "model",
+        "clip"
+      ],
+      "required": []
+    },
+    "input_order_all": [
+      "model",
+      "clip"
+    ],
+    "inputs": {
+      "hidden": {},
+      "optional": {
+        "clip": [
+          "CLIP"
+        ],
+        "model": [
+          "MODEL"
+        ]
+      },
+      "required": {}
+    },
+    "name": "Power Lora Loader (rgthree)",
+    "object_info_widget_order": [
+      null,
+      null
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Power Primitive (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "Power Primitive (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Power Primitive (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "optional": [],
+      "required": []
+    },
+    "input_order_all": [],
+    "inputs": {
+      "optional": {},
+      "required": {}
+    },
+    "name": "Power Primitive (rgthree)",
+    "object_info_widget_order": [],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "*",
+        "type": "*"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Power Prompt (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "Power Prompt (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Power Prompt (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "hidden": [
+        "values_insert_saved"
+      ],
+      "optional": [
+        "opt_model",
+        "opt_clip",
+        "insert_lora",
+        "insert_embedding",
+        "insert_saved"
+      ],
+      "required": [
+        "prompt"
+      ]
+    },
+    "input_order_all": [
+      "prompt",
+      "opt_model",
+      "opt_clip",
+      "insert_lora",
+      "insert_embedding",
+      "insert_saved"
+    ],
+    "inputs": {
+      "hidden": {
+        "values_insert_saved": [
+          [
+            "CHOOSE"
+          ]
+        ]
+      },
+      "optional": {
+        "insert_embedding": [
+          [
+            "CHOOSE"
+          ]
+        ],
+        "insert_lora": [
+          [
+            "CHOOSE",
+            "DISABLE LORAS"
+          ]
+        ],
+        "insert_saved": [
+          [
+            "CHOOSE"
+          ]
+        ],
+        "opt_clip": [
+          "CLIP"
+        ],
+        "opt_model": [
+          "MODEL"
+        ]
+      },
+      "required": {
+        "prompt": [
+          "STRING",
+          {
+            "dynamicPrompts": true,
+            "multiline": true
+          }
+        ]
+      }
+    },
+    "name": "Power Prompt (rgthree)",
+    "object_info_widget_order": [
+      "prompt",
+      null,
+      null,
+      "insert_lora",
+      "insert_embedding",
+      "insert_saved"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      },
+      {
+        "is_list": false,
+        "name": "TEXT",
+        "type": "STRING"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Power Prompt - Simple (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "Power Prompt - Simple (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Power Prompt - Simple (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "hidden": [
+        "values_insert_saved"
+      ],
+      "optional": [
+        "opt_clip",
+        "insert_embedding",
+        "insert_saved"
+      ],
+      "required": [
+        "prompt"
+      ]
+    },
+    "input_order_all": [
+      "prompt",
+      "opt_clip",
+      "insert_embedding",
+      "insert_saved"
+    ],
+    "inputs": {
+      "hidden": {
+        "values_insert_saved": [
+          [
+            "CHOOSE"
+          ]
+        ]
+      },
+      "optional": {
+        "insert_embedding": [
+          [
+            "CHOOSE"
+          ]
+        ],
+        "insert_saved": [
+          [
+            "CHOOSE"
+          ]
+        ],
+        "opt_clip": [
+          "CLIP"
+        ]
+      },
+      "required": {
+        "prompt": [
+          "STRING",
+          {
+            "dynamicPrompts": true,
+            "multiline": true
+          }
+        ]
+      }
+    },
+    "name": "Power Prompt - Simple (rgthree)",
+    "object_info_widget_order": [
+      "prompt",
+      null,
+      "insert_embedding",
+      "insert_saved"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "TEXT",
+        "type": "STRING"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Power Puter (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "Power Puter (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Power Puter (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "hidden": [
+        "unique_id",
+        "extra_pnginfo",
+        "prompt",
+        "dynprompt"
+      ],
+      "optional": [],
+      "required": []
+    },
+    "input_order_all": [],
+    "inputs": {
+      "hidden": {
+        "dynprompt": "DYNPROMPT",
+        "extra_pnginfo": "EXTRA_PNGINFO",
+        "prompt": "PROMPT",
+        "unique_id": "UNIQUE_ID"
+      },
+      "optional": {},
+      "required": {}
+    },
+    "name": "Power Puter (rgthree)",
+    "object_info_widget_order": [],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "*",
+        "type": "*"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "SDXL Empty Latent Image (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "SDXL Empty Latent Image (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "SDXL Empty Latent Image (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "required": [
+        "dimensions",
+        "clip_scale",
+        "batch_size"
+      ]
+    },
+    "input_order_all": [
+      "dimensions",
+      "clip_scale",
+      "batch_size"
+    ],
+    "inputs": {
+      "required": {
+        "batch_size": [
+          "INT",
+          {
+            "default": 1,
+            "max": 64,
+            "min": 1
+          }
+        ],
+        "clip_scale": [
+          "FLOAT",
+          {
+            "default": 2.0,
+            "max": 10.0,
+            "min": 1.0,
+            "step": 0.5
+          }
+        ],
+        "dimensions": [
+          [
+            "1536 x 640   (landscape)",
+            "1344 x 768   (landscape)",
+            "1216 x 832   (landscape)",
+            "1152 x 896   (landscape)",
+            "1024 x 1024  (square)",
+            " 896 x 1152  (portrait)",
+            " 832 x 1216  (portrait)",
+            " 768 x 1344  (portrait)",
+            " 640 x 1536  (portrait)"
+          ],
+          {
+            "default": "1024 x 1024  (square)"
+          }
+        ]
+      }
+    },
+    "name": "SDXL Empty Latent Image (rgthree)",
+    "object_info_widget_order": [
+      "dimensions",
+      "clip_scale",
+      "batch_size"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP_WIDTH",
+        "type": "INT"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP_HEIGHT",
+        "type": "INT"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "SDXL Power Prompt - Positive (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "SDXL Power Prompt - Positive (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "SDXL Power Prompt - Positive (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "hidden": [
+        "values_insert_saved"
+      ],
+      "optional": [
+        "opt_model",
+        "opt_clip",
+        "opt_clip_width",
+        "opt_clip_height",
+        "insert_lora",
+        "insert_embedding",
+        "insert_saved",
+        "target_width",
+        "target_height",
+        "crop_width",
+        "crop_height"
+      ],
+      "required": [
+        "prompt_g",
+        "prompt_l"
+      ]
+    },
+    "input_order_all": [
+      "prompt_g",
+      "prompt_l",
+      "opt_model",
+      "opt_clip",
+      "opt_clip_width",
+      "opt_clip_height",
+      "insert_lora",
+      "insert_embedding",
+      "insert_saved",
+      "target_width",
+      "target_height",
+      "crop_width",
+      "crop_height"
+    ],
+    "inputs": {
+      "hidden": {
+        "values_insert_saved": [
+          [
+            "CHOOSE"
+          ]
+        ]
+      },
+      "optional": {
+        "crop_height": [
+          "INT",
+          {
+            "default": -1,
+            "max": 16384,
+            "min": -1
+          }
+        ],
+        "crop_width": [
+          "INT",
+          {
+            "default": -1,
+            "max": 16384,
+            "min": -1
+          }
+        ],
+        "insert_embedding": [
+          [
+            "CHOOSE"
+          ]
+        ],
+        "insert_lora": [
+          [
+            "CHOOSE",
+            "DISABLE LORAS"
+          ]
+        ],
+        "insert_saved": [
+          [
+            "CHOOSE"
+          ]
+        ],
+        "opt_clip": [
+          "CLIP"
+        ],
+        "opt_clip_height": [
+          "INT",
+          {
+            "default": 1024.0,
+            "forceInput": true,
+            "max": 16384,
+            "min": 0
+          }
+        ],
+        "opt_clip_width": [
+          "INT",
+          {
+            "default": 1024.0,
+            "forceInput": true,
+            "max": 16384,
+            "min": 0
+          }
+        ],
+        "opt_model": [
+          "MODEL"
+        ],
+        "target_height": [
+          "INT",
+          {
+            "default": -1,
+            "max": 16384,
+            "min": -1
+          }
+        ],
+        "target_width": [
+          "INT",
+          {
+            "default": -1,
+            "max": 16384,
+            "min": -1
+          }
+        ]
+      },
+      "required": {
+        "prompt_g": [
+          "STRING",
+          {
+            "dynamicPrompts": true,
+            "multiline": true
+          }
+        ],
+        "prompt_l": [
+          "STRING",
+          {
+            "dynamicPrompts": true,
+            "multiline": true
+          }
+        ]
+      }
+    },
+    "name": "SDXL Power Prompt - Positive (rgthree)",
+    "object_info_widget_order": [
+      "prompt_g",
+      "prompt_l",
+      null,
+      null,
+      "opt_clip_width",
+      "opt_clip_height",
+      "insert_lora",
+      "insert_embedding",
+      "insert_saved",
+      "target_width",
+      "target_height",
+      "crop_width",
+      "crop_height"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      },
+      {
+        "is_list": false,
+        "name": "TEXT_G",
+        "type": "STRING"
+      },
+      {
+        "is_list": false,
+        "name": "TEXT_L",
+        "type": "STRING"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "SDXL Power Prompt - Simple / Negative (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "SDXL Power Prompt - Simple / Negative (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "SDXL Power Prompt - Simple / Negative (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "hidden": [
+        "values_insert_saved"
+      ],
+      "optional": [
+        "opt_clip",
+        "opt_clip_width",
+        "opt_clip_height",
+        "insert_embedding",
+        "insert_saved",
+        "target_width",
+        "target_height",
+        "crop_width",
+        "crop_height"
+      ],
+      "required": [
+        "prompt_g",
+        "prompt_l"
+      ]
+    },
+    "input_order_all": [
+      "prompt_g",
+      "prompt_l",
+      "opt_clip",
+      "opt_clip_width",
+      "opt_clip_height",
+      "insert_embedding",
+      "insert_saved",
+      "target_width",
+      "target_height",
+      "crop_width",
+      "crop_height"
+    ],
+    "inputs": {
+      "hidden": {
+        "values_insert_saved": [
+          [
+            "CHOOSE"
+          ]
+        ]
+      },
+      "optional": {
+        "crop_height": [
+          "INT",
+          {
+            "default": -1,
+            "max": 16384,
+            "min": -1
+          }
+        ],
+        "crop_width": [
+          "INT",
+          {
+            "default": -1,
+            "max": 16384,
+            "min": -1
+          }
+        ],
+        "insert_embedding": [
+          [
+            "CHOOSE"
+          ]
+        ],
+        "insert_saved": [
+          [
+            "CHOOSE"
+          ]
+        ],
+        "opt_clip": [
+          "CLIP"
+        ],
+        "opt_clip_height": [
+          "INT",
+          {
+            "default": 1024.0,
+            "forceInput": true,
+            "max": 16384,
+            "min": 0
+          }
+        ],
+        "opt_clip_width": [
+          "INT",
+          {
+            "default": 1024.0,
+            "forceInput": true,
+            "max": 16384,
+            "min": 0
+          }
+        ],
+        "target_height": [
+          "INT",
+          {
+            "default": -1,
+            "max": 16384,
+            "min": -1
+          }
+        ],
+        "target_width": [
+          "INT",
+          {
+            "default": -1,
+            "max": 16384,
+            "min": -1
+          }
+        ]
+      },
+      "required": {
+        "prompt_g": [
+          "STRING",
+          {
+            "dynamicPrompts": true,
+            "multiline": true
+          }
+        ],
+        "prompt_l": [
+          "STRING",
+          {
+            "dynamicPrompts": true,
+            "multiline": true
+          }
+        ]
+      }
+    },
+    "name": "SDXL Power Prompt - Simple / Negative (rgthree)",
+    "object_info_widget_order": [
+      "prompt_g",
+      "prompt_l",
+      null,
+      "opt_clip_width",
+      "opt_clip_height",
+      "insert_embedding",
+      "insert_saved",
+      "target_width",
+      "target_height",
+      "crop_width",
+      "crop_height"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "TEXT_G",
+        "type": "STRING"
+      },
+      {
+        "is_list": false,
+        "name": "TEXT_L",
+        "type": "STRING"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  },
+  "Seed (rgthree)": {
+    "category": "rgthree",
+    "class_schema_sha256": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "description": "",
+    "display_name": "Seed (rgthree)",
+    "evidence_identity": "rgthree-comfy.cpu.json",
+    "function": "Seed (rgthree)",
+    "git_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+    "input_order": {
+      "hidden": [
+        "prompt",
+        "extra_pnginfo",
+        "unique_id"
+      ],
+      "required": [
+        "seed"
+      ]
+    },
+    "input_order_all": [
+      "seed"
+    ],
+    "inputs": {
+      "hidden": {
+        "extra_pnginfo": "EXTRA_PNGINFO",
+        "prompt": "PROMPT",
+        "unique_id": "UNIQUE_ID"
+      },
+      "required": {
+        "seed": [
+          "INT",
+          {
+            "default": 0,
+            "max": 1125899906842624,
+            "min": -1125899906842624
+          }
+        ]
+      }
+    },
+    "name": "Seed (rgthree)",
+    "object_info_widget_order": [
+      "seed"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "SEED",
+        "type": "INT"
+      }
+    ],
+    "pack": "rgthree-comfy",
+    "pack_slug": "rgthree-comfy",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.rgthree-comfy",
+    "schema_hash": "9a4f260e84f7476f50a8632db0e808361723ce044572732911edd4fe5cfec2b4",
+    "source_kind": "runtime_object_info"
+  }
+}

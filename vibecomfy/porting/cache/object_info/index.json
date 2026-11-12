@@ -2083,6 +2083,9 @@
     "[\"custom_nodes.offline\",\"legacy\",\"custom_nodes.offline@runpod-snapshot.json\"]": [
       "custom_nodes.offline@runpod-snapshot.json"
     ],
+    "[\"rgthree-comfy\",\"git_commit\",\"738105af5fb14e96fbecaf406dc356e284797e8c\"]": [
+      "rgthree-comfy@cpu-runtime.json"
+    ],
     "[\"rgthree-comfy\",\"legacy\",\"rgthree-comfy@runpod-snapshot.json\"]": [
       "rgthree-comfy@runpod-snapshot.json"
     ],

@@ -361,6 +361,14 @@
       "schema_sha256": "e7ac1bc8b4f0061c578a0f13d5bafd134fada020ff37ba53f303535b05c95e1a",
       "source_kind": "on_demand_import"
     },
+    "rgthree-comfy@cpu-runtime.json": {
+      "classes": 24,
+      "locked_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+      "pack": "rgthree-comfy",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "5b8632c5ea411da57d1275af89a33db60ce8459fba73acc8ac4e41e0f8b174a3",
+      "source_kind": "runtime_object_info"
+    },
     "rgthree-comfy@runpod-snapshot.json": {
       "classes": 24,
       "locked_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
