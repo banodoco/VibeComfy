@@ -505,6 +505,23 @@ def _category_qualified_template_id(template_id: str, source_path: str | None) -
     return template_id
 
 
+def _declared_template_id(metadata: Mapping[str, Any], raw_workflow_id: str) -> str | None:
+    """The template's own fully qualified identity, if its provenance declares one.
+
+    A ready template that names no ``template_id`` still records ``ready_id`` (for
+    example ``audio/ace_step_1_5_t2a_song``). Using it keeps the workflow id the
+    same wherever the file is loaded from, such as a staged snapshot outside
+    ``ready_templates/<category>/``, where the path-derived prefix would be lost.
+    """
+    if "/" in raw_workflow_id:
+        return None
+    provenance = metadata.get("provenance")
+    declared = provenance.get("ready_id") if isinstance(provenance, Mapping) else None
+    if isinstance(declared, str) and declared.count("/") == 1 and declared.rsplit("/", 1)[-1] == raw_workflow_id:
+        return declared
+    return None
+
+
 def _derive_output_kind(class_type: str | None) -> str | None:
     if not class_type:
         return None
@@ -544,7 +561,8 @@ def new_workflow(
 
     companion = _v2_companion_for_build(metadata, source_path)
     raw_workflow_id = str(metadata.get("ready_template") or metadata.get("workflow_template") or "ready_template")
-    workflow_id = _category_qualified_template_id(raw_workflow_id, source_path)
+    workflow_id = _declared_template_id(metadata, raw_workflow_id) or _category_qualified_template_id(
+        raw_workflow_id, source_path)
     metadata = dict(metadata)
     metadata.pop("source_bundle", None)
     metadata["ready_template"] = workflow_id
