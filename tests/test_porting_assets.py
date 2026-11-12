@@ -62,7 +62,7 @@ def test_porting_asset_analysis_merges_sources_and_warns_on_filename_only_candid
 
     assert [(candidate["name"], candidate["url"], candidate["subdir"]) for candidate in payload["candidates"]] == [
         ("api_only.safetensors", None, "checkpoints"),
-        ("filename_only.safetensors", None, "checkpoints"),
+        ("filename_only.safetensors", None, None),
         ("from_metadata.safetensors", "https://example.test/from_metadata.safetensors", "checkpoints"),
         ("raw_filename_only.safetensors", None, "diffusion_models"),
         ("ready_meta.safetensors", "https://example.test/ready_meta.safetensors", "diffusion_models"),

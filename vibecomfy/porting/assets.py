@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
 
-from vibecomfy.model_assets import _node_class_type, _strip_download_true, _subdir_for_model
+from vibecomfy.model_assets import _node_class_type, _strip_download_true, _subdir_for_model, _unknown_placement_reason
 from vibecomfy.porting.report import AssetCandidate, AssetCheckResult, PortIssue
 
 
@@ -201,16 +201,11 @@ def candidates_from_api_prompt(api_prompt: Mapping[str, Any]) -> list[AssetCandi
         for key, value in inputs.items():
             if not isinstance(value, str) or not _looks_like_model_input(key, value):
                 continue
-            candidates.append(
-                AssetCandidate(
-                    name=value,
-                    source="api_prompt",
-                    subdir=_subdir_for_model({"name": value}, class_type=class_type, url=""),
-                    node_id=str(node_id),
-                    class_type=class_type,
-                    metadata={"input": key},
-                )
+            candidate = _candidate_from_model_entry(
+                {"name": value}, source="api_prompt", class_type=class_type, node_id=str(node_id),
             )
+            candidate.metadata["input"] = key
+            candidates.append(candidate)
     return candidates
 
 
@@ -239,7 +234,7 @@ def model_requirements_from_api_prompt(
     """
     by_name: dict[str, list[dict[str, Any]]] = {}
     for candidate in candidates_from_api_prompt(api_prompt or {}):
-        record = {"name": candidate.name, "subdir": candidate.subdir}
+        record = {"name": candidate.name, "subdir": candidate.subdir, "class_type": candidate.class_type}
         records = by_name.setdefault(candidate.name, [])
         if record not in records:
             records.append(record)
@@ -323,6 +318,7 @@ def filename_only_warnings(candidates: Iterable[AssetCandidate]) -> list[PortIss
                     "name": candidate.name,
                     "source": candidate.source,
                     "subdir": candidate.subdir,
+                    "placement_reason": candidate.placement_reason,
                     **candidate.metadata,
                 },
                 recommendation="Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
@@ -342,25 +338,20 @@ def _candidate_from_model_entry(
         name = model
         if not _looks_like_model_filename(name):
             return None
-        return AssetCandidate(
-            name=name,
-            source=source,
-            subdir=_subdir_for_model({"name": name}, class_type=class_type, url=""),
-            node_id=node_id,
-            class_type=class_type or None,
-        )
+        model = {"name": name}
     if not isinstance(model, Mapping):
         return None
     name = model.get("name")
     if not isinstance(name, str) or not name:
         return None
     url = model.get("url")
+    class_type = class_type or model.get("class_type") or ""
     url_value = _strip_download_true(url) if isinstance(url, str) and url else None
     subdir = _subdir_for_model(model, class_type=class_type, url=url_value or "")
     metadata = {
         key: value
         for key, value in model.items()
-        if key not in {"name", "url", "subdir", "directory"}
+        if key not in {"name", "url", "subdir", "directory", "class_type", "placement_reason"}
     }
     return AssetCandidate(
         name=name,
@@ -369,6 +360,7 @@ def _candidate_from_model_entry(
         source=source,
         node_id=node_id,
         class_type=class_type or None,
+        placement_reason=_unknown_placement_reason(class_type) if subdir is None else None,
         metadata=metadata,
     )
 
@@ -390,6 +382,7 @@ def _merge_candidates(candidates: Iterable[AssetCandidate]) -> list[AssetCandida
             existing.node_id = candidate.node_id
         if existing.class_type is None and candidate.class_type is not None:
             existing.class_type = candidate.class_type
+            existing.placement_reason = candidate.placement_reason
         existing.metadata.update({key: value for key, value in candidate.metadata.items() if key != "sources"})
     return sorted(merged.values(), key=lambda candidate: (candidate.name, candidate.subdir or "", candidate.url or ""))
 

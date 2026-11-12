@@ -672,13 +672,10 @@ def _discover_models(root: Path, expected: tuple[dict[str, Any], ...]) -> dict[s
     for entry in expected:
         name = str(entry.get("name", entry.get("filename", "")))
         filename = str(entry.get("filename", name))
-        subdir = str(entry.get("subdir", entry.get("directory", "")))
+        subdir = entry.get("subdir")
         declared_target = entry.get("target_path")
-        target_path = str(declared_target) if declared_target is not None else f"{subdir}/{filename}".strip("/")
-        path = local_path(
-            {"target_path": target_path} if declared_target is not None
-            else {"subdir": subdir, "name": filename}, root=roots
-        )
+        path = local_path(entry, root=roots)
+        target_path = str(declared_target) if declared_target is not None else f"{subdir}/{filename}"
         item: dict[str, Any] = {
             "name": name,
             "filename": filename,

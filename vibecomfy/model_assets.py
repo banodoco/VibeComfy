@@ -533,7 +533,7 @@ def _normalise_model_entry(model: Any, *, class_type: str) -> dict[str, Any] | N
     if url is not None and (not isinstance(url, str) or not url):
         return None
     subdir = _subdir_for_model(model, class_type=class_type, url=url or "")
-    if not isinstance(subdir, str) or not subdir:
+    if subdir is not None and (not isinstance(subdir, str) or not subdir):
         return None
     entry: dict[str, Any] = {
         "name": name,
@@ -541,6 +541,8 @@ def _normalise_model_entry(model: Any, *, class_type: str) -> dict[str, Any] | N
         "subdir": subdir,
         **_OPTIONAL_MODEL_RECORD_DEFAULTS,
     }
+    if subdir is None:
+        entry.update(class_type=class_type, placement_reason=_unknown_placement_reason(class_type))
     if url is None:
         entry["unresolved"] = True
     if "target_path" in model:
@@ -571,8 +573,22 @@ def _subdir_for_model(model: Mapping[str, Any], *, class_type: str, url: str) ->
     split_subdir = _hf_split_files_subdir(url)
     if split_subdir is not None:
         return split_subdir
-    subdir = _CLASS_TYPE_SUBDIRS.get(class_type)
+    return _CLASS_TYPE_SUBDIRS.get(class_type)
+
+
+def _unknown_placement_reason(class_type: str) -> str:
+    return f"no known directory for loader class {class_type!r}" if class_type else "no loader class"
+
+
+def require_model_placement(model: Mapping[str, Any]) -> str:
+    """Require a destination only when an owner needs to locate/place a file.
+
+    Analysis may carry an unknown directory. No consumer may turn that fact
+    into an implicit destination.
+    """
+    subdir = model.get("subdir")
     if subdir is None:
+        class_type = model.get("class_type") or ""
         raise ValueError(f"model {model.get('name')!r}: unknown placement for {class_type!r}; declare subdir explicitly")
     return subdir
 

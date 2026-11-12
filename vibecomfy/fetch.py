@@ -143,10 +143,9 @@ def _destination_for_entry(
             roots.comfyui, target, field="target_path"
         )
         return authorized_root, destination, "target_path"
-    if "subdir" in entry:
-        subdir = entry["subdir"]
-    else:
-        subdir = None
+    from vibecomfy.model_assets import require_model_placement
+
+    subdir = require_model_placement(entry)
     if not isinstance(subdir, str) or not subdir:
         raise KeyError("model asset entry requires explicit 'subdir'; directory aliases are not supported")
     relative_subdir = _relative_asset_path(subdir, field="subdir")

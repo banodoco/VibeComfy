@@ -247,7 +247,7 @@ def test_extract_from_raw_workflow_returns_empty_for_api_shaped_workflow() -> No
     assert extract_from_raw_workflow({"1": {"class_type": "VAELoader", "inputs": {}}}) == []
 
 
-def test_extract_from_raw_workflow_rejects_downloadable_asset_with_unknown_placement() -> None:
+def test_extract_from_raw_workflow_records_unknown_placement_until_fetch(tmp_path: Path) -> None:
     raw = {
         "nodes": [
             {
@@ -263,8 +263,13 @@ def test_extract_from_raw_workflow_rejects_downloadable_asset_with_unknown_place
         ]
     }
 
+    from vibecomfy.fetch import local_path
+
+    entry = extract_from_raw_workflow(raw)[0]
+    assert entry["subdir"] is None
+    assert entry["placement_reason"] == "no known directory for loader class 'UnknownLoader'"
     with pytest.raises(ValueError, match="unknown placement.*declare subdir explicitly"):
-        extract_from_raw_workflow(raw)
+        local_path(entry, root=tmp_path)
 
 
 def test_preparation_extraction_requires_authored_subdir_even_for_known_loader() -> None:

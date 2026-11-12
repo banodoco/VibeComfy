@@ -100,6 +100,13 @@ def _model_entries(workflow: Any) -> tuple[dict[str, Any], ...]:
         entry = dict(raw_entry)
         if "filename" in entry or "directory" in entry:
             raise PreparationError("model declarations require name and subdir; filename/directory aliases are not supported")
+        if entry.get("subdir") is None and "placement_reason" in entry:
+            from vibecomfy.model_assets import require_model_placement
+
+            try:
+                require_model_placement(entry)
+            except ValueError as exc:
+                raise PreparationError(str(exc)) from exc
         for field in ("name", "subdir"):
             if not isinstance(entry.get(field), str) or not entry[field]:
                 raise PreparationError(f"model declaration requires an explicit non-empty {field}")

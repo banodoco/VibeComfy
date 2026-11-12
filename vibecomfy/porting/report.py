@@ -64,6 +64,7 @@ class AssetCandidate:
     subdir: str | None = None
     node_id: str | None = None
     class_type: str | None = None
+    placement_reason: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_json(self) -> dict[str, Any]:
