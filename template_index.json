@@ -117,7 +117,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -309,7 +309,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -421,7 +421,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -591,7 +591,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -715,7 +715,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -797,7 +797,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -879,7 +879,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -1017,7 +1017,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -1137,7 +1137,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -1275,7 +1275,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -1395,7 +1395,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -1597,7 +1597,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -1735,7 +1735,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -1837,7 +1837,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -1937,7 +1937,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -2037,7 +2037,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -2137,7 +2137,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -2291,7 +2291,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -2511,7 +2511,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -2611,7 +2611,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -2911,7 +2911,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -3173,7 +3173,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -3273,7 +3273,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -3393,7 +3393,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -3564,7 +3564,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -3830,7 +3830,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -4025,7 +4025,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -4236,7 +4236,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -4426,7 +4426,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -4656,7 +4656,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -4850,7 +4850,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -5116,7 +5116,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -5331,7 +5331,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -5492,7 +5492,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -5788,7 +5788,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -6074,7 +6074,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -6343,7 +6343,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -6573,7 +6573,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -6819,7 +6819,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -6919,7 +6919,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -7093,7 +7093,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -7193,7 +7193,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -7367,7 +7367,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -7545,7 +7545,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -7706,7 +7706,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -7892,7 +7892,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -8026,7 +8026,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -8218,7 +8218,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -8336,7 +8336,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -8510,7 +8510,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -8684,7 +8684,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -8830,7 +8830,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -9055,7 +9055,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "0",
+      "vibecomfy_version": "2.8.0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",

@@ -1,7 +1,7 @@
 {
   "DACHunyuanVAEDecode": {
     "pack": "ComfyUI-HunyuanVideo_Foley",
-    "pack_version": "b94f7aca877ff2be5bc264b057abee3dac682c1b",
+    "git_commit": "b94f7aca877ff2be5bc264b057abee3dac682c1b",
     "python_module": "hunyuan_foley",
     "category": "",
     "name": "DACHunyuanVAEDecode",
@@ -55,7 +55,7 @@
   },
   "HunyuanFoleyModelLoader": {
     "pack": "ComfyUI-HunyuanVideo_Foley",
-    "pack_version": "b94f7aca877ff2be5bc264b057abee3dac682c1b",
+    "git_commit": "b94f7aca877ff2be5bc264b057abee3dac682c1b",
     "python_module": "hunyuan_foley",
     "category": "",
     "name": "HunyuanFoleyModelLoader",
@@ -101,7 +101,7 @@
   },
   "HunyuanFoleySampler": {
     "pack": "ComfyUI-HunyuanVideo_Foley",
-    "pack_version": "b94f7aca877ff2be5bc264b057abee3dac682c1b",
+    "git_commit": "b94f7aca877ff2be5bc264b057abee3dac682c1b",
     "python_module": "hunyuan_foley",
     "category": "",
     "name": "HunyuanFoleySampler",
@@ -209,7 +209,7 @@
   },
   "LoadDACHunyuanVAE": {
     "pack": "ComfyUI-HunyuanVideo_Foley",
-    "pack_version": "b94f7aca877ff2be5bc264b057abee3dac682c1b",
+    "git_commit": "b94f7aca877ff2be5bc264b057abee3dac682c1b",
     "python_module": "hunyuan_foley",
     "category": "",
     "name": "LoadDACHunyuanVAE",
