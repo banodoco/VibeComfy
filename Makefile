@@ -189,8 +189,10 @@ templates: template-index
 strict-ready: template-index
 	$(PYTHON) -m tools.check_strict_ready_templates --json
 
+PREFLIGHT_TESTS := tests/test_ready_templates.py
+
 preflight:
-	$(PYTEST) -m preflight
+	$(PYTEST) -m preflight $(PREFLIGHT_TESTS)
 
 fast:
 	@echo "FAST Python gate: bounded maintained selector ($(words $(FAST_PYTEST)) feature files + $(words $(FAST_POLICY_TESTS)) policy selectors); coverage is visibility-only."

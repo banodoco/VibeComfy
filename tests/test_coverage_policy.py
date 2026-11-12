@@ -47,6 +47,21 @@ def test_fast_and_broad_python_gates_are_explicitly_distinct() -> None:
     assert "full-pytest: broad-pytest" in makefile
 
 
+def test_preflight_selector_includes_every_file_with_preflight_marker() -> None:
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+    preflight_assignment = next(
+        line for line in makefile.splitlines() if line.startswith("PREFLIGHT_TESTS :=")
+    )
+    selected = set(preflight_assignment.split(":=", 1)[1].split())
+    marked = {
+        path.as_posix()
+        for path in Path("tests").rglob("*.py")
+        if "pytest.mark.preflight" in path.read_text(encoding="utf-8")
+    }
+
+    assert marked <= selected
+
+
 def test_make_installers_support_uv_venvs_without_pip() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
