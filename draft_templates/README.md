@@ -1,6 +1,10 @@
 # Draft templates excluded from the ready corpus
 
-These templates and their existing `.vibe.json` companions are preserved outside `ready_templates/`. The ready loader recursively discovers every `.py` under that tree and has no exclusion manifest. Each draft has at least one declared model filename absent from extracted source workflow asset records and without a unique matching row in `vibecomfy/registry/models.yaml`; leaving it ready would require guessing a model source or placement.
+These templates and their existing `.vibe.json` companions are preserved outside `ready_templates/`. The ready loader recursively discovers every `.py` under that tree and has no exclusion manifest. The drafts in the table below have at least one declared model filename absent from extracted source workflow asset records and without a unique matching row in `vibecomfy/registry/models.yaml`; leaving them ready would require guessing a model source or placement.
+
+The `video/wanvideo_wrapper_wan_animate` draft is excluded at core `6bfaacc67c2103481e5f0c84d75257cd0581d86a` (release decision, 12 Nov), for two reasons. (1) Its generated call assigns widget values to the wrong inputs, so it would fail when run. (2) Its `PixelPerfectResolution` node belongs to the auxiliary preprocessor pack, not core, and the object-info recapture did not load that pack, so the template's schema was never verified at this core. To re-list it: regenerate the template, then verify it with the auxiliary pack at `e8b689a513c3e6b63edc44066560ca5919c0576e` loaded against this core.
+
+The audio loader's source-derived schema describes the checkpoint-present state. At its pinned source revision, when no accepted checkpoint exists in the expected directory or an immediate subdirectory, the loader instead exposes only an error input and no output. The source-derived schema is not evidence that weights are installed.
 
 | Former ready path | Source workflow | Unresolved model filenames |
 | --- | --- | --- |
