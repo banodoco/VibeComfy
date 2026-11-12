@@ -44,7 +44,8 @@ MODELS = {
 
 PUBLIC_INPUT_METADATA = {
     'seed': InputSpec(node='4', field='noise_seed', default=DEFAULT_SEED, type='INT'),
-    'image': InputSpec(node='6', field='image', default='', type='IMAGE', required=True, aliases=('input_image',), media_semantics='image'),
+    'start_image': InputSpec(node='6', field='image', default='', type='IMAGE', required=True, aliases=('image', 'input_image'), media_semantics='image', materialize_aliases=False),
+    'end_image': InputSpec(node='7', field='image', default='', type='IMAGE', required=True, media_semantics='image'),
 }
 
 READY_METADATA = ReadyMetadata.build(

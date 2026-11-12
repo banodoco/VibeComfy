@@ -47,7 +47,8 @@ PUBLIC_INPUT_METADATA = {
     'lastframe_strength': InputSpec(node='2152', field='strength', default=1.0),
     'firstframe_strength': InputSpec(node='2105', field='num_images.strength_1', default=0.5),
     'seed': InputSpec(node='14', field='noise_seed', default=DEFAULT_SEED, type='INT'),
-    'image': InputSpec(node='45', field='image', default='', type='IMAGE', required=True, aliases=('input_image',), media_semantics='image'),
+    'start_image': InputSpec(node='45', field='image', default='', type='IMAGE', required=True, aliases=('image', 'input_image'), media_semantics='image', materialize_aliases=False),
+    'end_image': InputSpec(node='47', field='image', default='', type='IMAGE', required=True, media_semantics='image'),
     'prompt': InputSpec(node='11', field='text', default=DEFAULT_PROMPT, type='STRING', required=True, media_semantics='text'),
 }
 

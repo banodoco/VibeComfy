@@ -3482,6 +3482,27 @@
           "source": "InputSpec"
         },
         {
+          "name": "start_image",
+          "target": {
+            "node_id": "5",
+            "field": "image"
+          },
+          "node_id": "5",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [
+            "image",
+            "input_image"
+          ],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
           "name": "image",
           "target": {
             "node_id": "5",
@@ -3489,15 +3510,13 @@
           },
           "node_id": "5",
           "field": "image",
-          "value": "example.png",
-          "type": null,
-          "default": "example.png",
-          "required": false,
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
           "range": null,
-          "aliases": [
-            "input_image"
-          ],
-          "media_semantics": null,
+          "aliases": [],
+          "media_semantics": "image",
           "status": "static",
           "source": "InputSpec"
         },
@@ -3509,13 +3528,31 @@
           },
           "node_id": "5",
           "field": "image",
-          "value": "example.png",
-          "type": null,
-          "default": "example.png",
-          "required": false,
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
           "range": null,
           "aliases": [],
-          "media_semantics": null,
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "end_image",
+          "target": {
+            "node_id": "6",
+            "field": "image"
+          },
+          "node_id": "6",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "image",
           "status": "static",
           "source": "InputSpec"
         }
@@ -3853,7 +3890,7 @@
       "model_count": 2,
       "public_inputs": [
         {
-          "name": "image",
+          "name": "start_image",
           "target": {
             "node_id": "1",
             "field": "image"
@@ -3866,8 +3903,27 @@
           "required": true,
           "range": null,
           "aliases": [
+            "image",
             "input_image"
           ],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "image",
+          "target": {
+            "node_id": "1",
+            "field": "image"
+          },
+          "node_id": "1",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
           "media_semantics": "image",
           "status": "static",
           "source": "InputSpec"
@@ -3879,6 +3935,24 @@
             "field": "image"
           },
           "node_id": "1",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "end_image",
+          "target": {
+            "node_id": "2",
+            "field": "image"
+          },
+          "node_id": "2",
           "field": "image",
           "value": "",
           "type": "IMAGE",
@@ -4064,7 +4138,7 @@
       "model_count": 3,
       "public_inputs": [
         {
-          "name": "image",
+          "name": "start_image",
           "target": {
             "node_id": "1",
             "field": "image"
@@ -4077,8 +4151,27 @@
           "required": true,
           "range": null,
           "aliases": [
+            "image",
             "input_image"
           ],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "image",
+          "target": {
+            "node_id": "1",
+            "field": "image"
+          },
+          "node_id": "1",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
           "media_semantics": "image",
           "status": "static",
           "source": "InputSpec"
@@ -4090,6 +4183,24 @@
             "field": "image"
           },
           "node_id": "1",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "end_image",
+          "target": {
+            "node_id": "2",
+            "field": "image"
+          },
+          "node_id": "2",
           "field": "image",
           "value": "",
           "type": "IMAGE",
@@ -5213,7 +5324,7 @@
           "source": "InputSpec"
         },
         {
-          "name": "image",
+          "name": "start_image",
           "target": {
             "node_id": "45",
             "field": "image"
@@ -5226,8 +5337,27 @@
           "required": true,
           "range": null,
           "aliases": [
+            "image",
             "input_image"
           ],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "image",
+          "target": {
+            "node_id": "45",
+            "field": "image"
+          },
+          "node_id": "45",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
           "media_semantics": "image",
           "status": "static",
           "source": "InputSpec"
@@ -5239,6 +5369,24 @@
             "field": "image"
           },
           "node_id": "45",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "end_image",
+          "target": {
+            "node_id": "47",
+            "field": "image"
+          },
+          "node_id": "47",
           "field": "image",
           "value": "",
           "type": "IMAGE",
@@ -5374,7 +5522,7 @@
           "source": "InputSpec"
         },
         {
-          "name": "image",
+          "name": "start_image",
           "target": {
             "node_id": "6",
             "field": "image"
@@ -5387,8 +5535,27 @@
           "required": true,
           "range": null,
           "aliases": [
+            "image",
             "input_image"
           ],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "image",
+          "target": {
+            "node_id": "6",
+            "field": "image"
+          },
+          "node_id": "6",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
           "media_semantics": "image",
           "status": "static",
           "source": "InputSpec"
@@ -5400,6 +5567,24 @@
             "field": "image"
           },
           "node_id": "6",
+          "field": "image",
+          "value": "",
+          "type": "IMAGE",
+          "default": "",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "image",
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "end_image",
+          "target": {
+            "node_id": "7",
+            "field": "image"
+          },
+          "node_id": "7",
           "field": "image",
           "value": "",
           "type": "IMAGE",
@@ -5542,40 +5727,56 @@
       "model_count": 4,
       "public_inputs": [
         {
-          "name": "image",
+          "name": "model",
           "target": {
-            "node_id": "2004",
-            "field": "image"
+            "node_id": "3940",
+            "field": "ckpt_name"
           },
-          "node_id": "2004",
-          "field": "image",
-          "value": "",
-          "type": "IMAGE",
-          "default": "",
-          "required": true,
+          "node_id": "3940",
+          "field": "ckpt_name",
+          "value": null,
+          "type": null,
+          "default": null,
+          "required": false,
           "range": null,
-          "aliases": [
-            "input_image"
-          ],
-          "media_semantics": "image",
+          "aliases": [],
+          "media_semantics": null,
           "status": "static",
           "source": "InputSpec"
         },
         {
-          "name": "input_image",
+          "name": "seed",
           "target": {
-            "node_id": "2004",
-            "field": "image"
+            "node_id": "4814",
+            "field": "noise_seed"
           },
-          "node_id": "2004",
-          "field": "image",
-          "value": "",
-          "type": "IMAGE",
-          "default": "",
+          "node_id": "4814",
+          "field": "noise_seed",
+          "value": 42,
+          "type": "INT",
+          "default": 42,
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "prompt",
+          "target": {
+            "node_id": "2483",
+            "field": "text"
+          },
+          "node_id": "2483",
+          "field": "text",
+          "value": "A traditional Japanese tea ceremony takes place in a tatami room as a host carefully prepares matcha. Soft traditional koto music plays in the background, adding to the serene atmosphere. The bamboo whisk taps rhythmically against the ceramic bowl while water simmers in an iron kettle. Guests kneel in formal seiza position, watching in respectful silence. The host bows and presents the tea bowl, turning it precisely before offering it to the first guest with soft-spoken words.",
+          "type": "STRING",
+          "default": "A traditional Japanese tea ceremony takes place in a tatami room as a host carefully prepares matcha. Soft traditional koto music plays in the background, adding to the serene atmosphere. The bamboo whisk taps rhythmically against the ceramic bowl while water simmers in an iron kettle. Guests kneel in formal seiza position, watching in respectful silence. The host bows and presents the tea bowl, turning it precisely before offering it to the first guest with soft-spoken words.",
           "required": true,
           "range": null,
           "aliases": [],
-          "media_semantics": "image",
+          "media_semantics": "text",
           "status": "static",
           "source": "InputSpec"
         },
@@ -5634,24 +5835,6 @@
           "source": "InputSpec"
         },
         {
-          "name": "seed",
-          "target": {
-            "node_id": "4814",
-            "field": "noise_seed"
-          },
-          "node_id": "4814",
-          "field": "noise_seed",
-          "value": 42,
-          "type": "INT",
-          "default": 42,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
           "name": "fps",
           "target": {
             "node_id": "4819",
@@ -5666,24 +5849,6 @@
           "range": null,
           "aliases": [],
           "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "prompt",
-          "target": {
-            "node_id": "2483",
-            "field": "text"
-          },
-          "node_id": "2483",
-          "field": "text",
-          "value": "A traditional Japanese tea ceremony takes place in a tatami room as a host carefully prepares matcha. Soft traditional koto music plays in the background, adding to the serene atmosphere. The bamboo whisk taps rhythmically against the ceramic bowl while water simmers in an iron kettle. Guests kneel in formal seiza position, watching in respectful silence. The host bows and presents the tea bowl, turning it precisely before offering it to the first guest with soft-spoken words.",
-          "type": "STRING",
-          "default": "A traditional Japanese tea ceremony takes place in a tatami room as a host carefully prepares matcha. Soft traditional koto music plays in the background, adding to the serene atmosphere. The bamboo whisk taps rhythmically against the ceramic bowl while water simmers in an iron kettle. Guests kneel in formal seiza position, watching in respectful silence. The host bows and presents the tea bowl, turning it precisely before offering it to the first guest with soft-spoken words.",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "text",
           "status": "static",
           "source": "InputSpec"
         },
@@ -5724,60 +5889,36 @@
           "media_semantics": "text",
           "status": "static",
           "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "3940",
-            "field": "ckpt_name"
-          },
-          "node_id": "3940",
-          "field": "ckpt_name",
-          "value": "ltx-2.3-22b-dev.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
         }
       ],
       "public_outputs": [
         {
-          "name": "video",
           "node_id": "4823",
+          "name": "video",
           "output_type": "SaveVideo",
           "artifact_kind": "video",
           "mime_type": "video/mp4",
           "filename_prefix": "output_F",
           "expected_cardinality": "one",
           "status": "static",
-          "source": "finalize"
+          "source": "OutputSpec"
         }
       ],
       "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
       "artifact_expectations": [
         {
-          "name": "video",
           "node_id": "4823",
+          "name": "video",
           "output_type": "SaveVideo",
           "artifact_kind": "video",
           "mime_type": "video/mp4",
           "filename_prefix": "output_F",
           "expected_cardinality": "one",
           "status": "static",
-          "source": "finalize"
+          "source": "OutputSpec"
         }
       ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
+      "static_diagnostics": [],
       "public_input_status": "declared",
       "public_output_status": "declared",
       "custom_node_count": 0,

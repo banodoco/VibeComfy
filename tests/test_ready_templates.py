@@ -894,7 +894,7 @@ def test_ltx_runexx_first_last_frame_preserves_current_worker_roles() -> None:
     assert classes["LTXVImgToVideoInplaceKJ"] == 2
     assert classes["SamplerCustomAdvanced"] == 2
     assert classes["ManualSigmas"] == 2
-    assert {"seed", "model", "prompt", "image", "input_image", "firstframe_strength", "lastframe_strength"} <= set(workflow.inputs)
+    assert {"seed", "model", "prompt", "start_image", "end_image", "firstframe_strength", "lastframe_strength", "enhance_prompt"} == set(workflow.inputs)
     calculator_nodes = [node for node in workflow.nodes.values() if node.class_type == "SimpleCalculatorKJ"]
     assert len(calculator_nodes) == 1
     assert calculator_nodes[0].inputs == {"expression": "((round((a * b -1) / 8)) * 8) + 1 ", "b": 24.0}
@@ -1021,7 +1021,7 @@ def test_ready_template_preserves_core_requirements_and_upstream_pack_provenance
 def test_ltx_first_last_travel_iclora_control_exposes_current_worker_roles() -> None:
     workflow = workflow_from_template_fixture("video/ltx2_3_first_last_frame_travel_iclora_control")
     assert workflow.validate().ok
-    assert {"seed", "model", "prompt", "image", "input_image"} == set(workflow.inputs)
+    assert {"seed", "model", "prompt", "start_image", "end_image"} == set(workflow.inputs)
     classes = Counter(node.class_type for node in workflow.nodes.values())
     assert classes["LTXAddVideoICLoRAGuide"] == 1
     assert classes["LTXICLoRALoaderModelOnly"] == 1
@@ -1039,7 +1039,7 @@ def test_ltx_first_last_travel_iclora_control_exposes_current_worker_roles() -> 
 def test_ltx_lightricks_first_last_parity_exposes_current_worker_roles() -> None:
     workflow = workflow_from_template_fixture("video/ltx2_3_lightricks_first_last_parity")
     assert workflow.validate().ok
-    assert {"seed", "model", "prompt", "image", "input_image", "frames", "fps"} == set(workflow.inputs)
+    assert {"seed", "model", "prompt", "start_image", "end_image", "frames", "fps"} == set(workflow.inputs)
     classes = Counter(node.class_type for node in workflow.nodes.values())
     assert classes["LTXVAddGuide"] == 2
     assert classes["LTXVPreprocess"] == 2
@@ -1071,7 +1071,7 @@ def test_ltx_first_last_raw_video_guide_exposes_current_worker_roles() -> None:
     assert workflow.validate().ok
     assert "rgthree-comfy" in workflow.requirements.custom_nodes
     assert workflow.metadata["source_role"] == "materialized_ready_python_template"
-    assert {"seed", "model", "prompt", "image", "input_image"} == set(workflow.inputs)
+    assert {"seed", "model", "prompt", "start_image", "end_image"} == set(workflow.inputs)
     classes = Counter(node.class_type for node in workflow.nodes.values())
     assert classes["LoadImage"] == 2
     assert classes["LoadVideo"] == 1
