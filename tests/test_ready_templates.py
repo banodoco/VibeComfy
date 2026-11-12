@@ -1427,6 +1427,35 @@ def test_shipped_ready_template_model_declarations_are_structured() -> None:
     assert not invalid, "Noncanonical model declarations:\n" + "\n".join(invalid)
 
 
+def test_ready_template_model_paths_use_posix_separators() -> None:
+    """Model asset paths and model picker values must work on Linux."""
+    model_file_suffixes = (
+        ".safetensors", ".ckpt", ".pt", ".pth", ".bin", ".gguf", ".onnx",
+        ".engine", ".torchscript",
+    )
+    invalid = []
+    for record in ready_registry.repo_ready_template_discovery().records:
+        tree = ast.parse(record.path.read_text(encoding="utf-8"), filename=str(record.path))
+        for call in ast.walk(tree):
+            if not (isinstance(call, ast.Call) and isinstance(call.func, ast.Name)
+                    and call.func.id == "ModelAsset"):
+                continue
+            filename = next((keyword.value for keyword in call.keywords
+                             if keyword.arg == "filename"), None)
+            if isinstance(filename, ast.Constant) and isinstance(filename.value, str):
+                if "\\" in filename.value:
+                    invalid.append(f"{record.path}: ModelAsset filename {filename.value!r}")
+
+        workflow = ready_registry.workflow_from_ready(record.template_id)
+        for node in workflow.compile("api").values():
+            for key, value in node.get("inputs", {}).items():
+                if (isinstance(value, str)
+                        and value.lower().endswith(model_file_suffixes)
+                        and "\\" in value):
+                    invalid.append(f"{record.path}: {node.get('class_type')}.{key}={value!r}")
+    assert not invalid, "Ready template model paths must use POSIX separators:\n" + "\n".join(invalid)
+
+
 def test_undeclared_drafts_are_absent_from_ready_discovery_and_index() -> None:
     draft_root = Path("draft_templates")
     drafts = {path.relative_to(draft_root).with_suffix("").as_posix()
