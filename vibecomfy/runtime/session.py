@@ -54,6 +54,7 @@ from .dependencies import RuntimeDependencyError
 
 from .attempt import build_attempt_bundle, build_shared_fields, write_attempt_json
 from .run_context import RunContext
+from .run_logs import declare_log
 from .client import ComfyClient
 from .drift import enforce_strict_drift
 from .execution import (
@@ -501,6 +502,18 @@ def _persist_runtime_failure(
     exc: BaseException | None = None,
     interrupted: bool | None = None,
 ) -> None:
+    try:
+        engine_error = getattr(original_error, "engine_error", None)
+        if engine_error is None:
+            engine_error = getattr(exc, "engine_error", None)
+        if engine_error is not None:
+            path = run_dir / "engine-error.json"
+            atomic_write_json(path, {
+                "schema": "engine-error.v1", "engine": "comfyui", **engine_error,
+            })
+            declare_log(run_dir, "engine-error", "engine", path)
+    except Exception:
+        pass
     if _terminal_event_already_written(run_dir, record, generation):
         return
     exc_for_class = exc or original_error
@@ -4031,6 +4044,20 @@ def _comfy_execution_diagnostic(status: Any) -> dict[str, Any]:
     return diagnostic
 
 
+def _engine_error_payload(status: Any) -> dict | None:
+    details = _terminal_field(status, "error_details")
+    messages = _terminal_field(status, "messages")
+    if isinstance(messages, (list, tuple)):
+        for message in reversed(messages):
+            if (isinstance(message, (list, tuple)) and len(message) >= 2
+                    and message[0] == "execution_error"):
+                details = message[1]
+                break
+    if not isinstance(details, Mapping):
+        return None
+    return json.loads(json.dumps(details, default=str))
+
+
 def _raise_terminal_execution_error(status: Any, prompt_id: str | None) -> None:
     # Capture before bounded text formatting and before the session's cleanup.
     # Diagnostic extraction must never replace the execution failure.
@@ -4045,6 +4072,12 @@ def _raise_terminal_execution_error(status: Any, prompt_id: str | None) -> None:
         next_action="vibecomfy runtime doctor",
     )
     error.comfy_diagnostic = comfy_diagnostic
+    try:
+        payload = _engine_error_payload(status)
+        if payload is not None:
+            error.engine_error = {"prompt_id": prompt_id, "error": payload}
+    except Exception:
+        pass
     error.diagnostics = [{
         "code": "comfy_execution_error",
         "prompt_id": prompt_id,
