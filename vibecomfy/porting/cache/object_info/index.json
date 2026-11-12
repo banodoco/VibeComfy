@@ -1936,6 +1936,9 @@
     "[\"ComfyUI-DeepExtract\",\"git_commit\",\"40cf9cb3268ac678d63fe9fe8c0ee16b3fe1ce1d\"]": [
       "ComfyUI-DeepExtract@on_demand_import-40cf9cb.json"
     ],
+    "[\"ComfyUI-DepthAnythingV2\",\"git_commit\",\"553187872eeb1d52e50dc53209fa57e569609a72\"]": [
+      "ComfyUI-DepthAnythingV2@cpu-runtime.json"
+    ],
     "[\"ComfyUI-DepthAnythingV2\",\"legacy\",\"ComfyUI-DepthAnythingV2@local-5531878.json\"]": [
       "ComfyUI-DepthAnythingV2@local-5531878.json"
     ],

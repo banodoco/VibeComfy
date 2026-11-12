@@ -51,6 +51,14 @@
       "source": "direct_url",
       "source_kind": "on_demand_import"
     },
+    "ComfyUI-DepthAnythingV2@cpu-runtime.json": {
+      "classes": 2,
+      "locked_commit": "553187872eeb1d52e50dc53209fa57e569609a72",
+      "pack": "ComfyUI-DepthAnythingV2",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "d0952923f6daf59ff590c93b56afd6c75470b6e9dd06ac38d91872372cfe4720",
+      "source_kind": "runtime_object_info"
+    },
     "ComfyUI-DepthAnythingV2@local-5531878.json": {
       "classes": 2,
       "locked_commit": "553187872eeb1d52e50dc53209fa57e569609a72",
