@@ -60,8 +60,12 @@ def test_template_enum_fields_admit_public_inputs_against_combo_schema(template_
 
 @pytest.mark.preflight
 @pytest.mark.parametrize("template_id", ready_template_ids())
-def test_ready_template_offline_schemas_by_identity(template_id: str) -> None:
-    check_ready_template_offline_schemas_by_identity(template_id)
+def test_ready_template_offline_schemas_by_identity(
+    template_id: str, pack_identity_commits: dict[str, str] | None,
+) -> None:
+    check_ready_template_offline_schemas_by_identity(
+        template_id, pack_identity_commits=pack_identity_commits,
+    )
 
 
 def check_ready_template_offline_schemas_by_identity(
@@ -102,7 +106,11 @@ def check_ready_template_offline_schemas_by_identity(
             continue
         result = resolve_class_entry(class_type, identity, allow_class_fallback=False)
         if result.entry is None:
-            errors.append((str(node_id), class_type, "offline identity did not resolve", identity))
+            if pack_identity_commits is not None and identity.get("pack_slug") in pack_identity_commits:
+                errors.append((str(node_id), class_type,
+                               f"no object_info captured for {identity['pack_slug']} at {identity['git_commit']}"))
+            else:
+                errors.append((str(node_id), class_type, "offline identity did not resolve", identity))
             continue
         schemas[str(node_id)] = result.entry
 
@@ -1541,3 +1549,45 @@ def test_recipe_pack_identity_commits_override_workflow_lock_and_cache():
         {"pack_slug": "ComfyUI-QwenTTS", "git_commit": "cache"}, {},
         pack_identity_commits={"ComfyUI-QwenTTS": "recipe-pack", "comfy_core": "recipe-core"},
     ) == {"pack_slug": "ComfyUI-QwenTTS", "git_commit": "recipe-pack"}
+
+
+def test_preflight_recipe_pins_select_identity_and_report_missing(monkeypatch):
+    from types import SimpleNamespace
+    from vibecomfy.porting.object_info import consume
+    from vibecomfy import custom_node_refs
+
+    monkeypatch.setattr(custom_node_refs, "effective_lock_entries", lambda *_: [])
+    commit = "a" * 40
+    workflow = SimpleNamespace(
+        compile=lambda _format: {"1": {"class_type": "Example"}},
+        nodes={"1": SimpleNamespace(metadata={})}, inputs={},
+    )
+    monkeypatch.setattr(__import__(__name__, fromlist=["_"]),
+                        "workflow_from_template_fixture", lambda _: workflow)
+    monkeypatch.setattr(consume, "get_class", lambda _: {"pack_slug": "comfy_core", "git_commit": "old"})
+    seen = []
+
+    def missing(_class_type, identity, **_kwargs):
+        seen.append(identity)
+        return SimpleNamespace(entry=None)
+
+    monkeypatch.setattr(consume, "resolve_class_entry", missing)
+    with pytest.raises(AssertionError, match=f"no object_info captured for comfy_core at {commit}"):
+        check_ready_template_offline_schemas_by_identity("image/z_image", pack_identity_commits={"comfy_core": commit})
+    assert seen == [{"pack_slug": "comfy_core", "git_commit": commit}]
+
+
+@pytest.mark.parametrize("contents", ["not json", '{"bad/slug": "' + "a" * 40 + '"}', '{"comfy_core": "abc"}'])
+def test_preflight_invalid_recipe_pins_are_usage_errors(tmp_path, contents):
+    import subprocess
+    import sys
+
+    path = tmp_path / "pins.json"
+    path.write_text(contents)
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "--pack-identity-commits", str(path), "--collect-only", "-q",
+         "tests/test_ready_templates.py::test_ready_template_offline_schemas_by_identity[image/z_image]"],
+        cwd=Path(__file__).resolve().parents[1], capture_output=True, text=True,
+    )
+    assert result.returncode == 4
+    assert "--pack-identity-commits" in result.stderr

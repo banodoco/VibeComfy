@@ -4,6 +4,8 @@ pytest_plugins = ("pytester",)
 
 
 import importlib.util
+import json
+import re
 import os
 import pathlib
 import sys
@@ -340,6 +342,21 @@ def pytest_runtest_teardown(item: pytest.Item, nextitem: pytest.Item | None) -> 
 
 
 def pytest_configure(config: pytest.Config) -> None:
+    path = config.getoption("--pack-identity-commits")
+    config._pack_identity_commits = None
+    if path is not None:
+        try:
+            pins = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+            if not isinstance(pins, dict):
+                raise ValueError("expected a JSON object mapping pack slugs to commits")
+            for slug, commit in pins.items():
+                if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", slug):
+                    raise ValueError(f"invalid canonical pack slug: {slug!r}")
+                if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-fA-F]{40}", commit):
+                    raise ValueError(f"invalid 40-hex commit for {slug!r}: {commit!r}")
+            config._pack_identity_commits = pins
+        except (OSError, UnicodeError, ValueError) as exc:
+            raise pytest.UsageError(f"--pack-identity-commits: {exc}") from exc
     # Hand the active pytest config to the runpod budget helpers so that
     # ``--runpod-full`` raises the default cap from $2 to $15 without each
     # smoke test having to thread the config through.
@@ -387,6 +404,11 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--pack-identity-commits",
+        metavar="PATH",
+        help="JSON mapping canonical pack slugs to object_info commit identities",
+    )
     parser.addoption(
         "--runpod",
         action="store_true",
@@ -599,3 +621,8 @@ def pytest_terminal_summary(terminalreporter: pytest.TerminalReporter, exitstatu
         # collection failures, usage errors, and internal errors remain red.
         if exitstatus == int(pytest.ExitCode.TESTS_FAILED):
             terminalreporter._session.exitstatus = 0  # type: ignore[attr-defined]
+
+
+@pytest.fixture
+def pack_identity_commits(pytestconfig: pytest.Config) -> dict[str, str] | None:
+    return pytestconfig._pack_identity_commits
