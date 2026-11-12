@@ -215,6 +215,14 @@
       "repo": "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git",
       "schema_sha256": "8391e679554eecd5d324a3e34a713ff240e619e3a07476587845ba18c9fae310"
     },
+    "ComfyUI-WanAnimatePreprocess@cpu-runtime.json": {
+      "classes": 5,
+      "locked_commit": "1a35b81a418bbba093356ad19b19bf2a76a24f4e",
+      "pack": "ComfyUI-WanAnimatePreprocess",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "b06eb82bee869585a67c4db0ef638785d81ca341bc815399e6d7af3b14856152",
+      "source_kind": "runtime_object_info"
+    },
     "ComfyUI-WanAnimatePreprocess@local-1a35b81.json": {
       "classes": 5,
       "locked_commit": "1a35b81a418bbba093356ad19b19bf2a76a24f4e",

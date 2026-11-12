@@ -2008,6 +2008,9 @@
     "[\"ComfyUI-VideoHelperSuite\",\"legacy\",\"ComfyUI-VideoHelperSuite@runpod-snapshot.json\"]": [
       "ComfyUI-VideoHelperSuite@runpod-snapshot.json"
     ],
+    "[\"ComfyUI-WanAnimatePreprocess\",\"git_commit\",\"1a35b81a418bbba093356ad19b19bf2a76a24f4e\"]": [
+      "ComfyUI-WanAnimatePreprocess@cpu-runtime.json"
+    ],
     "[\"ComfyUI-WanAnimatePreprocess\",\"legacy\",\"ComfyUI-WanAnimatePreprocess@local-1a35b81.json\"]": [
       "ComfyUI-WanAnimatePreprocess@local-1a35b81.json"
     ],
