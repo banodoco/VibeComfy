@@ -64,7 +64,10 @@ def test_schemas_refresh_accepts_structured_cache_file(tmp_path: Path, monkeypat
     assert result["source_kind"] == "structured_cache_copy"
     assert result["authoritative"] is False
     index = json.loads((cache_root / "index.json").read_text(encoding="utf-8"))
-    assert index == {"TinyNode": "pack.json"}
+    assert index == {
+        "TinyNode": "pack.json",
+        "__object_info_captures__": {'["tiny","legacy","pack.json"]': ["pack.json"]},
+    }
     assert _object_info_cache_snapshot() == before
 
 
@@ -124,7 +127,10 @@ def test_schemas_refresh_command_uses_local_source_without_server(
     assert payload["authoritative"] is False
     assert payload["source"] == str(source)
     assert "server_url" not in payload
-    assert json.loads((cache_root / "index.json").read_text(encoding="utf-8")) == {"OfflineNode": "pack.json"}
+    assert json.loads((cache_root / "index.json").read_text(encoding="utf-8")) == {
+        "OfflineNode": "pack.json",
+        "__object_info_captures__": {'["offline","legacy","pack.json"]': ["pack.json"]},
+    }
 
 
 def test_schemas_refresh_command_text_surfaces_non_authoritative_identity(
@@ -219,7 +225,12 @@ def test_schemas_regen_core_uses_fake_provider_and_stamps_authoritative_cache(
     pack_file = cache_root / "comfy-core@0.24.0.1.json"
     index = json.loads((cache_root / "index.json").read_text(encoding="utf-8"))
     entry = json.loads(pack_file.read_text(encoding="utf-8"))["CoreTinyNode"]
-    assert index == {"CoreTinyNode": pack_file.name}
+    assert index == {
+        "CoreTinyNode": pack_file.name,
+        "__object_info_captures__": {
+            '["comfy-core","evidence_identity","comfy-core:0.24.0.1"]': [pack_file.name]
+        },
+    }
     assert entry["pack_slug"] == "comfy-core"
     assert entry["pack_version"] == "0.24.0.1"
     assert entry["evidence_identity"] == "comfy-core:0.24.0.1"
@@ -399,7 +410,10 @@ def test_refresh_schema_cache_from_source_with_index_json_path(
 
     assert (cache_root / "pack_p.json").is_file()
     new_index = json.loads((cache_root / "index.json").read_text(encoding="utf-8"))
-    assert new_index == {"ClassP": "pack_p.json"}
+    assert new_index == {
+        "ClassP": "pack_p.json",
+        "__object_info_captures__": {'["pack_p.json","legacy","pack_p.json"]': ["pack_p.json"]},
+    }
 
 
 # ============================================================================
