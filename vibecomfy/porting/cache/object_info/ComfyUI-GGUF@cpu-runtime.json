@@ -1,0 +1,378 @@
+{
+  "CLIPLoaderGGUF": {
+    "category": "bootleg",
+    "class_schema_sha256": "106aaac6fabe45b6157f8d8b33d8604c9db47de0f6c1f957f98591956075d46a",
+    "description": "",
+    "display_name": "CLIPLoader (GGUF)",
+    "evidence_identity": "ComfyUI-GGUF.cpu.json",
+    "function": "CLIPLoaderGGUF",
+    "git_commit": "6ea2651e7df66d7585f6ffee804b20e92fb38b8a",
+    "input_order": {
+      "required": [
+        "clip_name",
+        "type"
+      ]
+    },
+    "input_order_all": [
+      "clip_name",
+      "type"
+    ],
+    "inputs": {
+      "required": {
+        "clip_name": [
+          []
+        ],
+        "type": [
+          [
+            "stable_diffusion",
+            "stable_cascade",
+            "sd3",
+            "stable_audio",
+            "mochi",
+            "ltxv",
+            "pixart",
+            "cosmos",
+            "lumina2",
+            "wan",
+            "hidream",
+            "chroma",
+            "ace",
+            "omnigen2",
+            "qwen_image",
+            "hunyuan_image",
+            "flux2",
+            "ovis",
+            "longcat_image",
+            "cogvideox",
+            "lens",
+            "pixeldit",
+            "ideogram4",
+            "boogu",
+            "krea2",
+            "joyimage",
+            "mage",
+            "minimax",
+            "yue2"
+          ]
+        ]
+      }
+    },
+    "name": "CLIPLoaderGGUF",
+    "object_info_widget_order": [
+      "clip_name",
+      "type"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      }
+    ],
+    "pack": "ComfyUI-GGUF",
+    "pack_slug": "ComfyUI-GGUF",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.ComfyUI-GGUF",
+    "schema_hash": "106aaac6fabe45b6157f8d8b33d8604c9db47de0f6c1f957f98591956075d46a",
+    "source_kind": "runtime_object_info"
+  },
+  "DualCLIPLoaderGGUF": {
+    "category": "bootleg",
+    "class_schema_sha256": "106aaac6fabe45b6157f8d8b33d8604c9db47de0f6c1f957f98591956075d46a",
+    "description": "",
+    "display_name": "DualCLIPLoader (GGUF)",
+    "evidence_identity": "ComfyUI-GGUF.cpu.json",
+    "function": "DualCLIPLoaderGGUF",
+    "git_commit": "6ea2651e7df66d7585f6ffee804b20e92fb38b8a",
+    "input_order": {
+      "required": [
+        "clip_name1",
+        "clip_name2",
+        "type"
+      ]
+    },
+    "input_order_all": [
+      "clip_name1",
+      "clip_name2",
+      "type"
+    ],
+    "inputs": {
+      "required": {
+        "clip_name1": [
+          []
+        ],
+        "clip_name2": [
+          []
+        ],
+        "type": [
+          [
+            "sdxl",
+            "sd3",
+            "flux",
+            "hunyuan_video",
+            "hidream",
+            "hunyuan_image",
+            "hunyuan_video_15",
+            "kandinsky5",
+            "kandinsky5_image",
+            "ltxv",
+            "newbie",
+            "ace"
+          ]
+        ]
+      }
+    },
+    "name": "DualCLIPLoaderGGUF",
+    "object_info_widget_order": [
+      "clip_name1",
+      "clip_name2",
+      "type"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      }
+    ],
+    "pack": "ComfyUI-GGUF",
+    "pack_slug": "ComfyUI-GGUF",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.ComfyUI-GGUF",
+    "schema_hash": "106aaac6fabe45b6157f8d8b33d8604c9db47de0f6c1f957f98591956075d46a",
+    "source_kind": "runtime_object_info"
+  },
+  "QuadrupleCLIPLoaderGGUF": {
+    "category": "bootleg",
+    "class_schema_sha256": "106aaac6fabe45b6157f8d8b33d8604c9db47de0f6c1f957f98591956075d46a",
+    "description": "",
+    "display_name": "QuadrupleCLIPLoader (GGUF)",
+    "evidence_identity": "ComfyUI-GGUF.cpu.json",
+    "function": "QuadrupleCLIPLoaderGGUF",
+    "git_commit": "6ea2651e7df66d7585f6ffee804b20e92fb38b8a",
+    "input_order": {
+      "required": [
+        "clip_name1",
+        "clip_name2",
+        "clip_name3",
+        "clip_name4"
+      ]
+    },
+    "input_order_all": [
+      "clip_name1",
+      "clip_name2",
+      "clip_name3",
+      "clip_name4"
+    ],
+    "inputs": {
+      "required": {
+        "clip_name1": [
+          []
+        ],
+        "clip_name2": [
+          []
+        ],
+        "clip_name3": [
+          []
+        ],
+        "clip_name4": [
+          []
+        ]
+      }
+    },
+    "name": "QuadrupleCLIPLoaderGGUF",
+    "object_info_widget_order": [
+      "clip_name1",
+      "clip_name2",
+      "clip_name3",
+      "clip_name4"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      }
+    ],
+    "pack": "ComfyUI-GGUF",
+    "pack_slug": "ComfyUI-GGUF",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.ComfyUI-GGUF",
+    "schema_hash": "106aaac6fabe45b6157f8d8b33d8604c9db47de0f6c1f957f98591956075d46a",
+    "source_kind": "runtime_object_info"
+  },
+  "TripleCLIPLoaderGGUF": {
+    "category": "bootleg",
+    "class_schema_sha256": "106aaac6fabe45b6157f8d8b33d8604c9db47de0f6c1f957f98591956075d46a",
+    "description": "",
+    "display_name": "TripleCLIPLoader (GGUF)",
+    "evidence_identity": "ComfyUI-GGUF.cpu.json",
+    "function": "TripleCLIPLoaderGGUF",
+    "git_commit": "6ea2651e7df66d7585f6ffee804b20e92fb38b8a",
+    "input_order": {
+      "required": [
+        "clip_name1",
+        "clip_name2",
+        "clip_name3"
+      ]
+    },
+    "input_order_all": [
+      "clip_name1",
+      "clip_name2",
+      "clip_name3"
+    ],
+    "inputs": {
+      "required": {
+        "clip_name1": [
+          []
+        ],
+        "clip_name2": [
+          []
+        ],
+        "clip_name3": [
+          []
+        ]
+      }
+    },
+    "name": "TripleCLIPLoaderGGUF",
+    "object_info_widget_order": [
+      "clip_name1",
+      "clip_name2",
+      "clip_name3"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      }
+    ],
+    "pack": "ComfyUI-GGUF",
+    "pack_slug": "ComfyUI-GGUF",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.ComfyUI-GGUF",
+    "schema_hash": "106aaac6fabe45b6157f8d8b33d8604c9db47de0f6c1f957f98591956075d46a",
+    "source_kind": "runtime_object_info"
+  },
+  "UnetLoaderGGUF": {
+    "category": "bootleg",
+    "class_schema_sha256": "106aaac6fabe45b6157f8d8b33d8604c9db47de0f6c1f957f98591956075d46a",
+    "description": "",
+    "display_name": "Unet Loader (GGUF)",
+    "evidence_identity": "ComfyUI-GGUF.cpu.json",
+    "function": "UnetLoaderGGUF",
+    "git_commit": "6ea2651e7df66d7585f6ffee804b20e92fb38b8a",
+    "input_order": {
+      "required": [
+        "unet_name"
+      ]
+    },
+    "input_order_all": [
+      "unet_name"
+    ],
+    "inputs": {
+      "required": {
+        "unet_name": [
+          []
+        ]
+      }
+    },
+    "name": "UnetLoaderGGUF",
+    "object_info_widget_order": [
+      "unet_name"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      }
+    ],
+    "pack": "ComfyUI-GGUF",
+    "pack_slug": "ComfyUI-GGUF",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.ComfyUI-GGUF",
+    "schema_hash": "106aaac6fabe45b6157f8d8b33d8604c9db47de0f6c1f957f98591956075d46a",
+    "source_kind": "runtime_object_info"
+  },
+  "UnetLoaderGGUFAdvanced": {
+    "category": "bootleg",
+    "class_schema_sha256": "106aaac6fabe45b6157f8d8b33d8604c9db47de0f6c1f957f98591956075d46a",
+    "description": "",
+    "display_name": "Unet Loader (GGUF/Advanced)",
+    "evidence_identity": "ComfyUI-GGUF.cpu.json",
+    "function": "UnetLoaderGGUFAdvanced",
+    "git_commit": "6ea2651e7df66d7585f6ffee804b20e92fb38b8a",
+    "input_order": {
+      "required": [
+        "unet_name",
+        "dequant_dtype",
+        "patch_dtype",
+        "patch_on_device"
+      ]
+    },
+    "input_order_all": [
+      "unet_name",
+      "dequant_dtype",
+      "patch_dtype",
+      "patch_on_device"
+    ],
+    "inputs": {
+      "required": {
+        "dequant_dtype": [
+          [
+            "default",
+            "target",
+            "float32",
+            "float16",
+            "bfloat16"
+          ],
+          {
+            "default": "default"
+          }
+        ],
+        "patch_dtype": [
+          [
+            "default",
+            "target",
+            "float32",
+            "float16",
+            "bfloat16"
+          ],
+          {
+            "default": "default"
+          }
+        ],
+        "patch_on_device": [
+          "BOOLEAN",
+          {
+            "default": false
+          }
+        ],
+        "unet_name": [
+          []
+        ]
+      }
+    },
+    "name": "UnetLoaderGGUFAdvanced",
+    "object_info_widget_order": [
+      "unet_name",
+      "dequant_dtype",
+      "patch_dtype",
+      "patch_on_device"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      }
+    ],
+    "pack": "ComfyUI-GGUF",
+    "pack_slug": "ComfyUI-GGUF",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.ComfyUI-GGUF",
+    "schema_hash": "106aaac6fabe45b6157f8d8b33d8604c9db47de0f6c1f957f98591956075d46a",
+    "source_kind": "runtime_object_info"
+  }
+}

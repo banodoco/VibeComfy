@@ -216,18 +216,18 @@ def test_identity_filename_scan_pins_index_to_scanned_generation(
     _use_cache(monkeypatch, cache)
     old_root = cache / "generations" / (cache / "CURRENT").read_text(encoding="utf-8").strip()
     new_source = _source(tmp_path / "two.json", "New")
-    original_glob = Path.glob
+    original_read = consume.read_json
     published = False
 
-    def publish_after_scan(path: Path, pattern: str):
+    def publish_after_scan(path: Path, filename: str, **kwargs):
         nonlocal published
-        result = original_glob(path, pattern)
-        if path == old_root and pattern == "*.json" and not published:
+        result = original_read(path, filename, **kwargs)
+        if path == old_root and filename == "index.json" and not published:
             published = True
             build_cache(new_source, version="v2", cache_dir=cache)
         return result
 
-    monkeypatch.setattr(Path, "glob", publish_after_scan)
+    monkeypatch.setattr(consume, "read_json", publish_after_scan)
     filenames = consume._all_pack_filenames()
 
     assert published is True
@@ -249,13 +249,13 @@ def test_identity_lookup_reads_packs_from_its_pinned_generation(
     _use_cache(monkeypatch, cache)
     old_root = cache / "generations" / (cache / "CURRENT").read_text(encoding="utf-8").strip()
     new_source = _source(tmp_path / "new.json", "New")
-    original_glob = Path.glob
+    original_read = consume.read_json
     published = False
 
-    def publish_after_scan(path: Path, pattern: str):
+    def publish_after_scan(path: Path, filename: str, **kwargs):
         nonlocal published
-        result = original_glob(path, pattern)
-        if path == old_root and pattern == "*.json" and not published:
+        result = original_read(path, filename, **kwargs)
+        if path == old_root and filename == "index.json" and not published:
             published = True
             build_cache(
                 new_source,
@@ -266,7 +266,7 @@ def test_identity_lookup_reads_packs_from_its_pinned_generation(
             )
         return result
 
-    monkeypatch.setattr(Path, "glob", publish_after_scan)
+    monkeypatch.setattr(consume, "read_json", publish_after_scan)
     entry = consume.get_class_by_identity(
         "Old", pack_slug="custom_nodes.Pack", git_commit="old"
     )

@@ -1914,6 +1914,188 @@
   "XY Input: Lora Block Weight //Inspire": "ComfyUI-Inspire-Pack@on_demand_import-d23db9a.json",
   "ZImageFunControlnet": "comfy_core@object_info_comfyui_0.24.0.1.json",
   "ZipPrompt //Inspire": "ComfyUI-Inspire-Pack@on_demand_import-d23db9a.json",
+  "__object_info_captures__": {
+    "[\"AILab_AudioDuration\",\"legacy\",\"AILab_AudioDuration@runpod-snapshot.json\"]": [
+      "AILab_AudioDuration@runpod-snapshot.json"
+    ],
+    "[\"AILab_QwenTTS\",\"legacy\",\"AILab_QwenTTS@runpod-snapshot.json\"]": [
+      "AILab_QwenTTS@runpod-snapshot.json"
+    ],
+    "[\"AILab_QwenTTS_Tools\",\"legacy\",\"AILab_QwenTTS_Tools@runpod-snapshot.json\"]": [
+      "AILab_QwenTTS_Tools@runpod-snapshot.json"
+    ],
+    "[\"ComfyUI-AceStep_SFT\",\"legacy\",\"ComfyUI-AceStep_SFT@local-c2cfe8e.json\"]": [
+      "ComfyUI-AceStep_SFT@local-c2cfe8e.json"
+    ],
+    "[\"ComfyUI-Advanced-ControlNet\",\"git_commit\",\"a0563a3fa09b8cb8a4e19aa5880e61005626fe0e\"]": [
+      "ComfyUI-Advanced-ControlNet@on_demand_static-a0563a3.json"
+    ],
+    "[\"ComfyUI-Custom-Scripts\",\"legacy\",\"ComfyUI-Custom-Scripts@stub.json\"]": [
+      "ComfyUI-Custom-Scripts@stub.json"
+    ],
+    "[\"ComfyUI-DeepExtract\",\"git_commit\",\"40cf9cb3268ac678d63fe9fe8c0ee16b3fe1ce1d\"]": [
+      "ComfyUI-DeepExtract@on_demand_import-40cf9cb.json"
+    ],
+    "[\"ComfyUI-DepthAnythingV2\",\"git_commit\",\"553187872eeb1d52e50dc53209fa57e569609a72\"]": [
+      "ComfyUI-DepthAnythingV2@cpu-runtime.json"
+    ],
+    "[\"ComfyUI-DepthAnythingV2\",\"legacy\",\"ComfyUI-DepthAnythingV2@local-5531878.json\"]": [
+      "ComfyUI-DepthAnythingV2@local-5531878.json"
+    ],
+    "[\"ComfyUI-Easy-Use\",\"git_commit\",\"4de1ab3b66e48da916b6f263bacd001df53a2720\"]": [
+      "ComfyUI-Easy-Use@on_demand_import-4de1ab3.json"
+    ],
+    "[\"ComfyUI-Easy-Use\",\"git_commit\",\"b5e31ef12ad9d0b187b545c2707735cc7d581c52\"]": [
+      "ComfyUI-Easy-Use@on_demand_import-b5e31ef.json"
+    ],
+    "[\"ComfyUI-Florence2\",\"legacy\",\"ComfyUI-Florence2@stub.json\"]": [
+      "ComfyUI-Florence2@stub.json"
+    ],
+    "[\"ComfyUI-GGUF\",\"git_commit\",\"6ea2651e7df66d7585f6ffee804b20e92fb38b8a\"]": [
+      "ComfyUI-GGUF@cpu-runtime.json"
+    ],
+    "[\"ComfyUI-GGUF\",\"legacy\",\"ComfyUI-GGUF@local-6ea2651.json\"]": [
+      "ComfyUI-GGUF@local-6ea2651.json"
+    ],
+    "[\"ComfyUI-GIMM-VFI\",\"legacy\",\"ComfyUI-GIMM-VFI@stub.json\"]": [
+      "ComfyUI-GIMM-VFI@stub.json"
+    ],
+    "[\"ComfyUI-H3-Motion-Context-MultiRef\",\"git_commit\",\"361624fb406b63eb6694442eac6c895fc1533a70\"]": [
+      "ComfyUI-H3-Motion-Context-MultiRef@cpu-runtime.json"
+    ],
+    "[\"ComfyUI-Hotshot\",\"evidence_identity\",\"hotshot-workflow-stub\"]": [
+      "ComfyUI-Hotshot@stub.json"
+    ],
+    "[\"ComfyUI-Hunyuan3DTools\",\"legacy\",\"ComfyUI-Hunyuan3DTools@local-621fb54.json\"]": [
+      "ComfyUI-Hunyuan3DTools@local-621fb54.json"
+    ],
+    "[\"ComfyUI-HunyuanVideo_Foley\",\"git_commit\",\"b94f7aca877ff2be5bc264b057abee3dac682c1b\"]": [
+      "ComfyUI-HunyuanVideo_Foley@source-b94f7ac.json"
+    ],
+    "[\"ComfyUI-IndexTTS\",\"legacy\",\"ComfyUI-IndexTTS@local.json\"]": [
+      "ComfyUI-IndexTTS@local.json"
+    ],
+    "[\"ComfyUI-Inspire-Pack\",\"git_commit\",\"d23db9aa544de9a6d4c609cb7005fa9e0d42031d\"]": [
+      "ComfyUI-Inspire-Pack@on_demand_import-d23db9a.json"
+    ],
+    "[\"ComfyUI-KJNodes\",\"git_commit\",\"b7646ad70a7daa7aeb919ca542274758d26ba2df\"]": [
+      "ComfyUI-KJNodes@cpu-runtime.json"
+    ],
+    "[\"ComfyUI-KJNodes\",\"legacy\",\"ComfyUI-KJNodes@runpod-snapshot.json\"]": [
+      "ComfyUI-KJNodes@runpod-snapshot.json"
+    ],
+    "[\"ComfyUI-LTXVideo\",\"legacy\",\"ComfyUI-LTXVideo@runpod-snapshot.json\"]": [
+      "ComfyUI-LTXVideo@runpod-snapshot.json"
+    ],
+    "[\"ComfyUI-MelBandRoformer\",\"legacy\",\"ComfyUI-MelBandRoformer@stub.json\"]": [
+      "ComfyUI-MelBandRoformer@stub.json"
+    ],
+    "[\"ComfyUI-Qwen3-TTS\",\"git_commit\",\"17c22adb80a63c1c51bf74549e71a5cf218f4e1b\"]": [
+      "ComfyUI-Qwen3-TTS@on_demand_import-17c22ad.json"
+    ],
+    "[\"ComfyUI-Qwen3-TTS\",\"legacy\",\"ComfyUI-Qwen3-TTS@local-17c22ad.json\"]": [
+      "ComfyUI-Qwen3-TTS@local-17c22ad.json"
+    ],
+    "[\"ComfyUI-QwenTTS\",\"git_commit\",\"d8122a8ba835b65fd65c113d2b273b1ad1579293\"]": [
+      "ComfyUI-QwenTTS@cpu-runtime.json"
+    ],
+    "[\"ComfyUI-SubjectStyle-CSV\",\"git_commit\",\"47667313d3d489603b98d93b9811d68a63a0d7d1\"]": [
+      "ComfyUI-SubjectStyle-CSV@on_demand_static-4766731.json"
+    ],
+    "[\"ComfyUI-VibeVoice\",\"git_commit\",\"99a98031d79e07f279a7aa6d01ce89042e8bba26\"]": [
+      "ComfyUI-VibeVoice@on_demand_static-99a9803.json"
+    ],
+    "[\"ComfyUI-VideoHelperSuite\",\"git_commit\",\"4ee72c065db22c9d96c2427954dc69e7b908444b\"]": [
+      "ComfyUI-VideoHelperSuite@cpu-runtime.json"
+    ],
+    "[\"ComfyUI-VideoHelperSuite\",\"legacy\",\"ComfyUI-VideoHelperSuite@runpod-snapshot.json\"]": [
+      "ComfyUI-VideoHelperSuite@runpod-snapshot.json"
+    ],
+    "[\"ComfyUI-WanAnimatePreprocess\",\"git_commit\",\"1a35b81a418bbba093356ad19b19bf2a76a24f4e\"]": [
+      "ComfyUI-WanAnimatePreprocess@cpu-runtime.json"
+    ],
+    "[\"ComfyUI-WanAnimatePreprocess\",\"legacy\",\"ComfyUI-WanAnimatePreprocess@local-1a35b81.json\"]": [
+      "ComfyUI-WanAnimatePreprocess@local-1a35b81.json"
+    ],
+    "[\"ComfyUI-WanVideoWrapper\",\"git_commit\",\"df8f3e49daaad117cf3090cc916c83f3d001494c\"]": [
+      "ComfyUI-WanVideoWrapper@cpu-runtime.json"
+    ],
+    "[\"ComfyUI-WanVideoWrapper\",\"legacy\",\"ComfyUI-WanVideoWrapper@runpod-snapshot.json\"]": [
+      "ComfyUI-WanVideoWrapper@runpod-snapshot.json"
+    ],
+    "[\"ComfyUI-Whisper\",\"legacy\",\"ComfyUI-Whisper@local-006a709.json\"]": [
+      "ComfyUI-Whisper@local-006a709.json"
+    ],
+    "[\"ComfyUI-llama-cpp\",\"git_commit\",\"f2209cccb726647640271bd1cea071a570fc62f5\"]": [
+      "ComfyUI-llama-cpp@on_demand_import-f2209cc.json"
+    ],
+    "[\"ComfyUI-segment-anything-2\",\"git_commit\",\"0c35fff5f382803e2310103357b5e985f5437f32\"]": [
+      "ComfyUI-segment-anything-2@cpu-runtime.json"
+    ],
+    "[\"ComfyUI-segment-anything-2\",\"legacy\",\"ComfyUI-segment-anything-2@local-0c35fff.json\"]": [
+      "ComfyUI-segment-anything-2@local-0c35fff.json"
+    ],
+    "[\"ComfyUI_LayerStyle_Advance\",\"legacy\",\"ComfyUI-LayerMask@local.json\"]": [
+      "ComfyUI-LayerMask@local.json"
+    ],
+    "[\"LanPaint\",\"legacy\",\"LanPaint@2.1.0.json\"]": [
+      "LanPaint@2.1.0.json"
+    ],
+    "[\"audio-separation-nodes-comfyui\",\"git_commit\",\"ac339561973f0c1e56db2f9d40f11b0fddda6763\"]": [
+      "audio-separation-nodes-comfyui@on_demand_import-ac33956.json"
+    ],
+    "[\"comfy\",\"legacy\",\"comfy@runpod-snapshot.json\"]": [
+      "comfy@runpod-snapshot.json"
+    ],
+    "[\"comfy_core\",\"evidence_identity\",\"object_info_comfyui_0.24.0.1\"]": [
+      "comfy_core@object_info_comfyui_0.24.0.1.json"
+    ],
+    "[\"comfy_core\",\"git_commit\",\"6bfaacc67c2103481e5f0c84d75257cd0581d86a\"]": [
+      "comfy_core@cpu-runtime.json"
+    ],
+    "[\"comfy_core\",\"legacy\",\"comfy_core@runpod-snapshot.json\"]": [
+      "comfy_core@runpod-snapshot.json"
+    ],
+    "[\"comfy_core\",\"legacy\",\"comfy_core@zz-official-426f5eea.json\"]": [
+      "comfy_core@zz-official-426f5eea.json"
+    ],
+    "[\"comfy_core\",\"legacy\",\"comfy_core@zz-official-ee71d5c4.json\"]": [
+      "comfy_core@zz-official-ee71d5c4.json"
+    ],
+    "[\"comfy_extras\",\"legacy\",\"comfy_extras@runpod-snapshot.json\"]": [
+      "comfy_extras@runpod-snapshot.json"
+    ],
+    "[\"comfy_extras\",\"legacy\",\"comfy_extras@zz-official-6338e4bd.json\"]": [
+      "comfy_extras@zz-official-6338e4bd.json"
+    ],
+    "[\"comfyui-advanced-controlnet\",\"git_commit\",\"27a67fee80cf46c198b10588a5651f23d67d1e95\"]": [
+      "comfyui-advanced-controlnet@on_demand_static-27a67fe.json"
+    ],
+    "[\"comfyui_controlnet_aux\",\"git_commit\",\"e8b689a513c3e6b63edc44066560ca5919c0576e\"]": [
+      "comfyui_controlnet_aux@cpu-runtime.json"
+    ],
+    "[\"comfyui_controlnet_aux\",\"legacy\",\"comfyui_controlnet_aux@stub.json\"]": [
+      "comfyui_controlnet_aux@stub.json"
+    ],
+    "[\"comfyui_ryanonyheinside\",\"git_commit\",\"52daf666925e5c17b21704418ce30a0de3a462a2\"]": [
+      "comfyui_ryanonyheinside@on_demand_import-52daf66.json"
+    ],
+    "[\"custom_nodes.offline\",\"evidence_identity\",\"object_info.json\"]": [
+      "custom_nodes.offline@legacy-import.json"
+    ],
+    "[\"custom_nodes.offline\",\"legacy\",\"custom_nodes.offline@runpod-snapshot.json\"]": [
+      "custom_nodes.offline@runpod-snapshot.json"
+    ],
+    "[\"rgthree-comfy\",\"git_commit\",\"738105af5fb14e96fbecaf406dc356e284797e8c\"]": [
+      "rgthree-comfy@cpu-runtime.json"
+    ],
+    "[\"rgthree-comfy\",\"legacy\",\"rgthree-comfy@runpod-snapshot.json\"]": [
+      "rgthree-comfy@runpod-snapshot.json"
+    ],
+    "[\"vibecomfy\",\"legacy\",\"vibecomfy@runpod-snapshot.json\"]": [
+      "vibecomfy@runpod-snapshot.json"
+    ]
+  },
   "_mfc": "comfyui_ryanonyheinside@on_demand_import-52daf66.json",
   "bbox_to_mask": "ComfyUI-llama-cpp@on_demand_import-f2209cc.json",
   "bbox_to_segs": "ComfyUI-llama-cpp@on_demand_import-f2209cc.json",

@@ -1,5 +1,5 @@
 {
-  "class_count": 2102,
+  "class_count": 2115,
   "packs": {
     "AILab_AudioDuration@runpod-snapshot.json": {
       "classes": 1,
@@ -51,6 +51,14 @@
       "source": "direct_url",
       "source_kind": "on_demand_import"
     },
+    "ComfyUI-DepthAnythingV2@cpu-runtime.json": {
+      "classes": 2,
+      "locked_commit": "553187872eeb1d52e50dc53209fa57e569609a72",
+      "pack": "ComfyUI-DepthAnythingV2",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "d0952923f6daf59ff590c93b56afd6c75470b6e9dd06ac38d91872372cfe4720",
+      "source_kind": "runtime_object_info"
+    },
     "ComfyUI-DepthAnythingV2@local-5531878.json": {
       "classes": 2,
       "locked_commit": "553187872eeb1d52e50dc53209fa57e569609a72",
@@ -80,12 +88,28 @@
       "source": "direct_url",
       "source_kind": "on_demand_import"
     },
+    "ComfyUI-GGUF@cpu-runtime.json": {
+      "classes": 6,
+      "locked_commit": "6ea2651e7df66d7585f6ffee804b20e92fb38b8a",
+      "pack": "ComfyUI-GGUF",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "afe2840951e7897f33b80473ce2c99cf25bd2e76049b9f767b0fc55c65bc5345",
+      "source_kind": "runtime_object_info"
+    },
     "ComfyUI-GGUF@local-6ea2651.json": {
       "classes": 2,
       "locked_commit": "6ea2651e7df66d7585f6ffee804b20e92fb38b8a",
       "pack": "ComfyUI-GGUF",
       "repo": "https://github.com/city96/ComfyUI-GGUF.git",
       "schema_sha256": "1336fad984841444a9559b602c34ef11d1dd4b68a9a902437aaee6771ab5d2d3"
+    },
+    "ComfyUI-H3-Motion-Context-MultiRef@cpu-runtime.json": {
+      "classes": 37,
+      "locked_commit": "361624fb406b63eb6694442eac6c895fc1533a70",
+      "pack": "ComfyUI-H3-Motion-Context-MultiRef",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "73ece3e1f9cb1f4bab156438e098315d29798ff0b17eb1711631663e71914e2b",
+      "source_kind": "runtime_object_info"
     },
     "ComfyUI-Hunyuan3DTools@local-621fb54.json": {
       "classes": 2,
@@ -111,6 +135,14 @@
       "schema_sha256": "0d166f7fd30666d018f1015efa98d9cd781373af650dda87564e9f003b09a344",
       "source": "direct_url",
       "source_kind": "on_demand_import"
+    },
+    "ComfyUI-KJNodes@cpu-runtime.json": {
+      "classes": 234,
+      "locked_commit": "b7646ad70a7daa7aeb919ca542274758d26ba2df",
+      "pack": "ComfyUI-KJNodes",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "bc294f44e436a19587ab869cca917495504543d689e4485b33d3a32711e83380",
+      "source_kind": "runtime_object_info"
     },
     "ComfyUI-KJNodes@runpod-snapshot.json": {
       "classes": 230,
@@ -140,6 +172,25 @@
       "repo": "https://github.com/DarioFT/ComfyUI-Qwen3-TTS.git",
       "schema_sha256": "e1e936d1fb13d4c87f7d49c935b7d9a0c1d5860306c5a5b4233c125d769a0be0"
     },
+    "ComfyUI-Qwen3-TTS@on_demand_import-17c22ad.json": {
+      "captured_at": "2026-11-12T18:22:33.649+00:00",
+      "extraction_rung": "import",
+      "locked_commit": "17c22adb80a63c1c51bf74549e71a5cf218f4e1b",
+      "pack": "ComfyUI-Qwen3-TTS",
+      "registry_pack_version": null,
+      "repo": "https://github.com/DarioFT/ComfyUI-Qwen3-TTS.git",
+      "schema_sha256": "dd89cf2a653170614c514b1dd999856b14b751b754b7ce1ed3aa7287aaccdd4d",
+      "source": "pinned_repository_extract",
+      "source_kind": "on_demand_import"
+    },
+    "ComfyUI-QwenTTS@cpu-runtime.json": {
+      "classes": 12,
+      "locked_commit": "d8122a8ba835b65fd65c113d2b273b1ad1579293",
+      "pack": "ComfyUI-QwenTTS",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "b9ec8e326a302a5015157c1f80dfdc1a93130aef9dc59084c37182f3711983e9",
+      "source_kind": "runtime_object_info"
+    },
     "ComfyUI-SubjectStyle-CSV@on_demand_static-4766731.json": {
       "captured_at": "2026-08-26T17:00:11.041+00:00",
       "extraction_rung": "ast",
@@ -160,6 +211,14 @@
       "schema_sha256": "2a54fc0807a0deec4e48eb31b301ecd85393efe106d1e93929c7fe125ce913cf",
       "source_kind": "on_demand_static"
     },
+    "ComfyUI-VideoHelperSuite@cpu-runtime.json": {
+      "classes": 40,
+      "locked_commit": "4ee72c065db22c9d96c2427954dc69e7b908444b",
+      "pack": "ComfyUI-VideoHelperSuite",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "f18e9912cc515f450e0af16f37e3c3e3599cf16e29e2774e95cf6324769425d5",
+      "source_kind": "runtime_object_info"
+    },
     "ComfyUI-VideoHelperSuite@runpod-snapshot.json": {
       "classes": 40,
       "locked_commit": "4ee72c065db22c9d96c2427954dc69e7b908444b",
@@ -167,12 +226,28 @@
       "repo": "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git",
       "schema_sha256": "8391e679554eecd5d324a3e34a713ff240e619e3a07476587845ba18c9fae310"
     },
+    "ComfyUI-WanAnimatePreprocess@cpu-runtime.json": {
+      "classes": 5,
+      "locked_commit": "1a35b81a418bbba093356ad19b19bf2a76a24f4e",
+      "pack": "ComfyUI-WanAnimatePreprocess",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "b06eb82bee869585a67c4db0ef638785d81ca341bc815399e6d7af3b14856152",
+      "source_kind": "runtime_object_info"
+    },
     "ComfyUI-WanAnimatePreprocess@local-1a35b81.json": {
       "classes": 5,
       "locked_commit": "1a35b81a418bbba093356ad19b19bf2a76a24f4e",
       "pack": "ComfyUI-WanAnimatePreprocess",
       "repo": "https://github.com/kijai/ComfyUI-WanAnimatePreprocess.git",
       "schema_sha256": "2037d30d5343a44a9403c928ea18688bb050b9114fc2d3741df2c6b64edaf7f5"
+    },
+    "ComfyUI-WanVideoWrapper@cpu-runtime.json": {
+      "classes": 142,
+      "locked_commit": "df8f3e49daaad117cf3090cc916c83f3d001494c",
+      "pack": "ComfyUI-WanVideoWrapper",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "143b9814bbe0377573cd191bdc7ebb739c2d84dbe62d422b0ef0312a24569c40",
+      "source_kind": "runtime_object_info"
     },
     "ComfyUI-WanVideoWrapper@runpod-snapshot.json": {
       "classes": 146,
@@ -199,6 +274,14 @@
       "source": "direct_url",
       "source_kind": "on_demand_import"
     },
+    "ComfyUI-segment-anything-2@cpu-runtime.json": {
+      "classes": 6,
+      "locked_commit": "0c35fff5f382803e2310103357b5e985f5437f32",
+      "pack": "ComfyUI-segment-anything-2",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "573a72f3ce6bacd5be2068af12f6adb2e1d3409b47b87e6b9403a4457f3ca838",
+      "source_kind": "runtime_object_info"
+    },
     "ComfyUI-segment-anything-2@local-0c35fff.json": {
       "classes": 6,
       "locked_commit": "0c35fff5f382803e2310103357b5e985f5437f32",
@@ -222,6 +305,14 @@
       "pack": "comfy",
       "repo": null,
       "schema_sha256": null
+    },
+    "comfy_core@cpu-runtime.json": {
+      "classes": 959,
+      "locked_commit": "6bfaacc67c2103481e5f0c84d75257cd0581d86a",
+      "pack": "comfy_core",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "db79f6bda81927f696aed8a941b81a4b243a52111d9605e5267099a112091ada",
+      "source_kind": "runtime_core_object_info"
     },
     "comfy_core@runpod-snapshot.json": {
       "classes": 533,
@@ -263,6 +354,14 @@
       "schema_sha256": "5bda7ec10a451109e0c15a0c0a678b6752548064358d3ae55ac4aacb106cd234",
       "source_kind": "on_demand_static"
     },
+    "comfyui_controlnet_aux@cpu-runtime.json": {
+      "classes": 64,
+      "locked_commit": "e8b689a513c3e6b63edc44066560ca5919c0576e",
+      "pack": "comfyui_controlnet_aux",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "0ee0c6567d84abc82a821b8137340d29b9f6432febec030c390d29fb25b0a0d6",
+      "source_kind": "runtime_object_info"
+    },
     "comfyui_ryanonyheinside@on_demand_import-52daf66.json": {
       "captured_at": "2026-08-26T17:00:14.879+00:00",
       "extraction_rung": "import",
@@ -272,6 +371,14 @@
       "repo": "https://github.com/ryanontheinside/ComfyUI_RyanOnTheInside",
       "schema_sha256": "e7ac1bc8b4f0061c578a0f13d5bafd134fada020ff37ba53f303535b05c95e1a",
       "source_kind": "on_demand_import"
+    },
+    "rgthree-comfy@cpu-runtime.json": {
+      "classes": 24,
+      "locked_commit": "738105af5fb14e96fbecaf406dc356e284797e8c",
+      "pack": "rgthree-comfy",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "5b8632c5ea411da57d1275af89a33db60ce8459fba73acc8ac4e41e0f8b174a3",
+      "source_kind": "runtime_object_info"
     },
     "rgthree-comfy@runpod-snapshot.json": {
       "classes": 24,

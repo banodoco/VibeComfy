@@ -1,0 +1,121 @@
+{
+  "DepthAnything_V2": {
+    "category": "DepthAnythingV2",
+    "class_schema_sha256": "af165f7e6833d6267d042c86a5179a314965d5c07ef4d3d186041cb226de9cd7",
+    "description": "\nhttps://depth-anything-v2.github.io\n",
+    "display_name": "Depth Anything V2",
+    "evidence_identity": "ComfyUI-DepthAnythingV2.cpu.json",
+    "function": "DepthAnything_V2",
+    "git_commit": "553187872eeb1d52e50dc53209fa57e569609a72",
+    "input_order": {
+      "required": [
+        "da_model",
+        "images"
+      ]
+    },
+    "input_order_all": [
+      "da_model",
+      "images"
+    ],
+    "inputs": {
+      "required": {
+        "da_model": [
+          "DAMODEL"
+        ],
+        "images": [
+          "IMAGE"
+        ]
+      }
+    },
+    "name": "DepthAnything_V2",
+    "object_info_widget_order": [
+      "da_model",
+      null
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "image",
+        "type": "IMAGE"
+      }
+    ],
+    "pack": "ComfyUI-DepthAnythingV2",
+    "pack_slug": "ComfyUI-DepthAnythingV2",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.ComfyUI-DepthAnythingV2",
+    "schema_hash": "af165f7e6833d6267d042c86a5179a314965d5c07ef4d3d186041cb226de9cd7",
+    "source_kind": "runtime_object_info"
+  },
+  "DownloadAndLoadDepthAnythingV2Model": {
+    "category": "DepthAnythingV2",
+    "class_schema_sha256": "af165f7e6833d6267d042c86a5179a314965d5c07ef4d3d186041cb226de9cd7",
+    "description": "\nModels autodownload to `ComfyUI/models/depthanything` from   \nhttps://huggingface.co/Kijai/DepthAnythingV2-safetensors/tree/main   \n   \nfp16 reduces quality by a LOT, not recommended.\n",
+    "display_name": "DownloadAndLoadDepthAnythingV2Model",
+    "evidence_identity": "ComfyUI-DepthAnythingV2.cpu.json",
+    "function": "DownloadAndLoadDepthAnythingV2Model",
+    "git_commit": "553187872eeb1d52e50dc53209fa57e569609a72",
+    "input_order": {
+      "optional": [
+        "precision"
+      ],
+      "required": [
+        "model"
+      ]
+    },
+    "input_order_all": [
+      "model",
+      "precision"
+    ],
+    "inputs": {
+      "optional": {
+        "precision": [
+          [
+            "auto",
+            "bf16",
+            "fp16",
+            "fp32"
+          ],
+          {
+            "default": "auto"
+          }
+        ]
+      },
+      "required": {
+        "model": [
+          [
+            "depth_anything_v2_vits_fp16.safetensors",
+            "depth_anything_v2_vits_fp32.safetensors",
+            "depth_anything_v2_vitb_fp16.safetensors",
+            "depth_anything_v2_vitb_fp32.safetensors",
+            "depth_anything_v2_vitl_fp16.safetensors",
+            "depth_anything_v2_vitl_fp32.safetensors",
+            "depth_anything_v2_vitg_fp32.safetensors",
+            "depth_anything_v2_metric_hypersim_vitl_fp32.safetensors",
+            "depth_anything_v2_metric_vkitti_vitl_fp32.safetensors"
+          ],
+          {
+            "default": "depth_anything_v2_vitl_fp32.safetensors"
+          }
+        ]
+      }
+    },
+    "name": "DownloadAndLoadDepthAnythingV2Model",
+    "object_info_widget_order": [
+      "model",
+      "precision"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "da_v2_model",
+        "type": "DAMODEL"
+      }
+    ],
+    "pack": "ComfyUI-DepthAnythingV2",
+    "pack_slug": "ComfyUI-DepthAnythingV2",
+    "pack_version": "cpu-runtime",
+    "python_module": "custom_nodes.ComfyUI-DepthAnythingV2",
+    "schema_hash": "af165f7e6833d6267d042c86a5179a314965d5c07ef4d3d186041cb226de9cd7",
+    "source_kind": "runtime_object_info"
+  }
+}

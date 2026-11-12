@@ -51,6 +51,7 @@ from vibecomfy.porting.object_info.generation import (
     validate_generation,
 )
 from vibecomfy.errors import ObjectInfoCacheCorruptError
+from vibecomfy.porting.object_info.index import CAPTURES, split_index, indexed_captures
 
 LEGACY_IMPORT_PACK_VERSION = "legacy-import"
 LEGACY_IMPORT_SOURCE_KIND = "legacy_object_info_import"
@@ -235,6 +236,7 @@ def build_cache(
     evidence_identity: str | None = None,
     source_kind: str = LEGACY_IMPORT_SOURCE_KIND,
     full_pack_refresh: bool | set[str] = False,
+    select_default: bool = True,
 ) -> tuple[int, int]:
     """Parse *source_path* (an object_info JSON dump) and write per-pack files.
 
@@ -244,6 +246,11 @@ def build_cache(
     ``full_pack_refresh=True`` (or a set of pack keys) when the source is known
     to be a complete snapshot for the represented pack(s); then stale classes in
     those packs are removed from the rewritten pack file and index.
+
+    Commit captures retain all other commits and merge only their own identity.
+    ``select_default=False`` holds a capture without selecting it for class-only
+    reads; existing default rows are unchanged. The default remains the historic
+    refresh behavior: refreshed classes select the incoming provider.
 
     Returns ``(class_count, pack_count)``.
     """
@@ -300,18 +307,45 @@ def build_cache(
         provenance_packs = dict(provenance.get("packs", {}))
         for pack_name in sorted(packs):
             filename = validate_provider_filename(f"{pack_name}@{(version or effective_version)}.json")
+            refreshed = packs[pack_name]
+            commit = base_identity.git_commit
+            # Commit captures merge only with their own identity. Legacy imports
+            # retain their historical pack-wide refresh and default selection.
+            if commit:
+                own_files = {
+                    old_name: entries for old_name, entries in pack_files.items()
+                    if any(e.get("git_commit") == commit and e.get("pack_slug", e.get("pack")) == pack_name
+                           for e in entries.values() if isinstance(e, dict))
+                }
+                if own_files:
+                    filename = sorted(own_files)[0]
+                elif filename in pack_files:
+                    # Storage labels are independent of pack_version. Avoid
+                    # overwriting another commit with the same version label.
+                    suffix = hashlib.sha256(commit.encode()).hexdigest()
+                    filename = validate_provider_filename(f"{pack_name}@{version or effective_version}-{suffix}.json")
+                previous = {ct: entry for ct, entry in _entries_from_pack_files(own_files).items()
+                            if entry.get("git_commit") == commit
+                            and entry.get("pack_slug", entry.get("pack")) == pack_name}
+            else:
+                previous = {ct: entry for ct, entry in _entries_from_pack_files(existing_pack_files).items()
+                            if not entry.get("git_commit")}
             pack_entries = _merged_pack_entries(
-                pack_name,
-                packs[pack_name],
-                _entries_from_pack_files(existing_pack_files),
+                pack_name, refreshed, previous,
                 full_refresh=_is_full_pack_refresh(pack_name, full_pack_refresh),
             )
             pack_files[filename] = pack_entries
-            for class_type, entry in _entries_from_pack_files(existing_pack_files).items():
-                if entry.get("pack") == pack_name and class_type not in pack_entries:
-                    index.pop(class_type, None)
-            for class_type in sorted(pack_entries):
-                index[class_type] = filename
+            for old_name in own_files if commit else ():
+                if old_name != filename:
+                    pack_files.pop(old_name, None)
+            if select_default:
+                for class_type, old_filename in list(index.items()):
+                    old_entry = existing_pack_files.get(old_filename, {}).get(class_type, {})
+                    same_scope = old_entry.get("git_commit") == commit if commit else True
+                    if old_entry.get("pack") == pack_name and same_scope and class_type not in pack_entries:
+                        index.pop(class_type, None)
+                for class_type in sorted(pack_entries):
+                    index[class_type] = filename
             provenance_packs[filename] = {
                 **dict(provenance_packs.get(filename, {})),
                 "pack": pack_name,
@@ -319,6 +353,7 @@ def build_cache(
                 "schema_sha256": _json_sha256(pack_entries),
                 "pack_version": base_identity.pack_version or effective_version,
                 "source_kind": base_identity.source_kind,
+                **({"locked_commit": commit} if commit else {}),
             }
         provenance["packs"] = provenance_packs
         provenance["class_count"] = len(index)
@@ -362,25 +397,26 @@ def _read_cache_state(
     index = read_json(active_root, "index.json", required=False) if index_present else {}
     if not isinstance(index, dict):
         raise ObjectInfoCacheCorruptError(f"object_info index must be an object: {index_path}")
-    normalized_index: dict[str, str] = {}
+    normalized_index, held = split_index(index)
+    filenames = {f for files in held.values() for f in files}
+    if CAPTURES in index and not set(normalized_index.values()) <= filenames:
+        raise ObjectInfoCacheCorruptError("object_info default references an unheld capture")
+    filenames.update(normalized_index.values())
+    if CAPTURES not in index:
+        filenames.update(p.name for p in active_root.glob("*.json")
+                         if safe_cache_filename(p.name) and "@" in p.name)
     pack_files: dict[str, dict[str, dict[str, Any]]] = {}
-    for class_type, filename in index.items():
-        if not isinstance(class_type, str) or not isinstance(filename, str):
-            raise ObjectInfoCacheCorruptError("object_info index keys and provider filenames must be strings")
+    for filename in sorted(filenames):
         validate_provider_filename(filename)
-        if filename not in pack_files:
-            path = active_root / filename
-            if not path.exists() and not path.is_symlink():
-                raise ObjectInfoCacheCorruptError(f"object_info index points to missing provider file: {filename}")
-            pack = read_json(active_root, filename)
-            if not isinstance(pack, dict):
-                raise ObjectInfoCacheCorruptError(f"object_info provider file must be an object: {path}")
-            pack_files[filename] = pack
+        pack = read_json(active_root, filename)
+        if not isinstance(pack, dict):
+            raise ObjectInfoCacheCorruptError(f"object_info provider file must be an object: {filename}")
+        pack_files[filename] = pack
+    for class_type, filename in normalized_index.items():
         if validate_index_rows and not isinstance(pack_files[filename].get(class_type), dict):
             raise ObjectInfoCacheCorruptError(
                 f"object_info index row {class_type!r} is missing from {filename!r}"
             )
-        normalized_index[class_type] = filename
     provenance = read_json(active_root, "provenance.json", required=False) if provenance_present else {}
     if not isinstance(provenance, dict):
         raise ObjectInfoCacheCorruptError(f"object_info provenance must be an object: {provenance_path}")
@@ -688,11 +724,21 @@ def _publish_cache_state(
     staging = Path(tempfile.mkdtemp(prefix=".object-info-", dir=generations_root))
     try:
         artifacts: dict[str, str] = {}
-        serialized: dict[str, str] = {
-            filename: json.dumps(pack, indent=2, sort_keys=True, ensure_ascii=False)
-            for filename, pack in sorted(pack_files.items())
-        }
-        serialized["index.json"] = json.dumps(index, indent=2, sort_keys=True, ensure_ascii=False)
+        serialized: dict[str, str] = {}
+        for filename, pack in sorted(pack_files.items()):
+            text = json.dumps(pack, indent=2, sort_keys=True, ensure_ascii=False)
+            # Preserve unchanged provider bytes, including class field order,
+            # when registering a legacy cache or publishing another identity.
+            path = cache_root / filename
+            if path.exists() and not path.is_symlink():
+                original = path.read_text(encoding="utf-8")
+                try:
+                    if json.loads(original) == pack:
+                        text = original
+                except ValueError:
+                    pass
+            serialized[filename] = text
+        serialized["index.json"] = json.dumps({**index, CAPTURES: indexed_captures(pack_files)}, indent=2, sort_keys=True, ensure_ascii=False)
         serialized["provenance.json"] = json.dumps(provenance, indent=2, sort_keys=True, ensure_ascii=False)
         for filename, text in serialized.items():
             (staging / filename).write_text(text, encoding="utf-8")

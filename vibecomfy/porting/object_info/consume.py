@@ -6,6 +6,8 @@ All public functions are deterministic and do not require ComfyUI or network.
 
 from __future__ import annotations
 
+from vibecomfy.porting.object_info.index import split_index
+
 from vibecomfy.socket_types import canonical_socket_type
 from vibecomfy.porting.object_info.identity import normalize_cache_identity
 
@@ -252,13 +254,7 @@ def _read_index_at_root(root: Path) -> dict[str, str]:
     data = read_json(root, "index.json")
     if not isinstance(data, dict):
         raise ObjectInfoCacheCorruptError(f"object_info index must be an object: {path}")
-    normalized = {
-        class_type: filename for class_type, filename in data.items()
-        if isinstance(class_type, str) and isinstance(filename, str) and safe_cache_filename(filename)
-    }
-    if len(normalized) != len(data):
-        raise ObjectInfoCacheCorruptError(f"unsafe object_info index row in {path}")
-    return normalized
+    return split_index(data)[0]
 
 
 def _load_pack(filename: str) -> dict[str, dict[str, Any]]:
@@ -291,13 +287,11 @@ def _read_pack_at_root(root: Path, filename: str) -> dict[str, dict[str, Any]]:
 
 
 def _pack_filenames_at_root(root: Path) -> list[str]:
-    filenames = {
-        str(path.name)
-        for path in root.glob("*.json")
-        if path.name not in {"index.json", "provenance.json", "manifest.json"}
-    }
-    filenames.update(str(filename) for filename in _read_index_at_root(root).values())
-    return sorted(filenames)
+    path = root / "index.json"
+    if not path.exists():
+        return []
+    _, held = split_index(read_json(root, "index.json"))
+    return sorted({filename for filenames in held.values() for filename in filenames})
 
 
 def _all_pack_filenames() -> list[str]:
@@ -356,7 +350,14 @@ def _identity_lookup_matches(
     with _reader_lock:
         _sync_reader()
         root = _reader_state["active"]
-        for filename in _pack_filenames_at_root(root):
+        _, held = split_index(read_json(root, "index.json", required=False) or {})
+        if git_commit is not None:
+            key = json.dumps([pack_slug, "git_commit", git_commit], separators=(",", ":"))
+            filenames = held.get(key, [])
+        else:
+            filenames = sorted({filename for key, files in held.items()
+                                if json.loads(key)[0] == pack_slug for filename in files})
+        for filename in filenames:
             entry = _read_pack_at_root(root, filename).get(class_type)
             if isinstance(entry, dict) and _identity_matches(
                 entry,

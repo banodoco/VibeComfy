@@ -183,13 +183,31 @@ def validate_generation(generation_root: str | Path) -> dict[str, Any]:
     packs = provenance.get("packs", {})
     if not isinstance(packs, dict):
         raise ObjectInfoCacheCorruptError("object_info generation provenance.packs must be an object")
-    for class_type, filename in index.items():
+    from .index import CAPTURES, split_index, indexed_captures
+    defaults, held = split_index(index)
+    for filenames in held.values():
+        for filename in filenames:
+            if filename not in files:
+                raise ObjectInfoCacheCorruptError(f"capture names unpublished provider file {filename!r}")
+    provider_files: dict[str, Any] = {}
+    if CAPTURES in index:
+        for filename in {f for filenames in held.values() for f in filenames}:
+            provider_files[filename] = read_json(root, filename)
+            if not isinstance(provider_files[filename], dict):
+                raise ObjectInfoCacheCorruptError("object_info provider must be an object")
+        if indexed_captures(provider_files) != held:
+            raise ObjectInfoCacheCorruptError("object_info capture catalogue does not match its providers")
+        if not set(defaults.values()) <= set(provider_files):
+            raise ObjectInfoCacheCorruptError("object_info default references an unheld capture")
+    for class_type, filename in defaults.items():
         if not isinstance(class_type, str) or not safe_cache_filename(filename) or filename not in files:
             raise ObjectInfoCacheCorruptError(
                 f"object_info index contains an unsafe or unpublished provider filename for {class_type!r}"
             )
         try:
-            pack = json.loads(_artifact_path(root, filename).read_text(encoding="utf-8"))
+            if filename not in provider_files:
+                provider_files[filename] = json.loads(_artifact_path(root, filename).read_text(encoding="utf-8"))
+            pack = provider_files[filename]
         except (OSError, json.JSONDecodeError) as exc:
             raise ObjectInfoCacheCorruptError(f"object_info pack {filename!r} is unreadable") from exc
         if not isinstance(pack, dict) or not isinstance(pack.get(class_type), dict):
