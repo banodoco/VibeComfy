@@ -1990,6 +1990,9 @@
     "[\"ComfyUI-VibeVoice\",\"git_commit\",\"99a98031d79e07f279a7aa6d01ce89042e8bba26\"]": [
       "ComfyUI-VibeVoice@on_demand_static-99a9803.json"
     ],
+    "[\"ComfyUI-VideoHelperSuite\",\"git_commit\",\"4ee72c065db22c9d96c2427954dc69e7b908444b\"]": [
+      "ComfyUI-VideoHelperSuite@cpu-runtime.json"
+    ],
     "[\"ComfyUI-VideoHelperSuite\",\"legacy\",\"ComfyUI-VideoHelperSuite@runpod-snapshot.json\"]": [
       "ComfyUI-VideoHelperSuite@runpod-snapshot.json"
     ],

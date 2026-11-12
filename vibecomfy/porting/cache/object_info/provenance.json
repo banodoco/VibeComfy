@@ -168,6 +168,14 @@
       "schema_sha256": "2a54fc0807a0deec4e48eb31b301ecd85393efe106d1e93929c7fe125ce913cf",
       "source_kind": "on_demand_static"
     },
+    "ComfyUI-VideoHelperSuite@cpu-runtime.json": {
+      "classes": 40,
+      "locked_commit": "4ee72c065db22c9d96c2427954dc69e7b908444b",
+      "pack": "ComfyUI-VideoHelperSuite",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "f18e9912cc515f450e0af16f37e3c3e3599cf16e29e2774e95cf6324769425d5",
+      "source_kind": "runtime_object_info"
+    },
     "ComfyUI-VideoHelperSuite@runpod-snapshot.json": {
       "classes": 40,
       "locked_commit": "4ee72c065db22c9d96c2427954dc69e7b908444b",
