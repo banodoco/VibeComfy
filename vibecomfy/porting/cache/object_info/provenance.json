@@ -263,6 +263,14 @@
       "source": "direct_url",
       "source_kind": "on_demand_import"
     },
+    "ComfyUI-segment-anything-2@cpu-runtime.json": {
+      "classes": 6,
+      "locked_commit": "0c35fff5f382803e2310103357b5e985f5437f32",
+      "pack": "ComfyUI-segment-anything-2",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "573a72f3ce6bacd5be2068af12f6adb2e1d3409b47b87e6b9403a4457f3ca838",
+      "source_kind": "runtime_object_info"
+    },
     "ComfyUI-segment-anything-2@local-0c35fff.json": {
       "classes": 6,
       "locked_commit": "0c35fff5f382803e2310103357b5e985f5437f32",

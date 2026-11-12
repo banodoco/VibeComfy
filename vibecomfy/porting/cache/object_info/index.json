@@ -2026,6 +2026,9 @@
     "[\"ComfyUI-llama-cpp\",\"git_commit\",\"f2209cccb726647640271bd1cea071a570fc62f5\"]": [
       "ComfyUI-llama-cpp@on_demand_import-f2209cc.json"
     ],
+    "[\"ComfyUI-segment-anything-2\",\"git_commit\",\"0c35fff5f382803e2310103357b5e985f5437f32\"]": [
+      "ComfyUI-segment-anything-2@cpu-runtime.json"
+    ],
     "[\"ComfyUI-segment-anything-2\",\"legacy\",\"ComfyUI-segment-anything-2@local-0c35fff.json\"]": [
       "ComfyUI-segment-anything-2@local-0c35fff.json"
     ],
