@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import ast
+import shlex
+import subprocess
 import tomllib
 from pathlib import Path
 
@@ -48,18 +51,31 @@ def test_fast_and_broad_python_gates_are_explicitly_distinct() -> None:
 
 
 def test_preflight_selector_includes_every_file_with_preflight_marker() -> None:
-    makefile = Path("Makefile").read_text(encoding="utf-8")
-    preflight_assignment = next(
-        line for line in makefile.splitlines() if line.startswith("PREFLIGHT_TESTS :=")
-    )
-    selected = set(preflight_assignment.split(":=", 1)[1].split())
+    selected = subprocess.check_output(
+        ["make", "--no-print-directory", "--eval", "print-preflight: ; @echo $(PREFLIGHT_TESTS)", "print-preflight"],
+        text=True,
+    ).split()
     marked = {
         path.as_posix()
         for path in Path("tests").rglob("*.py")
-        if "pytest.mark.preflight" in path.read_text(encoding="utf-8")
+        if any(
+            isinstance(node, ast.Attribute)
+            and node.attr == "preflight"
+            and isinstance(node.value, ast.Attribute)
+            and node.value.attr == "mark"
+            and isinstance(node.value.value, ast.Name)
+            and node.value.value.id == "pytest"
+            for node in ast.walk(ast.parse(path.read_text(encoding="utf-8")))
+        )
     }
 
-    assert marked <= selected
+    assert marked <= set(selected)
+    recipe = subprocess.check_output(
+        ["make", "--no-print-directory", "-n", "preflight", "PYTEST=pytest-sentinel", "PREFLIGHT_ARGS="],
+        text=True,
+    )
+    assert shlex.split(recipe) == ["pytest-sentinel", "-m", "preflight", *selected]
+
 
 
 def test_make_installers_support_uv_venvs_without_pip() -> None:
