@@ -17,6 +17,7 @@ from vibecomfy.workflow_bundle import ApprovedProjectionRecord, WorkflowBundle, 
 
 from .attempt import build_attempt_bundle, write_attempt_json
 from .run_context import RunContext
+from .run_logs import declare_log
 from .client import ComfyClient
 from .dependencies import RuntimeDependencyError
 from .execution import queue_server_prompt
@@ -474,6 +475,9 @@ async def run(
         (run_context.run_id, run_context.run_dir) if run_context is not None
         else _allocate_run_dir("run", runtime_root=resolved_config.runtime_root)
     )
+    declare_log(run_dir, "run", "run", run_dir / "attempt.json")
+    if server_url is None:
+        declare_log(run_dir, "engine", "engine", run_dir / "comfy.log")
     # An explicit server owns its process and filesystem.  Do not hand callers
     # a local path that this adapter never created.
     log_path = run_dir / "comfy.log" if server_url is None else None

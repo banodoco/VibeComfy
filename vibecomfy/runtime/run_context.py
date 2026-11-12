@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from vibecomfy.utils import atomic_write_json
+from .run_logs import declare_log
 
 
 @dataclass
@@ -43,6 +44,7 @@ class RunContext:
             if value is not None:
                 payload[field_name] = value
         atomic_write_json(self.receipt_path, payload)
+        declare_log(self.run_dir, "run", "run", self.receipt_path)
 
     def fail(self, error: BaseException) -> dict[str, Any]:
         payload = json.loads(self.receipt_path.read_text(encoding="utf-8"))
