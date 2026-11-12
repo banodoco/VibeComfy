@@ -5902,17 +5902,6 @@
           "expected_cardinality": "one",
           "status": "static",
           "source": "OutputSpec"
-        },
-        {
-          "node_id": "4852",
-          "name": null,
-          "output_type": "SaveVideo",
-          "artifact_kind": null,
-          "mime_type": null,
-          "filename_prefix": null,
-          "expected_cardinality": null,
-          "status": "static",
-          "source": "OutputSpec"
         }
       ],
       "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
@@ -5925,17 +5914,6 @@
           "mime_type": "video/mp4",
           "filename_prefix": "output_F",
           "expected_cardinality": "one",
-          "status": "static",
-          "source": "OutputSpec"
-        },
-        {
-          "node_id": "4852",
-          "name": null,
-          "output_type": "SaveVideo",
-          "artifact_kind": null,
-          "mime_type": null,
-          "filename_prefix": null,
-          "expected_cardinality": null,
           "status": "static",
           "source": "OutputSpec"
         }

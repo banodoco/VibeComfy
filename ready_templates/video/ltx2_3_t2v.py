@@ -69,7 +69,7 @@ READY_METADATA = ReadyMetadata.build(
     entrypoint='patch',
     layer='vibecomfy/patches/resolution.py:resolution:384x256x9',
     patch_applications=[{'name': 'resolution:384x256x9', 'layer': 'patch', 'called': True, 'topology_changed': False, 'nodes_added': [], 'introduced_edges': [], 'rewritten_edges': [], 'value_changed': True}],
-    source_bundle={'format_version': 2, 'generation_id': 'b27d27472feacec9c80b0e7b1ab4053d61444935948f1d8dd6b513cff9114240', 'custody_digest': '6b0014bd72b1b09faf55e43c16ad36663c1dc9af27516e62cb13ebe2f1171ed6'},
+    source_bundle={'format_version': 2, 'generation_id': 'efe75c6ed20ff390ce32511824c7099437292fca57cdef6c8eaaedb8e0233cf2', 'custody_digest': '6b0014bd72b1b09faf55e43c16ad36663c1dc9af27516e62cb13ebe2f1171ed6'},
 )
 
 def build() -> VibeWorkflow:
@@ -393,7 +393,4 @@ def build() -> VibeWorkflow:
             _uid='n37',
         )
 
-        return wf.finalize(PUBLIC_INPUT_METADATA, outputs=[
-        OutputSpec(node=savevideo_2, output_type='SaveVideo', name='video', artifact_kind='video', mime_type='video/mp4', filename_prefix='output_F', expected_cardinality='one'),
-        OutputSpec(node=savevideo, output_type='SaveVideo'),
-    ])
+        return wf.finalize(PUBLIC_INPUT_METADATA, outputs=[OutputSpec(node=savevideo_2, output_type='SaveVideo', name='video', artifact_kind='video', mime_type='video/mp4', filename_prefix='output_F', expected_cardinality='one')])
