@@ -131,6 +131,7 @@ class _PublicInputSpec:
     allow_missing_target: bool = False
     infer_type: bool = True
     materialize_aliases: bool = True
+    omit_if_schema_default: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -348,20 +349,26 @@ def _public_input_specs(
         node = workflow_nodes.get(str(binding.node_id))
         if node is None:
             return
-        field_values = _resolved_field_values(node)
-        if binding.field not in field_values:
-            return
-        default_value = _resolve_graph_field_get_string(
-            field_values[binding.field],
-            workflow_nodes,
-        )
         authored = (authored_inputs or {}).get(binding.name)
-        if authored is not None:
-            read = (
-                (lambda key, fallback=None: authored.get(key, fallback))
-                if isinstance(authored, Mapping)
-                else (lambda key, fallback=None: getattr(authored, key, fallback))
+        read = (
+            (lambda key, fallback=None: authored.get(key, fallback))
+            if isinstance(authored, Mapping)
+            else (lambda key, fallback=None: getattr(authored, key, fallback))
+        )
+        field_values = _resolved_field_values(node)
+        missing_target = binding.field not in field_values
+        if missing_target:
+            if authored is None or not read("allow_missing_target", False):
+                return
+            # Retain authored bindings to omitted schema defaults. The emitted
+            # InputSpec revalidates the default when the source is rebuilt.
+            default_value = copy.deepcopy(read("value", read("default")))
+        else:
+            default_value = _resolve_graph_field_get_string(
+                field_values[binding.field],
+                workflow_nodes,
             )
+        if authored is not None:
             authored_default = copy.deepcopy(read("default"))
             binding = replace(
                 binding,
@@ -371,7 +378,6 @@ def _public_input_specs(
                 media_semantics=read("media_semantics"),
             )
         else:
-            read = lambda key, fallback=None: fallback
             authored_default = default_value
         default_expr = (
             None
@@ -414,6 +420,7 @@ def _public_input_specs(
                 media_semantics=binding.media_semantics,
                 range=copy.deepcopy(read("range")),
                 allow_missing_target=bool(read("allow_missing_target", False)),
+                omit_if_schema_default=missing_target,
                 infer_type=authored is None,
                 materialize_aliases=(
                     authored is None
@@ -510,6 +517,8 @@ def _format_public_inputs_block(specs: list[_PublicInputSpec], *, metadata: bool
             args.append(f"range={spec.range!r}")
         if spec.allow_missing_target:
             args.append("allow_missing_target=True")
+        if spec.omit_if_schema_default:
+            args.append("omit_if_schema_default=True")
         if not spec.infer_type:
             args.append("infer_type=False")
         if not spec.materialize_aliases:
