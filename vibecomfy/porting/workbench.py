@@ -20,7 +20,7 @@ from vibecomfy.contracts import build_contract
 from vibecomfy.node_packs import resolve_node_packs, unresolved_class_types
 from vibecomfy.custom_node_refs import check_pack_pin_compatibility
 from vibecomfy.node_packs import read_lockfile
-from vibecomfy.porting.assets import analyze_model_assets
+from vibecomfy.porting.assets import analyze_model_assets, model_requirements_from_api_prompt
 from vibecomfy.porting.emitter import (
     READABILITY_WARNING_AVOIDABLE_POSITIONAL_OUTPUT,
     READABILITY_WARNING_HIDDEN_MODEL_FILENAME,
@@ -167,7 +167,11 @@ def analyze_source(
         scratchpad_path=loaded.source_path if loaded.source_kind == "scratchpad" and loaded.source_path else None,
         ready_metadata=workflow.metadata,
         ready_requirements={
-            "models": workflow.metadata.get("model_assets", workflow.requirements.models),
+            "models": (
+                workflow.metadata["model_assets"]
+                if "model_assets" in workflow.metadata
+                else model_requirements_from_api_prompt(workflow.requirements.models, api_prompt)
+            ),
             "custom_nodes": workflow.requirements.custom_nodes,
         },
         head_check=head_check_models,

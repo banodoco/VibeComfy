@@ -228,6 +228,31 @@ def candidates_from_ready_metadata(metadata: Mapping[str, Any], *, source: str =
     ]
 
 
+def model_requirements_from_api_prompt(
+    models: Iterable[Any], api_prompt: Mapping[str, Any] | None,
+) -> list[Any]:
+    """Carry loader placement into filename-only analysis requirements.
+
+    A name can be referenced by loaders in more than one directory. Preserve
+    each destination rather than choosing a loader by filename alone. Names
+    without a loader remain unplaced and require an explicit declaration.
+    """
+    by_name: dict[str, list[dict[str, Any]]] = {}
+    for candidate in candidates_from_api_prompt(api_prompt or {}):
+        record = {"name": candidate.name, "subdir": candidate.subdir}
+        records = by_name.setdefault(candidate.name, [])
+        if record not in records:
+            records.append(record)
+
+    requirements: list[Any] = []
+    for model in models:
+        if isinstance(model, str) and model in by_name:
+            requirements.extend(dict(record) for record in by_name[model])
+        else:
+            requirements.append(model)
+    return requirements
+
+
 def candidates_from_ready_requirements(requirements: Mapping[str, Any], *, source: str = "ready_requirements") -> list[AssetCandidate]:
     models = requirements.get("models", [])
     if not isinstance(models, list):
