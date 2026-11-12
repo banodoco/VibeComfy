@@ -168,6 +168,7 @@ def _collect_nodepack_drift(
             "git_commit_sha": entry.git_commit_sha,
             "url": entry.url,
             "source_sha256": dict(entry.source_sha256),
+            **({"patches": [{"path": patch.path, "sha256": patch.sha256} for patch in entry.patches]} if entry.patches else {}),
             "schema_hash": entry.schema_hash,
             "class_schema_sha256": entry.class_schema_sha256,
         }
@@ -255,7 +256,8 @@ def _collect_nodepack_drift(
                 continue
             actual_hash = hashlib.sha256(source_path.read_bytes()).hexdigest()
             pack_info["source_checks"][key]["actual"] = actual_hash
-            if actual_hash != expected_hash:
+            patch_hash = next((patch.sha256 for patch in entry.patches if patch.path == rel_path), None)
+            if actual_hash != expected_hash and not (git_head == entry.git_commit_sha and actual_hash == patch_hash):
                 mismatches.append(
                     f"{entry.name} source {rel_path} sha256 {actual_hash} "
                     f"does not match lockfile {expected_hash}"

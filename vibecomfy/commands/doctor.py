@@ -268,6 +268,16 @@ def _nodepack_lockfile_drift() -> tuple[list[DiagnosticFinding], list[Diagnostic
                     detail={"pack": entry.name, "actual": actual, "expected": entry.git_commit_sha},
                 )
             )
+        if entry.patches:
+            from vibecomfy.node_packs._install import _git_porcelain, _verified_declared_patches
+            dirty = _git_porcelain(pack_dir, subprocess.run)
+            verified = _verified_declared_patches(pack_dir, dirty, entry, actual) if dirty else 0
+            if verified:
+                warnings.append(DiagnosticFinding(
+                    "nodepack_lockfile_declared_patches_verified",
+                    f"{entry.name} declared patches verified: {verified}", "warning",
+                    detail={"pack": entry.name, "count": verified},
+                ))
         for rel_path, expected_hash in entry.source_sha256.items():
             source_path = pack_dir / rel_path
             if not source_path.is_file():
@@ -281,7 +291,8 @@ def _nodepack_lockfile_drift() -> tuple[list[DiagnosticFinding], list[Diagnostic
                 )
                 continue
             actual_hash = hashlib.sha256(source_path.read_bytes()).hexdigest()
-            if actual_hash != expected_hash:
+            patch_hash = next((patch.sha256 for patch in entry.patches if patch.path == rel_path), None)
+            if actual_hash != expected_hash and not (actual == entry.git_commit_sha and actual_hash == patch_hash):
                 errors.append(
                     DiagnosticFinding(
                         "nodepack_lockfile_source_hash_mismatch",

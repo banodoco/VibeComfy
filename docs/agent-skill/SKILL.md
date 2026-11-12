@@ -136,7 +136,7 @@ and `requirements.custom_node_refs` are the only dependency declarations.
 URL-only models use the current URL bytes and leave an observed SHA-256/size/
 effective-URL receipt; optional `hf_revision`, `sha256`, and node
 version/tag/branch/commit pins remain explicit. Matching model receipts and
-`custom_nodes.lock` entries are reused exactly. Before any setup or queueing,
+`custom_nodes.lock` entries are reused exactly, including any [declared source patches](REFERENCE.md#declared-source-patches-in-node-locks). Before any setup or queueing,
 root and nested graph classes are checked against core classes, declared
 `classes`/`class_set`, and an unambiguous local pack catalog. Gaps are reported
 with source locations and actionable same-file placeholders; dynamic forms

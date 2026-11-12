@@ -8,7 +8,8 @@ ComfyUI-QwenTTS d8122a8ba835b65fd65c113d2b273b1ad1579293 https://github.com/1038
 ComfyUI-WanVideoWrapper df8f3e49daaad117cf3090cc916c83f3d001494c https://github.com/kijai/ComfyUI-WanVideoWrapper.git
 ```
 
-The lockfile is `custom_nodes.lock`.
+The lockfile is `custom_nodes.lock`. TOML entries may also declare verified
+source patches; see the [lock format and verification rules](agent-skill/REFERENCE.md#declared-source-patches-in-node-locks).
 
 For custom-node packs, the enforced identity is the git URL plus immutable
 commit SHA. An entry's `pip_packages` is an unversioned inventory hint used by

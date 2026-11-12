@@ -419,3 +419,50 @@ def test_schema_hash_projection_is_stable_and_limited_to_contract_fields() -> No
     assert canonical_pack_schema_projection(schema_a) == canonical_pack_schema_projection(schema_b)
     assert compute_schema_hash(schema_a) == compute_schema_hash(schema_b)
     assert len(compute_schema_hash(schema_a)) == 64
+
+
+@pytest.mark.parametrize("header", ["[nodepacks.Pack]", "[[entries]]\nname = \"Pack\"", "[Pack]"])
+def test_declared_patches_round_trip_and_upsert(tmp_path: Path, header: str) -> None:
+    lockfile = tmp_path / "custom_nodes.lock"
+    lockfile.write_text(
+        f'{header}\ngit_commit_sha = "abc"\nurl = "https://example.test/p.git"\n'
+        f'patches = [{{ path = "folder/file.py", sha256 = "{"a" * 64}" }}]\n',
+        encoding="utf-8",
+    )
+    entries = read_lockfile(lockfile)
+    assert entries[0].patches[0].path == "folder/file.py"
+    assert entries[0].patches[0].sha256 == "a" * 64
+    write_lockfile(entries, lockfile)
+    assert read_lockfile(lockfile) == entries
+    upsert_lockfile_entry(LockEntry("Pack", "abc", "https://example.test/p.git"), lockfile)
+    assert read_lockfile(lockfile)[0].patches == entries[0].patches
+
+
+@pytest.mark.parametrize("patches", [
+    '[{path = "../file", sha256 = "' + 'a' * 64 + '"}]',
+    '[{path = "/file", sha256 = "' + 'a' * 64 + '"}]',
+    '[{path = "file", sha256 = "BAD"}]',
+    '[{path = "file", sha256 = "' + 'a' * 64 + '"}, {path = "file", sha256 = "' + 'b' * 64 + '"}]',
+    '"not a list"',
+    '["not a table"]',
+    '[{path = "file", sha256 = "' + 'A' * 64 + '"}]',
+])
+def test_lockfile_rejects_invalid_declared_patches(tmp_path: Path, patches: str) -> None:
+    lockfile = tmp_path / "custom_nodes.lock"
+    lockfile.write_text(
+        '[nodepacks.Pack]\ncommit = "abc"\nurl = "https://example.test/p.git"\n'
+        f'patches = {patches}\n', encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="Lock entry 'Pack'.*patch"):
+        read_lockfile(lockfile)
+
+
+def test_upsert_never_carries_declared_patches_to_another_commit(tmp_path: Path) -> None:
+    lockfile = tmp_path / "custom_nodes.lock"
+    lockfile.write_text(
+        '[nodepacks.Pack]\ngit_commit_sha = "abc"\nurl = "https://example.test/p.git"\n'
+        f'patches = [{{ path = "folder/file.py", sha256 = "{"a" * 64}" }}]\n',
+        encoding="utf-8",
+    )
+    upsert_lockfile_entry(LockEntry("Pack", "def", "https://example.test/p.git"), lockfile)
+    assert read_lockfile(lockfile)[0].patches == ()

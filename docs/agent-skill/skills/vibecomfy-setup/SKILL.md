@@ -111,6 +111,14 @@ vibecomfy config set-library --custom-nodes /absolute/path/to/new-custom_nodes -
 vibecomfy nodes restore
 ```
 
+
+A lock entry may declare already-applied source patches; see the
+[lock format and verification rules](../../REFERENCE.md#declared-source-patches-in-node-locks).
+For a verified patched checkout at the locked commit, restore reports
+`refreshed ... (declared patches verified: N)` and doctor reports the
+`nodepack_lockfile_declared_patches_verified` finding. Other dirty changes and
+a dirty checkout at a different HEAD still refuse restore.
+
 Plan before installing:
 
 ```bash

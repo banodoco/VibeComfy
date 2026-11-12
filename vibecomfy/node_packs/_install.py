@@ -1,5 +1,6 @@
 from __future__ import annotations
 import contextvars
+import hashlib
 import importlib.metadata
 import importlib.util, json, os, re, shutil, socket, subprocess, sys, tempfile, time
 from dataclasses import dataclass
@@ -18,7 +19,7 @@ from vibecomfy.registry.pack_resolver import PackNotFoundError, PackRef
 from vibecomfy.security.gate import current_gate_context, require_confirmation, requesting_provenance
 from vibecomfy.workflow import VibeWorkflow
 InstallStatus = Literal["installed", "refreshed", "skipped_dirty", "failed"]
-InstallWitnessState = Literal["clean", "dirty", "missing", "incomplete", "unknown"]
+InstallWitnessState = Literal["clean", "patched", "dirty", "missing", "incomplete", "unknown"]
 DEFAULT_INSTALL_ROOT = Path("custom_nodes")  # Canonical install root for custom node packs.
 INSTALL_STATE_DIR = ".vibecomfy-install-state"
 SENTINEL_LEASE_SECONDS = 1800  # 30 minutes
@@ -121,7 +122,7 @@ CORE_COMFY_CLASSES = frozenset(
 class Runner(Protocol):
     def __call__(self, args: Sequence[str], *, check: bool, capture_output: bool, text: bool, cwd: str | Path | None = None) -> subprocess.CompletedProcess[str]: ...
 @dataclass(frozen=True)
-class InstallResult: name: str; status: InstallStatus; git_commit_sha: str | None; error: str | None
+class InstallResult: name: str; status: InstallStatus; git_commit_sha: str | None; error: str | None; verified_patches: int = 0
 @dataclass(frozen=True)
 class PipPreflightResult:
     ok: bool
@@ -377,8 +378,14 @@ def restore_pack(entry: LockEntry, *, install_root: Path | None = None, runner: 
     if _has_incomplete_install(sentinel): return InstallResult(entry.name, "failed", None, sentinel.reason)
     if install_dir.exists():
         current_head = _git_head(install_dir, runner)
-        if (dirty := _git_porcelain(install_dir, runner)) is None or dirty: return InstallResult(entry.name, "failed" if dirty is None else "skipped_dirty", current_head, f"failed to inspect git status for {install_dir}" if dirty is None else f"{install_dir} has uncommitted changes; restore refused")
-        if _git_head(install_dir, runner) == entry.git_commit_sha: return InstallResult(entry.name, "refreshed", entry.git_commit_sha, None)
+        dirty = _git_porcelain(install_dir, runner)
+        verified = _verified_declared_patches(install_dir, dirty, entry, current_head) if dirty else 0
+        if dirty is None or (dirty and not verified):
+            reason = f"failed to inspect git status for {install_dir}" if dirty is None else f"{install_dir} has uncommitted changes; restore refused"
+            if dirty and entry.patches and current_head != entry.git_commit_sha:
+                reason += f" (declared patch {entry.patches[0].path} requires locked HEAD)"
+            return InstallResult(entry.name, "failed" if dirty is None else "skipped_dirty", current_head, reason)
+        if current_head == entry.git_commit_sha: return InstallResult(entry.name, "refreshed", entry.git_commit_sha, None, verified)
         try:
             sentinel.write(phase="restore_fetch", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
             runner(["git", "-C", str(install_dir), "fetch", "origin"], check=True, capture_output=True, text=True)
@@ -1148,6 +1155,7 @@ def inspect_pack_install_state(
     expected_head: str | None = None,
     aux_id: str | None = None,
     version_pin: str | None = None,
+    entry: LockEntry | None = None,
 ) -> PackInstallState:
     """Read the installer-owned bounded state for one required pack.
 
@@ -1177,7 +1185,8 @@ def inspect_pack_install_state(
     dirty = _git_porcelain(path, subprocess.run)
     if dirty is None:
         return PackInstallState(root, path, expected_head, observed_head, "unknown")
-    return PackInstallState(root, path, expected_head, observed_head, "dirty" if dirty else "clean")
+    verified = _verified_declared_patches(path, dirty, entry, observed_head) if dirty and entry else 0
+    return PackInstallState(root, path, expected_head, observed_head, "patched" if verified else "dirty" if dirty else "clean")
 
 
 def _has_incomplete_install(sentinel: _InstallSentinel) -> bool:
@@ -1225,6 +1234,31 @@ def _pack_name_from_repo(repo: str) -> str: return (name[:-4] if (name := Path((
 def _git(pack_dir: Path, args: list[str], runner: Runner) -> str | None:
     try: return runner(["git", "-C", str(pack_dir), *args], check=True, capture_output=True, text=True).stdout
     except (OSError, subprocess.CalledProcessError): return None
+def _verified_declared_patches(pack_dir: Path, porcelain: str, entry: LockEntry, head: str | None) -> int:
+    """Count verified worktree-only tracked modifications, or fail closed."""
+    if not porcelain or not entry.patches or head is None or head != entry.git_commit_sha:
+        return 0
+    patches = {patch.path: patch.sha256 for patch in entry.patches}
+    count = 0
+    for line in porcelain.splitlines():
+        if not line.startswith(" M "):
+            return 0
+        relative = line[3:]
+        if relative.startswith('"') or relative not in patches:
+            return 0
+        path = pack_dir / relative
+        try:
+            # Refuse symlinks anywhere in the path, including parent directories.
+            if any(part.is_symlink() for part in (path, *list(path.parents)[:len(Path(relative).parts) - 1])):
+                return 0
+            if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != patches[relative]:
+                return 0
+        except OSError:
+            return 0
+        count += 1
+    return count
+
+
 def _git_porcelain(pack_dir: Path, runner: Runner) -> str | None: return _git(pack_dir, ["status", "--porcelain"], runner)
 def _git_origin(pack_dir: Path, runner: Runner) -> str | None: return (_git(pack_dir, ["config", "--get", "remote.origin.url"], runner) or "").strip() or None
 def _git_head(pack_dir: Path, runner: Runner) -> str | None: return (_git(pack_dir, ["rev-parse", "HEAD"], runner) or "").strip() or None

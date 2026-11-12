@@ -776,6 +776,7 @@ def _cmd_nodes_lock(args: argparse.Namespace) -> int:
                 url=entry.url,
                 semantic_label=entry.semantic_label,
                 source_sha256=source_sha256,
+                patches=entry.patches,
             )
         )
     write_lockfile(locked, lockfile_path)
@@ -789,7 +790,8 @@ def _cmd_nodes_restore(args: argparse.Namespace) -> int:
     for entry in entries:
         result = node_packs_install.restore_pack(entry)
         detail = f" {result.git_commit_sha}" if result.git_commit_sha else ""
-        print(f"{result.name}: {result.status}{detail}")
+        patch_detail = f" (declared patches verified: {result.verified_patches})" if getattr(result, "verified_patches", 0) else ""
+        print(f"{result.name}: {result.status}{detail}{patch_detail}")
         if result.error:
             print(result.error, file=sys.stderr)
         ok = ok and result.status in {"installed", "refreshed"}

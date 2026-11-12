@@ -277,7 +277,7 @@ The authoring, sidecar, browser transaction, and no-GPU boundaries are defined i
 | `tests/` | Unit, integration, browser, parity, structural harness, and live agentic harness tests. |
 | `.github/` | GitHub Actions workflows. |
 | `pyproject.toml`, `uv.lock` | Python package metadata and locked dependencies. |
-| `custom_nodes.lock` | Custom-node pack inventory: the enforced pin is each pack's git URL + commit; `pip_packages` is an unversioned hint for local catalog install/doctor/template metadata. RunPod continues with the cloned pack's `requirements.txt` plus compatibility dependencies; this is separate from `uv.lock`. |
+| `custom_nodes.lock` | Custom-node pack inventory: the enforced pin is each pack's git URL + commit, with optional [declared source patches](docs/agent-skill/REFERENCE.md#declared-source-patches-in-node-locks); `pip_packages` is an unversioned hint for local catalog install/doctor/template metadata. RunPod continues with the cloned pack's `requirements.txt` plus compatibility dependencies; this is separate from `uv.lock`. |
 | `template_index.json` | Tracked ready-template index consumed by fast discovery and strict-ready validation. |
 | `out/`, `input/`, `output/`, `temp/` | Generated local runtime data; gitignored. |
 

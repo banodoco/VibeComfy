@@ -142,6 +142,35 @@ vibecomfy fetch <workflow> --dry-run
 vibecomfy models stage --select-phase core --dry-run
 ```
 
+
+### Declared source patches in node locks
+
+A `custom_nodes.lock` TOML entry can declare the digest of an intentionally
+patched, tracked file relative to the pack root:
+
+```toml
+[nodepacks."ComfyUI-QwenTTS"]
+url = "https://github.com/1038lab/ComfyUI-QwenTTS.git"
+commit = "d8122a8ba835b65fd65c113d2b273b1ad1579293"
+patches = [{ path = "qwen_tts/core/tokenizer_12hz/modeling_qwen3_tts_tokenizer_v2.py", sha256 = "d6be74daff8ad86644bebed0d530ee82188302394478356b7fe91faa794a2c2c" }]
+```
+
+`patches` is an array of tables with unique, relative POSIX paths (no `..` or
+leading `/`) and 64-character lowercase SHA-256 digests of the patched bytes.
+This is separate from `source_sha256` drift witnesses. The declaration is
+always active; it does not apply the patch. Restore accepts a dirty checkout
+only when HEAD equals the locked commit and every porcelain entry is an
+unstaged tracked modification (` M`) of a declared file whose current digest
+matches. Undeclared modifications, digest mismatches, staged changes, untracked
+files, deletions, renames, and unparseable or quoted porcelain entries still
+refuse restore. A dirty checkout at a different HEAD also refuses restore.
+Without declarations, the existing dirty-check behavior is unchanged.
+
+Restore reports a successful patched checkout as `refreshed` with
+`(declared patches verified: N)`. Doctor reports verified patches with the
+`nodepack_lockfile_declared_patches_verified` finding and reports other drift
+as usual. See [setup](skills/vibecomfy-setup/SKILL.md#custom-nodes).
+
 Run:
 
 ```bash

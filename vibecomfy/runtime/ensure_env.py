@@ -918,7 +918,7 @@ def _witness_is_cacheable(witness: RealizationWitness) -> bool:
     if witness.object_info.state != "authoritative" or not witness.object_info.generation:
         return False
     return all(
-        pack.state == "clean"
+        pack.state in {"clean", "patched"}
         and pack.observed_head is not None
         and pack.expected_head is not None
         and pack.observed_head.lower() == pack.expected_head.lower()

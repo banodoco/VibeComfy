@@ -1574,3 +1574,60 @@ def test_known_schema_classes_raises_when_invalid(tmp_path: Path, content: str) 
 
     with pytest.raises(ValueError):
         _known_schema_classes(path)
+
+
+def test_declared_patch_restore_and_doctor(tmp_path: Path, monkeypatch, capsys) -> None:
+    import hashlib
+    from vibecomfy.node_packs._install import inspect_pack_install_state, restore_pack
+    from vibecomfy.node_packs._lockfile import DeclaredPatch
+    from vibecomfy.commands import doctor, nodes
+
+    root = tmp_path / "custom_nodes"
+    pack = root / "ExamplePack"
+    pack.mkdir(parents=True)
+    def git(*args):
+        return subprocess.run(["git", "-C", str(pack), *args], check=True, capture_output=True, text=True).stdout.strip()
+    git("init")
+    git("remote", "add", "origin", "https://example.test/repo.git")
+    git("config", "user.email", "test@example.test")
+    git("config", "user.name", "Test")
+    (pack / "patched.py").write_text("original\n")
+    (pack / "other.py").write_text("original\n")
+    git("add", ".")
+    git("commit", "-m", "initial")
+    head = git("rev-parse", "HEAD")
+    (pack / "patched.py").write_text("patched\n")
+    digest = hashlib.sha256(b"patched\n").hexdigest()
+    entry = LockEntry("ExamplePack", head, "https://example.test/repo.git",
+                      source_sha256={"patched.py": hashlib.sha256(b"original\n").hexdigest()},
+                      patches=(DeclaredPatch("patched.py", digest),))
+    result = restore_pack(entry, install_root=root)
+    assert result.status == "refreshed" and result.verified_patches == 1
+    from types import SimpleNamespace
+    monkeypatch.setattr(nodes, "read_lockfile", lambda _: [entry])
+    monkeypatch.setattr(nodes.node_packs_install, "restore_pack", lambda _: result)
+    assert nodes._cmd_nodes_restore(SimpleNamespace(lockfile="unused")) == 0
+    assert "declared patches verified: 1" in capsys.readouterr().out
+    state = inspect_pack_install_state("ExamplePack", install_roots=[root], expected_head=head, entry=entry)
+    assert state.state == "patched"
+    monkeypatch.setattr(doctor, "_read_doctor_lockfile", lambda: [entry])
+    monkeypatch.setattr(doctor, "_doctor_nodepack_dir", lambda _: pack)
+    warnings, errors = doctor._nodepack_lockfile_drift()
+    assert not errors
+    assert any(w.code == "nodepack_lockfile_declared_patches_verified" for w in warnings)
+
+    wrong = LockEntry("ExamplePack", head, entry.url, patches=(DeclaredPatch("patched.py", "0" * 64),))
+    assert restore_pack(wrong, install_root=root).status == "skipped_dirty"
+    (pack / "other.py").write_text("changed\n")
+    assert restore_pack(entry, install_root=root).status == "skipped_dirty"
+    git("checkout", "--", "other.py")
+    (pack / "untracked").write_text("untracked")
+    assert restore_pack(entry, install_root=root).status == "skipped_dirty"
+    (pack / "untracked").unlink()
+    different = LockEntry("ExamplePack", "0" * 40, entry.url, patches=entry.patches)
+    refused = restore_pack(different, install_root=root)
+    assert refused.status == "skipped_dirty" and "patched.py" in refused.error
+    undeclared = LockEntry("ExamplePack", head, entry.url)
+    refused = restore_pack(undeclared, install_root=root)
+    assert refused.status == "skipped_dirty"
+    assert refused.error == f"{pack} has uncommitted changes; restore refused"

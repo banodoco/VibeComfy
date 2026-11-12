@@ -352,6 +352,8 @@ def _read_lockfile_snapshot(*, config: Any = None) -> dict[str, Any] | None:
                 item["pip_packages"] = list(entry.pip_packages)
             if entry.source_sha256:
                 item["source_sha256"] = dict(entry.source_sha256)
+            if entry.patches:
+                item["patches"] = [{"path": patch.path, "sha256": patch.sha256} for patch in entry.patches]
             nodepacks[entry.name] = item
         return {"nodepacks": nodepacks}
     except (OSError, ValueError, TypeError):
