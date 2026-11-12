@@ -136,6 +136,14 @@
       "source": "direct_url",
       "source_kind": "on_demand_import"
     },
+    "ComfyUI-KJNodes@cpu-runtime.json": {
+      "classes": 234,
+      "locked_commit": "b7646ad70a7daa7aeb919ca542274758d26ba2df",
+      "pack": "ComfyUI-KJNodes",
+      "pack_version": "cpu-runtime",
+      "schema_sha256": "bc294f44e436a19587ab869cca917495504543d689e4485b33d3a32711e83380",
+      "source_kind": "runtime_object_info"
+    },
     "ComfyUI-KJNodes@runpod-snapshot.json": {
       "classes": 230,
       "locked_commit": "b7646ad70a7daa7aeb919ca542274758d26ba2df",

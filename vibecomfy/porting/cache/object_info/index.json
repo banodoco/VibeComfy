@@ -1978,6 +1978,9 @@
     "[\"ComfyUI-Inspire-Pack\",\"git_commit\",\"d23db9aa544de9a6d4c609cb7005fa9e0d42031d\"]": [
       "ComfyUI-Inspire-Pack@on_demand_import-d23db9a.json"
     ],
+    "[\"ComfyUI-KJNodes\",\"git_commit\",\"b7646ad70a7daa7aeb919ca542274758d26ba2df\"]": [
+      "ComfyUI-KJNodes@cpu-runtime.json"
+    ],
     "[\"ComfyUI-KJNodes\",\"legacy\",\"ComfyUI-KJNodes@runpod-snapshot.json\"]": [
       "ComfyUI-KJNodes@runpod-snapshot.json"
     ],
