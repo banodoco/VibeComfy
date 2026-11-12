@@ -689,7 +689,7 @@ def _coerce_identity(identity: ObjectInfoIdentity | dict[str, Any] | None) -> Ob
     if isinstance(identity, ObjectInfoIdentity):
         return identity
     pack_slug = identity.get("pack_slug") or identity.get("pack") or identity.get("slug")
-    git_commit = identity.get("git_commit") or identity.get("commit")
+    git_commit = identity.get("git_commit")
     evidence_identity = identity.get("evidence_identity")
     if not pack_slug:
         raise ValueError("object_info identity requires pack_slug")

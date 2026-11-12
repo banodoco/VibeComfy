@@ -6,6 +6,7 @@ No ComfyUI / RunPod / network required.
 from __future__ import annotations
 
 import json
+import re
 import warnings
 from pathlib import Path
 from unittest import mock
@@ -1563,23 +1564,43 @@ def test_locked_schema_snapshots_resolve_exact_offline_identity(monkeypatch: pyt
     assert not missing, missing
 
 
-def test_legacy_cache_commit_is_decoded_without_rewriting_snapshot(tmp_path: Path) -> None:
-    from vibecomfy.porting.object_info.consume import (
-        _identity_matches,
-        _read_pack_at_root,
-    )
+def test_legacy_cache_commit_does_not_resolve_identity(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from vibecomfy.porting.object_info.consume import resolve_class_entry
 
     commit = "a" * 40
     snapshot = {"Example": {"pack": "example", "pack_version": commit, "inputs": {}}}
     path = tmp_path / "example.json"
     path.write_text(json.dumps(snapshot), encoding="utf-8")
+    (tmp_path / "index.json").write_text(json.dumps({"Example": path.name}), encoding="utf-8")
     before = path.read_bytes()
-    entry = _read_pack_at_root(tmp_path, path.name)["Example"]
-
-    assert entry["git_commit"] == commit
-    assert "pack_version" not in entry
-    assert _identity_matches(entry, pack_slug="example", git_commit=commit, evidence_identity=None)
+    _patch_consume_paths(monkeypatch, tmp_path)
+    result = resolve_class_entry(
+        "Example", {"pack_slug": "example", "git_commit": commit}, allow_class_fallback=False
+    )
+    assert result.entry is None
     assert path.read_bytes() == before
+
+
+def test_committed_cache_versions_are_not_commits() -> None:
+    cache_root = Path(__file__).resolve().parents[1] / "vibecomfy" / "porting" / "cache"
+    violations = []
+
+    def scan(value: object, path: Path) -> None:
+        if isinstance(value, dict):
+            version = value.get("pack_version")
+            if isinstance(version, str) and re.fullmatch(r"[0-9a-fA-F]{40}", version):
+                violations.append(str(path))
+            for child in value.values():
+                scan(child, path)
+        elif isinstance(value, list):
+            for child in value:
+                scan(child, path)
+
+    paths = sorted(cache_root.rglob("*.json"))
+    assert paths
+    for path in paths:
+        scan(json.loads(path.read_text(encoding="utf-8")), path)
+    assert not violations, violations
 
 
 def test_cache_version_labels_are_not_commit_identities(tmp_path: Path) -> None:
@@ -1598,15 +1619,15 @@ def test_cache_writer_stores_a_commit_only_in_git_commit(explicit_commit: bool) 
     from vibecomfy.porting.object_info.serialize import CacheIdentity, _make_cache_entry
 
     commit = "b" * 40
+    with pytest.raises(ValueError, match="version label"):
+        CacheIdentity(pack_slug="example", pack_version=commit, git_commit=commit if explicit_commit else None)
     entry = _make_cache_entry(
         {"name": "Example", "input": {}},
-        identity=CacheIdentity(
-            pack_slug="example", pack_version=commit, git_commit=commit if explicit_commit else None,
-        ),
+        identity=CacheIdentity(pack_slug="example", pack_version="release-1", git_commit=commit),
         schema_hash="c" * 64,
     )
     assert entry["git_commit"] == commit
-    assert entry.get("pack_version") != commit
+    assert entry["pack_version"] == "release-1"
 
 
 def _patch_consume_paths(monkeypatch: pytest.MonkeyPatch, cache_root: Path) -> None:

@@ -36,7 +36,6 @@ except ImportError:  # pragma: no cover - POSIX has fcntl instead.
     msvcrt = None  # type: ignore[assignment]
 
 from vibecomfy.node_packs import compute_schema_hash
-from vibecomfy.porting.object_info.identity import normalize_cache_identity
 from vibecomfy.porting.object_info.consume import (
     CACHE_DIR,
     _WIDGET_LIKE_TYPES,
@@ -103,6 +102,12 @@ class CacheIdentity:
     git_commit: str | None = None
     evidence_identity: str | None = None
     source_kind: str = "object_info"
+
+    def __post_init__(self) -> None:
+        if self.pack_version and len(self.pack_version) == 40 and all(
+            char in "0123456789abcdefABCDEF" for char in self.pack_version
+        ):
+            raise ValueError("pack_version must be a version label, not a commit")
 
 
 def pack_key_from_module(python_module: str) -> str:
@@ -195,15 +200,11 @@ def _make_cache_entry(
 
     pack_slug = identity.pack_slug or pack_key_from_module(raw.get("python_module", ""))
     pack_version = identity.pack_version or LEGACY_IMPORT_PACK_VERSION
-    identity_fields = normalize_cache_identity({
+    return OrderedDict({
         "pack": pack_slug,
         "pack_slug": pack_slug,
         "pack_version": pack_version,
         "git_commit": identity.git_commit,
-    })
-
-    return OrderedDict({
-            **identity_fields,
         "evidence_identity": identity.evidence_identity,
         "source_kind": identity.source_kind,
         "schema_hash": schema_hash,
