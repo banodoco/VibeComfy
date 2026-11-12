@@ -135,7 +135,7 @@ ROOT_BANNED := \
 
 B02_MINI_CORPUS := tests/fixtures/b02_corpus_mini
 
-.PHONY: all check ci install-dev install-ci prune-empty-runtime-root root-clean post-root-clean docs template-index templates strict-ready fast broad-pytest broad-pytest-collect full-pytest snapshots oracle b02-corpus-mini b02-corpus-full browser-contracts browser-smoke parity e2e-browser e2e-preview corrective-trust-gate-preflight corrective-trust-gate ir-boundary clean clean-artifacts
+.PHONY: preflight all check ci install-dev install-ci prune-empty-runtime-root root-clean post-root-clean docs template-index templates strict-ready fast broad-pytest broad-pytest-collect full-pytest snapshots oracle b02-corpus-mini b02-corpus-full browser-contracts browser-smoke parity e2e-browser e2e-preview corrective-trust-gate-preflight corrective-trust-gate ir-boundary clean clean-artifacts
 
 all: check
 
@@ -188,6 +188,9 @@ templates: template-index
 
 strict-ready: template-index
 	$(PYTHON) -m tools.check_strict_ready_templates --json
+
+preflight:
+	$(PYTEST) -m preflight
 
 fast:
 	@echo "FAST Python gate: bounded maintained selector ($(words $(FAST_PYTEST)) feature files + $(words $(FAST_POLICY_TESTS)) policy selectors); coverage is visibility-only."

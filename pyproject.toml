@@ -119,6 +119,7 @@ testpaths = ["tests"]
 addopts = "-m 'not gpu'"
 timeout = 60
 markers = [
+  "preflight: offline CPU checks that every ready template would pass before any GPU run (schemas resolve by identity and public inputs type-check; canonical first build matches the admitted candidate)",
   "comfy_version_compat: marks opt-in multi-ComfyUI-version compatibility tests (Sprint 4 scope).",
   "gpu: marks tests that provision live GPU resources",
   "intent_ci: marks fast, deterministic intent-oracle CI gate tests (invoke with `pytest -m intent_ci tests/intent`).",

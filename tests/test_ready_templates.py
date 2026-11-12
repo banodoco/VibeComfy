@@ -33,6 +33,7 @@ from vibecomfy.workflow import (
 )
 
 
+@pytest.mark.preflight
 @pytest.mark.parametrize("template_id", ready_template_ids())
 def test_ready_template_enum_inputs_match_combo_schema(template_id: str) -> None:
     workflow = workflow_from_template_fixture(template_id)
@@ -57,6 +58,7 @@ def test_template_enum_fields_admit_public_inputs_against_combo_schema(template_
             assert _public_input_matches_target(public_input, target, field, "COMBO"), public_input.name
 
 
+@pytest.mark.preflight
 @pytest.mark.parametrize("template_id", ready_template_ids())
 def test_ready_template_offline_schemas_by_identity(template_id: str) -> None:
     from vibecomfy.custom_node_refs import effective_lock_entries
@@ -203,6 +205,7 @@ def _ready_template_paths() -> list[Path]:
 
 
 @pytest.mark.parametrize("template_id", ready_template_ids())
+@pytest.mark.preflight
 @pytest.mark.parametrize("omit_optional_defaults", [False, True], ids=["declared", "sparse"])
 def test_ready_template_canonical_first_build_matches_admitted_candidate(
     template_id: str, omit_optional_defaults: bool, tmp_path: Path
