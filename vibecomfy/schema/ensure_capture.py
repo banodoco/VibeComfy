@@ -23,6 +23,7 @@ from vibecomfy.porting.object_info.consume import CACHE_DIR, reset_cache
 from vibecomfy.porting.object_info.serialize import (
     CacheIdentity,
     _read_existing_index,
+    _read_cache_state,
     build_cache,
     cache_publish_transaction,
     republish_cache_root,
@@ -219,15 +220,14 @@ def persist_on_demand_pack(
     entries: dict[str, OrderedDict[str, Any]],
     cache_dir: str | Path | None = None,
     source: str | None = None,
+    select_default: bool = True,
 ) -> PersistResult:
     """Persist one on-demand pack extract with honest identity and provenance.
 
-    Merge semantics only (``full_pack_refresh=False``); afterwards the two-layer
-    file hygiene strips non-newly-captured classes from the new on-demand file
-    and restores pre-existing index mappings, so the on-demand file's keys equal
-    exactly this extraction's classes and higher-tier captures are untouched.
-    When *registry_pack_version* is ``None`` (registry had no entry) the
-    provenance records ``null`` and an optional ``source`` (e.g. ``direct_url``).
+    Merge only entries of this pack and commit. The writer owns provider and
+    index hygiene. ``select_default=False`` holds an identity without changing
+    class defaults; its tier guard compares only captures of this identity.
+    The default retains the existing class-default tier guard.
     """
     if extraction_rung not in SOURCE_KIND_BY_RUNG:
         raise ValueError(f"unknown extraction rung: {extraction_rung!r}")
@@ -246,8 +246,18 @@ def persist_on_demand_pack(
         # --- Tier guard: drop classes already covered at same-or-higher tier --
         skipped: list[str] = []
         captured: dict[str, OrderedDict[str, Any]] = {}
+        identity_tiers: dict[str, int] = {}
+        if not select_default:
+            _, providers, provenance = _read_cache_state(cache_root)
+            for provider, data in providers.items():
+                for ct, existing in data.items():
+                    if (existing.get("pack_slug", existing.get("pack")) == pack_slug
+                            and existing.get("git_commit") == locked_commit
+                            and _is_pinned(_provenance_pack_row(provenance, provider))):
+                        identity_tiers[ct] = _TIER_RANK.get(existing.get("source_kind"), _RUNTIME_TIER)
         for class_type, entry in sorted(entries.items()):
-            if capture_tier(cache_root, class_type) >= new_tier:
+            tier = capture_tier(cache_root, class_type) if select_default else identity_tiers.get(class_type, _MISSING_TIER)
+            if tier >= new_tier:
                 skipped.append(class_type)
             else:
                 captured[class_type] = entry
@@ -256,8 +266,6 @@ def persist_on_demand_pack(
             return PersistResult(no_op=True, skipped_classes=skipped)
 
         raw_dump = {ct: _to_raw_dump(entry) for ct, entry in captured.items()}
-
-        index_before = _read_existing_index(cache_root)
 
         # --- build_cache with MERGE semantics -------------------------------
         tmp_fd, tmp_name = tempfile.mkstemp(suffix=".json", dir=cache_root, prefix="on-demand-dump-")
@@ -277,13 +285,17 @@ def persist_on_demand_pack(
                     source_kind=source_kind,
                 ),
                 full_pack_refresh=False,
+                select_default=select_default,
             )
         finally:
             tmp_path.unlink(missing_ok=True)
 
         # The writer applies identity-scoped merge and index hygiene once.
+        index, providers, _ = _read_cache_state(cache_root)
+        filename = next(name for name, data in sorted(providers.items())
+                        if any(e.get("pack_slug", e.get("pack")) == pack_slug
+                               and e.get("git_commit") == locked_commit for e in data.values()))
         filepath = cache_root / filename
-        index = _read_existing_index(cache_root)
 
         # --- Attest provenance -----------------------------------------------
         from vibecomfy.commands.schemas import _write_provenance as _schemas_write

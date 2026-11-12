@@ -747,3 +747,23 @@ def test_on_demand_pack_version_does_not_embed_commit(tmp_path):
     assert COMMIT not in entry['pack_version']
     assert SHA7 not in entry['pack_version']
     assert entry['git_commit'] == COMMIT
+
+
+def test_hold_on_demand_identity_preserves_default_and_other_commit(tmp_path, monkeypatch):
+    cache = tmp_path / 'cache'
+    filename, runtime_commit = _seed_runtime_capture(cache, 'RuntimeClass')
+    before = (cache / filename).read_bytes()
+    result = persist_on_demand_pack(
+        pack_slug='Pack', registry_pack_version=None,
+        repo='https://github.com/example/Pack', locked_commit=COMMIT,
+        extraction_rung='ast', entries={'RuntimeClass': _extract_entry('RuntimeClass')},
+        cache_dir=cache, select_default=False,
+    )
+    assert not result.no_op
+    assert (cache / filename).read_bytes() == before
+    index = json.loads((cache / 'index.json').read_text())
+    assert index['RuntimeClass'] == filename
+    monkeypatch.setattr(consume_module, 'CACHE_DIR', cache)
+    monkeypatch.setattr(consume_module, 'INDEX_PATH', cache / 'index.json')
+    assert get_class_by_identity('RuntimeClass', pack_slug='Pack', git_commit=runtime_commit)['source_kind'] == 'runtime_object_info'
+    assert get_class_by_identity('RuntimeClass', pack_slug='Pack', git_commit=COMMIT)['source_kind'] == 'on_demand_static'
