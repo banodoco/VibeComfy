@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from vibecomfy.porting.emit.ui import _canonicalize_coord
+from vibecomfy.socket_types import canonical_socket_type
 
 if TYPE_CHECKING:
     from vibecomfy.schema.types import NodeSchema
@@ -73,7 +74,7 @@ def estimate_node_size(
     # class is a known preview/media class.
     if schema is not None and node.class_type in _PREVIEW_CLASS_HINTS:
         for out_spec in schema.outputs:
-            if out_spec.type is not None and out_spec.type.upper() in _PREVIEW_OUTPUT_TYPES:
+            if out_spec.type is not None and canonical_socket_type(out_spec.type) in _PREVIEW_OUTPUT_TYPES:
                 height += float(_PREVIEW_BONUS_PX)
                 break
 

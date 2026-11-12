@@ -13,6 +13,8 @@ and testable without network or model dependencies.
 
 from __future__ import annotations
 
+from vibecomfy.socket_types import canonical_socket_type
+
 from collections.abc import Mapping
 import json
 import logging
@@ -714,7 +716,7 @@ def _modelish_input_name(input_name: str) -> bool:
 
 
 def _link_only_spec(spec: Any) -> bool:
-    typ = str(getattr(spec, "type", "") or "").upper()
+    typ = canonical_socket_type(getattr(spec, "type", ""))
     return typ in {"MODEL", "CLIP", "VAE", "IMAGE", "LATENT", "CONDITIONING", "MASK"}
 
 

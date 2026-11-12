@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from vibecomfy.socket_types import COMBO, canonical_socket_type
+
 
 import copy
 import dataclasses
@@ -3235,15 +3237,11 @@ def _types_match(a: Any, b: Any) -> bool:
     """Match Comfy socket unions and wildcards without coercing literals."""
     if a is None or b is None:
         return False
-    a_values = {part.strip().upper() for part in str(a).split(",") if part.strip()}
-    b_values = {part.strip().upper() for part in str(b).split(",") if part.strip()}
+    a_values = {canonical_socket_type(part) for part in str(a).split(",") if part.strip()}
+    b_values = {canonical_socket_type(part) for part in str(b).split(",") if part.strip()}
     if not a_values or not b_values:
         return False
-    if "*" in a_values or "*" in b_values or a_values & b_values:
-        return True
-    # Comfy's widget-facing choice/enum sockets are the same value channel;
-    # the installed schema names them differently depending on provider.
-    return bool(a_values & {"ENUM", "CHOICE"} and b_values & {"ENUM", "CHOICE"})
+    return bool("*" in a_values or "*" in b_values or a_values & b_values)
 
 
 def _public_input_matches_target(
@@ -3253,8 +3251,8 @@ def _public_input_matches_target(
     if _types_match(public_input.type, target_type):
         return True
     if (
-        str(public_input.type).upper() != "IMAGE"
-        or str(target_type).upper() not in {"CHOICE", "ENUM"}
+        canonical_socket_type(public_input.type) != "IMAGE"
+        or canonical_socket_type(target_type) != COMBO
         or public_input.media_semantics != "image"
     ):
         return False

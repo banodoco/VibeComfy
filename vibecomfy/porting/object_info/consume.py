@@ -6,6 +6,9 @@ All public functions are deterministic and do not require ComfyUI or network.
 
 from __future__ import annotations
 
+from vibecomfy.socket_types import canonical_socket_type
+from vibecomfy.porting.object_info.identity import normalize_cache_identity
+
 import copy
 import json
 import threading
@@ -40,7 +43,7 @@ _WIDGET_LIKE_TYPES: frozenset[str] = frozenset({
     "AUDIO", "VIDEO", "CONTROL_NET", "HIDDEN",
 })
 _LITERAL_WIDGET_TYPES: frozenset[str] = frozenset({
-    "BOOLEAN", "COMBO", "ENUM", "FLOAT", "INT", "STRING",
+    "BOOLEAN", "COMBO", "FLOAT", "INT", "STRING",
 })
 
 _CURATED_OUTPUTS: dict[str, list[dict[str, str]]] = {
@@ -281,7 +284,10 @@ def _read_pack_at_root(root: Path, filename: str) -> dict[str, dict[str, Any]]:
     data = read_json(root, filename)
     if not isinstance(data, dict):
         raise ObjectInfoCacheCorruptError(f"object_info provider file must be an object: {root / filename}")
-    return data
+    return {
+        name: normalize_cache_identity(entry) if isinstance(entry, dict) else entry
+        for name, entry in data.items()
+    }
 
 
 def _pack_filenames_at_root(root: Path) -> list[str]:
@@ -822,7 +828,7 @@ def _input_spec_is_widget_value(spec: list[Any]) -> bool:
     head = spec[0]
     if isinstance(head, list):
         return True
-    input_type = _normalize_input_type(head).upper()
+    input_type = canonical_socket_type(_normalize_input_type(head))
     if input_type in _LITERAL_WIDGET_TYPES:
         return True
     if input_type in _WIDGET_LIKE_TYPES:

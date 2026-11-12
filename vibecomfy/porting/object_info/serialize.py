@@ -36,6 +36,7 @@ except ImportError:  # pragma: no cover - POSIX has fcntl instead.
     msvcrt = None  # type: ignore[assignment]
 
 from vibecomfy.node_packs import compute_schema_hash
+from vibecomfy.porting.object_info.identity import normalize_cache_identity
 from vibecomfy.porting.object_info.consume import (
     CACHE_DIR,
     _WIDGET_LIKE_TYPES,
@@ -194,12 +195,15 @@ def _make_cache_entry(
 
     pack_slug = identity.pack_slug or pack_key_from_module(raw.get("python_module", ""))
     pack_version = identity.pack_version or LEGACY_IMPORT_PACK_VERSION
-
-    return OrderedDict({
+    identity_fields = normalize_cache_identity({
         "pack": pack_slug,
         "pack_slug": pack_slug,
         "pack_version": pack_version,
         "git_commit": identity.git_commit,
+    })
+
+    return OrderedDict({
+            **identity_fields,
         "evidence_identity": identity.evidence_identity,
         "source_kind": identity.source_kind,
         "schema_hash": schema_hash,

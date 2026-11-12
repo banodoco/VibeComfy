@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from vibecomfy.socket_types import canonical_socket_type
+
 import copy
 import difflib
 import functools
@@ -375,7 +377,7 @@ def port_convert_workflow(
                     if isinstance(inputs, dict):
                         provider_aliases: list[str | None] = []
                         for name, spec in inputs.items():
-                            input_type = str(getattr(spec, "type", "") or "").upper()
+                            input_type = canonical_socket_type(getattr(spec, "type", ""))
                             if input_type in LINK_ONLY_TYPES:
                                 continue
                             provider_aliases.append(str(name))

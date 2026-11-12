@@ -51,6 +51,8 @@ inputs get NO input-slot entry — they live in ``widgets_values``.
 """
 
 from __future__ import annotations
+
+from vibecomfy.socket_types import canonical_socket_type
 import functools
 import hashlib
 import json
@@ -2201,7 +2203,7 @@ def _primitive_union_dynamic_input_names(
         if not isinstance(name, str) or not name.startswith("values.") or index >= len(native_types):
             continue
         type_spec = native_types[index]
-        if not isinstance(type_spec, str) or {part.strip().upper() for part in type_spec.split(",")} != primitive_union:
+        if not isinstance(type_spec, str) or {canonical_socket_type(part) for part in type_spec.split(",")} != primitive_union:
             continue
         if name not in inputs and name not in incoming_names:
             continue
@@ -2413,7 +2415,7 @@ def _extra_widgets_after(
         inputs = getattr(schema, "inputs", None)
         if isinstance(inputs, dict):
             for name, spec in inputs.items():
-                input_type = str(getattr(spec, "type", "") or "").upper()
+                input_type = canonical_socket_type(getattr(spec, "type", ""))
                 if name in _SEED_INPUT_NAMES and input_type == "INT":
                     has_seed = True
                     break
@@ -2426,7 +2428,7 @@ def _extra_widgets_after(
         inputs = getattr(schema, "inputs", None)
         if isinstance(inputs, dict):
             for name, spec in inputs.items():
-                input_type = str(getattr(spec, "type", "") or "").upper()
+                input_type = canonical_socket_type(getattr(spec, "type", ""))
                 if name.endswith(_UPLOAD_SUFFIXES) and input_type in upload_types:
                     hints.append(None)  # upload is a None-named slot
                     break
