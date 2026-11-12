@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 import vibecomfy.fetch as fetch_module
-from vibecomfy.runtime.prepared import PreparationError, prepare_workflow
+from vibecomfy.runtime.prepared import PreparationError, build_plan, prepare_workflow
 
 
 def _workflow() -> Any:
@@ -18,6 +18,51 @@ def _workflow() -> Any:
         runtime_nodes=lambda: {},
         requirements=SimpleNamespace(models=[], custom_nodes=[]),
     )
+
+
+@pytest.mark.parametrize(
+    "declaration,source",
+    [
+        ("checkpoint.safetensors", "metadata-string"),
+        ({"name": "checkpoint.safetensors"}, "metadata-missing-subdir"),
+        ({"name": "checkpoint.safetensors", "url": "https://example.test/model"}, "requirements-missing-subdir"),
+        ({"name": "checkpoint.safetensors", "directory": "checkpoints"}, "directory-alias"),
+    ],
+    ids=[
+        "metadata-bare-filename",
+        "metadata-missing-subdir",
+        "requirements-missing-subdir",
+        "directory-alias",
+    ],
+)
+def test_build_plan_rejects_incomplete_model_declarations(declaration: Any, source: str) -> None:
+    workflow = _workflow()
+    if source.startswith("requirements"):
+        workflow.requirements.models = [declaration]
+    else:
+        workflow.metadata["model_assets"] = [declaration]
+
+    message = "records with explicit name and subdir|explicit non-empty subdir|filename/directory aliases"
+    with pytest.raises(PreparationError, match=message):
+        build_plan(workflow, reference="workflow.py")
+
+
+def test_build_plan_emits_unknown_evidence_and_preserves_metadata_extras() -> None:
+    workflow = _workflow()
+    workflow.metadata["model_assets"] = [{
+        "name": "checkpoint.safetensors",
+        "subdir": "checkpoints",
+        "catalog_note": "owner supplied",
+    }]
+
+    assert build_plan(workflow, reference="workflow.py").models == ({
+        "name": "checkpoint.safetensors",
+        "subdir": "checkpoints",
+        "url": None,
+        "sha256": None,
+        "size_bytes": None,
+        "catalog_note": "owner supplied",
+    },)
 
 
 def test_download_many_overlaps_downloads_and_preserves_declaration_order(
@@ -96,10 +141,10 @@ def test_prepare_workflow_deduplicates_exact_model_declarations_before_download(
         ensure_packs=False,
     )
 
-    assert result.plan.models == (model,)
+    assert result.plan.models == ({**model, "sha256": None, "size_bytes": None},)
     assert calls == [
         (
-            [model],
+            [{**model, "sha256": None, "size_bytes": None}],
             tmp_path / "runtime" / "ComfyUI" / "models",
             2,
         )

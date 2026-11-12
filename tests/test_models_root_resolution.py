@@ -85,7 +85,7 @@ def test_preparation_without_configured_root_uses_runtime_models(
     "entry_factory",
     [
         lambda outside: {"name": "../escape.bin", "subdir": "TTS", "url": "https://example.test/x"},
-        lambda outside: {"name": "voice.bin", "target_path": str(outside / "absolute.bin"), "url": "https://example.test/x"},
+        lambda outside: {"name": "voice.bin", "subdir": "TTS", "target_path": str(outside / "absolute.bin"), "url": "https://example.test/x"},
         lambda outside: {"name": "voice.bin", "subdir": "TTS", "url": "https://example.test/x"},
     ],
     ids=["traversal", "absolute-target", "symlink-escape"],
@@ -130,11 +130,11 @@ def test_target_path_uses_runtime_comfyui_root_with_configured_volume(
     runtime = tmp_path / "runtime"
     monkeypatch.setenv("VIBECOMFY_MODELS_ROOT", str(configured))
     monkeypatch.setattr(fetch.httpx, "stream", _stream)
-    entry = {"name": "voice.bin", "target_path": "models/TTS/voice.bin", "url": "https://example.test/voice"}
+    entry = {"name": "voice.bin", "subdir": "TTS", "target_path": "custom_nodes/sample/voice.bin", "url": "https://example.test/voice"}
 
     result = _prepare(entry, runtime)
 
-    expected = runtime / "ComfyUI" / "models" / "TTS" / "voice.bin"
+    expected = runtime / "ComfyUI" / "custom_nodes" / "sample" / "voice.bin"
     assert result.model_paths == (str(expected),)
     assert expected.read_bytes() == b"model-bytes"
 
@@ -143,7 +143,7 @@ def test_target_path_cannot_escape_runtime_comfyui_root(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("VIBECOMFY_MODELS_ROOT", str(tmp_path / "shared"))
-    entry = {"name": "voice.bin", "target_path": "../outside/voice.bin", "url": "https://example.test/voice"}
+    entry = {"name": "voice.bin", "subdir": "TTS", "target_path": "custom_nodes/../outside/voice.bin", "url": "https://example.test/voice"}
 
     with pytest.raises(PreparationError, match="invalid model declaration"):
         _prepare(entry, tmp_path / "runtime")
@@ -157,12 +157,24 @@ def test_target_path_symlink_cannot_escape_runtime_comfyui_root(
     comfyui.mkdir(parents=True)
     outside = tmp_path / "outside"
     outside.mkdir()
-    (comfyui / "models").symlink_to(outside, target_is_directory=True)
+    custom_nodes = comfyui / "custom_nodes"
+    custom_nodes.mkdir()
+    (custom_nodes / "sample").symlink_to(outside, target_is_directory=True)
     monkeypatch.setenv("VIBECOMFY_MODELS_ROOT", str(tmp_path / "shared"))
-    entry = {"name": "voice.bin", "target_path": "models/voice.bin", "url": "https://example.test/voice"}
+    entry = {"name": "voice.bin", "subdir": "TTS", "target_path": "custom_nodes/sample/voice.bin", "url": "https://example.test/voice"}
 
     with pytest.raises(PreparationError, match="invalid model declaration"):
         _prepare(entry, runtime)
+
+
+def test_preparation_rejects_models_root_target_path_outside_custom_nodes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("VIBECOMFY_MODELS_ROOT", str(tmp_path / "shared"))
+    entry = {"name": "voice.bin", "subdir": "TTS", "target_path": "models/TTS/voice.bin", "url": "https://example.test/voice"}
+
+    with pytest.raises(PreparationError, match="invalid model declaration"):
+        _prepare(entry, tmp_path / "runtime")
 
 
 def test_fetch_target_path_uses_comfyui_path_with_configured_model_volume(
@@ -177,6 +189,7 @@ def test_fetch_target_path_uses_comfyui_path_with_configured_model_volume(
     monkeypatch.setattr(fetch.httpx, "stream", _stream)
     entry = {
         "name": "custom.py",
+        "subdir": "custom_nodes/sample",
         "target_path": "custom_nodes/sample/custom.py",
         "url": "https://example.test/custom",
     }
@@ -201,6 +214,7 @@ def test_fetch_target_path_symlink_escape_is_refused_with_comfyui_path(
     monkeypatch.setenv("COMFYUI_PATH", str(comfyui))
     entry = {
         "name": "custom.py",
+        "subdir": "custom_nodes/sample",
         "target_path": "custom_nodes/sample/custom.py",
         "url": "https://example.test/custom",
     }
@@ -216,6 +230,27 @@ def test_fetch_target_path_without_comfyui_path_uses_configured_root_parent(
     configured.mkdir()
     monkeypatch.setenv("VIBECOMFY_MODELS_ROOT", str(configured))
     monkeypatch.delenv("COMFYUI_PATH", raising=False)
-    entry = {"name": "custom.py", "target_path": "custom_nodes/sample/custom.py"}
+    entry = {"name": "custom.py", "subdir": "custom_nodes/sample", "target_path": "custom_nodes/sample/custom.py"}
 
     assert fetch.local_path(entry) == tmp_path / "custom_nodes" / "sample" / "custom.py"
+
+
+def test_music_template_preparation_uses_configured_models_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from vibecomfy.registry.ready import workflow_from_ready
+
+    configured = tmp_path / "shared"
+    monkeypatch.setenv("VIBECOMFY_MODELS_ROOT", str(configured))
+    monkeypatch.setattr(fetch.httpx, "stream", _stream)
+    workflow = workflow_from_ready("audio/ace_step_1_5_t2a_song")
+    result = prepare_workflow(
+        workflow, reference="audio/ace_step_1_5_t2a_song",
+        runtime_root=tmp_path / "runtime", ensure_packs=False, quiet=True,
+    )
+    assert set(result.model_paths) == {
+        str(configured / "vae/ace_1.5_vae.safetensors"),
+        str(configured / "diffusion_models/acestep_v1.5_turbo.safetensors"),
+        str(configured / "text_encoders/qwen_0.6b_ace15.safetensors"),
+        str(configured / "text_encoders/qwen_4b_ace15.safetensors"),
+    }

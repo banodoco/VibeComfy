@@ -3,7 +3,7 @@
   "generated_from": "repo-only ready template discovery",
   "include_rule": "find ready_templates -type f -name '*.py' ! -name '_*' | sort",
   "exclude_rule": "exclude __init__.py and files whose basename starts with '_' to match vibecomfy.registry.ready._template_paths",
-  "template_count": 70,
+  "template_count": 53,
   "templates": [
     {
       "id": "audio/ace_step_1_5_t2a_song",
@@ -16,7 +16,7 @@
         "EmptyAceStep1",
         "TextEncodeAceStepAudio1"
       ],
-      "model_count": 2,
+      "model_count": 4,
       "public_inputs": [
         {
           "name": "seed",
@@ -117,7 +117,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -134,7 +134,7 @@
       "capability": "audio",
       "coverage_tier": "",
       "custom_nodes": [],
-      "model_count": 5,
+      "model_count": 10,
       "public_inputs": [
         {
           "name": "video",
@@ -309,7 +309,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -421,7 +421,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -591,7 +591,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -715,7 +715,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -797,7 +797,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -879,7 +879,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -896,7 +896,7 @@
       "capability": "image",
       "coverage_tier": "supplemental",
       "custom_nodes": [],
-      "model_count": 0,
+      "model_count": 3,
       "public_inputs": [
         {
           "name": "image",
@@ -1017,7 +1017,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -1034,7 +1034,7 @@
       "capability": "image",
       "coverage_tier": "required",
       "custom_nodes": [],
-      "model_count": 0,
+      "model_count": 3,
       "public_inputs": [
         {
           "name": "image",
@@ -1137,7 +1137,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -1154,7 +1154,7 @@
       "capability": "image",
       "coverage_tier": "supplemental",
       "custom_nodes": [],
-      "model_count": 0,
+      "model_count": 3,
       "public_inputs": [
         {
           "name": "image",
@@ -1275,7 +1275,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -1292,7 +1292,7 @@
       "capability": "image",
       "coverage_tier": "supplemental",
       "custom_nodes": [],
-      "model_count": 0,
+      "model_count": 3,
       "public_inputs": [
         {
           "name": "image",
@@ -1395,7 +1395,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -1597,7 +1597,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -1614,7 +1614,7 @@
       "capability": "image",
       "coverage_tier": "required",
       "custom_nodes": [],
-      "model_count": 0,
+      "model_count": 4,
       "public_inputs": [
         {
           "name": "image",
@@ -1735,7 +1735,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -1837,7 +1837,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -1854,7 +1854,7 @@
       "capability": "image",
       "coverage_tier": "required",
       "custom_nodes": [],
-      "model_count": 0,
+      "model_count": 4,
       "public_inputs": [
         {
           "name": "prompt",
@@ -1937,7 +1937,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -1954,7 +1954,7 @@
       "capability": "image",
       "coverage_tier": "required",
       "custom_nodes": [],
-      "model_count": 0,
+      "model_count": 3,
       "public_inputs": [
         {
           "name": "prompt",
@@ -2037,7 +2037,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -2054,7 +2054,7 @@
       "capability": "image",
       "coverage_tier": "supplemental",
       "custom_nodes": [],
-      "model_count": 0,
+      "model_count": 3,
       "public_inputs": [
         {
           "name": "prompt",
@@ -2137,7 +2137,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -2291,7 +2291,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -2511,7 +2511,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -2528,7 +2528,7 @@
       "capability": "image",
       "coverage_tier": "required",
       "custom_nodes": [],
-      "model_count": 0,
+      "model_count": 3,
       "public_inputs": [
         {
           "name": "prompt",
@@ -2611,7 +2611,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -2911,7 +2911,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -3173,7 +3173,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -3273,7 +3273,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -3393,7 +3393,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -3564,7 +3564,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -3581,7 +3581,7 @@
       "capability": "video",
       "coverage_tier": "required",
       "custom_nodes": [],
-      "model_count": 2,
+      "model_count": 4,
       "public_inputs": [
         {
           "name": "image",
@@ -3830,633 +3830,13 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
         "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/ltx2_3_single_stage_distilled_full.json",
-      "source_sha256": null
-    },
-    {
-      "id": "video/ltx2_3_iamccs_audio_extend_low_ram",
-      "path": "ready_templates/video/ltx2_3_iamccs_audio_extend_low_ram.py",
-      "source_scope": "repo",
-      "indexed": true,
-      "capability": "unknown",
-      "coverage_tier": "supplemental",
-      "custom_nodes": [],
-      "model_count": 5,
-      "public_inputs": [
-        {
-          "name": "image",
-          "target": {
-            "node_id": "1",
-            "field": "image"
-          },
-          "node_id": "1",
-          "field": "image",
-          "value": "ChatGPT Image Mar 27, 2026, 08_27_32 AM.png",
-          "type": "IMAGE",
-          "default": "ChatGPT Image Mar 27, 2026, 08_27_32 AM.png",
-          "required": true,
-          "range": null,
-          "aliases": [
-            "input_image"
-          ],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "input_image",
-          "target": {
-            "node_id": "1",
-            "field": "image"
-          },
-          "node_id": "1",
-          "field": "image",
-          "value": "ChatGPT Image Mar 27, 2026, 08_27_32 AM.png",
-          "type": "IMAGE",
-          "default": "ChatGPT Image Mar 27, 2026, 08_27_32 AM.png",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "width",
-          "target": {
-            "node_id": "16",
-            "field": "width"
-          },
-          "node_id": "16",
-          "field": "width",
-          "value": 1024,
-          "type": "INT",
-          "default": 1024,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "height",
-          "target": {
-            "node_id": "16",
-            "field": "height"
-          },
-          "node_id": "16",
-          "field": "height",
-          "value": 1024,
-          "type": "INT",
-          "default": 1024,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "frames",
-          "target": {
-            "node_id": "17",
-            "field": "length"
-          },
-          "node_id": "17",
-          "field": "length",
-          "value": 241,
-          "type": "INT",
-          "default": 241,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "seed",
-          "target": {
-            "node_id": "25",
-            "field": "noise_seed"
-          },
-          "node_id": "25",
-          "field": "noise_seed",
-          "value": 851629932274714,
-          "type": "INT",
-          "default": 851629932274714,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "prompt",
-          "target": {
-            "node_id": "8",
-            "field": "text"
-          },
-          "node_id": "8",
-          "field": "text",
-          "value": "cinematic image to video shot of a singer actor acting and singing a song during a musical, intense expression, coherent motion, smooth camera movement, high detail, stable composition, audio-reactive motion",
-          "type": "STRING",
-          "default": "cinematic image to video shot of a singer actor acting and singing a song during a musical, intense expression, coherent motion, smooth camera movement, high detail, stable composition, audio-reactive motion",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "text",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "negative_prompt",
-          "target": {
-            "node_id": "9",
-            "field": "text"
-          },
-          "node_id": "9",
-          "field": "text",
-          "value": "flicker, jitter, low quality, bad anatomy, static image, frozen frame, deformed motion",
-          "type": "STRING",
-          "default": "flicker, jitter, low quality, bad anatomy, static image, frozen frame, deformed motion",
-          "required": false,
-          "range": null,
-          "aliases": [
-            "negative"
-          ],
-          "media_semantics": "text",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "negative",
-          "target": {
-            "node_id": "9",
-            "field": "text"
-          },
-          "node_id": "9",
-          "field": "text",
-          "value": "flicker, jitter, low quality, bad anatomy, static image, frozen frame, deformed motion",
-          "type": "STRING",
-          "default": "flicker, jitter, low quality, bad anatomy, static image, frozen frame, deformed motion",
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "text",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "5",
-            "field": "unet_name"
-          },
-          "node_id": "5",
-          "field": "unet_name",
-          "value": "ltx-2.3-22b-dev-Q4_K_S.gguf",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        }
-      ],
-      "public_outputs": [],
-      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
-      "artifact_expectations": [],
-      "static_diagnostics": [],
-      "public_input_status": "declared",
-      "public_output_status": "missing",
-      "custom_node_count": 0,
-      "strict_ready_diagnostic_counts": {},
-      "readiness_class": "ready",
-      "marker": "generated",
-      "app_active": false,
-      "blocked": false,
-      "reference": false,
-      "supplemental": true,
-      "vibecomfy_version": "2.8.0",
-      "comfy_core": {
-        "version": "0.43.0",
-        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
-        "status": "static_source_schema_only"
-      },
-      "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/iamccs/IAMCCS_LTX23_BEST_3SEG_AUDIOEXT_30S_FREE_LOW_RAM.json",
-      "source_sha256": null
-    },
-    {
-      "id": "video/ltx2_3_iamccs_audio_image_to_video",
-      "path": "ready_templates/video/ltx2_3_iamccs_audio_image_to_video.py",
-      "source_scope": "repo",
-      "indexed": true,
-      "capability": "video",
-      "coverage_tier": "supplemental",
-      "custom_nodes": [],
-      "model_count": 4,
-      "public_inputs": [
-        {
-          "name": "image",
-          "target": {
-            "node_id": "240",
-            "field": "image"
-          },
-          "node_id": "240",
-          "field": "image",
-          "value": "",
-          "type": "IMAGE",
-          "default": "",
-          "required": true,
-          "range": null,
-          "aliases": [
-            "input_image"
-          ],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "input_image",
-          "target": {
-            "node_id": "240",
-            "field": "image"
-          },
-          "node_id": "240",
-          "field": "image",
-          "value": "",
-          "type": "IMAGE",
-          "default": "",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "width",
-          "target": {
-            "node_id": "241",
-            "field": "width"
-          },
-          "node_id": "241",
-          "field": "width",
-          "value": 720,
-          "type": "INT",
-          "default": 720,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "height",
-          "target": {
-            "node_id": "241",
-            "field": "height"
-          },
-          "node_id": "241",
-          "field": "height",
-          "value": 1280,
-          "type": "INT",
-          "default": 1280,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "seed",
-          "target": {
-            "node_id": "290",
-            "field": "seed"
-          },
-          "node_id": "290",
-          "field": "seed",
-          "value": 923615063061116,
-          "type": "INT",
-          "default": 923615063061116,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "prompt",
-          "target": {
-            "node_id": "165",
-            "field": "text"
-          },
-          "node_id": "165",
-          "field": "text",
-          "value": "blurry, out of focus, overexposed, underexposed, low contrast, washed out colors, excessive noise, grainy texture, poor lighting, flickering, motion blur, distorted proportions, unnatural skin tones, deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, wrong hand count, artifacts around text, unreadable text on shirt or hat, incorrect lettering on cap (\u201cPNTR\u201d), incorrect t-shirt slogan (\u201cJUST DO IT\u201d), missing microphone, misplaced microphone, inconsistent perspective, camera shake, incorrect depth of field, background too sharp, background clutter, distracting reflections, harsh shadows, inconsistent lighting direction, color banding, cartoonish rendering, 3D CGI look, unrealistic materials, uncanny valley effect, incorrect ethnicity, wrong gender, exaggerated expressions, smiling, laughing, exaggerated sadness, wrong gaze direction, eyes looking at camera, mismatched lip sync, silent or muted audio, distorted voice, robotic voice, echo, background noise, off-sync audio, missing sniff sounds, incorrect dialogue, added dialogue, repetitive speech, jittery movement, awkward pauses, incorrect timing, unnatural transitions, inconsistent framing, tilted camera, missing door or shelves, missing shallow depth of field, flat lighting, inconsistent tone, cinematic oversaturation, stylized filters, or AI artifacts.",
-          "type": "STRING",
-          "default": "blurry, out of focus, overexposed, underexposed, low contrast, washed out colors, excessive noise, grainy texture, poor lighting, flickering, motion blur, distorted proportions, unnatural skin tones, deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, wrong hand count, artifacts around text, unreadable text on shirt or hat, incorrect lettering on cap (\u201cPNTR\u201d), incorrect t-shirt slogan (\u201cJUST DO IT\u201d), missing microphone, misplaced microphone, inconsistent perspective, camera shake, incorrect depth of field, background too sharp, background clutter, distracting reflections, harsh shadows, inconsistent lighting direction, color banding, cartoonish rendering, 3D CGI look, unrealistic materials, uncanny valley effect, incorrect ethnicity, wrong gender, exaggerated expressions, smiling, laughing, exaggerated sadness, wrong gaze direction, eyes looking at camera, mismatched lip sync, silent or muted audio, distorted voice, robotic voice, echo, background noise, off-sync audio, missing sniff sounds, incorrect dialogue, added dialogue, repetitive speech, jittery movement, awkward pauses, incorrect timing, unnatural transitions, inconsistent framing, tilted camera, missing door or shelves, missing shallow depth of field, flat lighting, inconsistent tone, cinematic oversaturation, stylized filters, or AI artifacts.",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "text",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "301",
-            "field": "unet_name"
-          },
-          "node_id": "301",
-          "field": "unet_name",
-          "value": "LTX-2-dev-Q4_K_S.gguf",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        },
-        {
-          "name": "steps",
-          "target": {
-            "node_id": "238",
-            "field": "steps"
-          },
-          "node_id": "238",
-          "field": "steps",
-          "value": 8,
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        }
-      ],
-      "public_outputs": [
-        {
-          "name": "video",
-          "node_id": "190",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "IAMCCS/LTX2_AU+IMG2V",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
-      "artifact_expectations": [
-        {
-          "name": "video",
-          "node_id": "190",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "IAMCCS/LTX2_AU+IMG2V",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
-      "public_input_status": "declared",
-      "public_output_status": "declared",
-      "custom_node_count": 0,
-      "strict_ready_diagnostic_counts": {},
-      "readiness_class": "ready",
-      "marker": "generated",
-      "app_active": false,
-      "blocked": false,
-      "reference": false,
-      "supplemental": true,
-      "vibecomfy_version": "2.8.0",
-      "comfy_core": {
-        "version": "0.43.0",
-        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
-        "status": "static_source_schema_only"
-      },
-      "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/iamccs/IAMCCS_LTX2_AU_IMG2V.json",
-      "source_sha256": null
-    },
-    {
-      "id": "video/ltx2_3_iamccs_long_i2v",
-      "path": "ready_templates/video/ltx2_3_iamccs_long_i2v.py",
-      "source_scope": "repo",
-      "indexed": true,
-      "capability": "video",
-      "coverage_tier": "supplemental",
-      "custom_nodes": [],
-      "model_count": 5,
-      "public_inputs": [
-        {
-          "name": "image",
-          "target": {
-            "node_id": "5180",
-            "field": "image"
-          },
-          "node_id": "5180",
-          "field": "image",
-          "value": "",
-          "type": "IMAGE",
-          "default": "",
-          "required": true,
-          "range": null,
-          "aliases": [
-            "input_image"
-          ],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "input_image",
-          "target": {
-            "node_id": "5180",
-            "field": "image"
-          },
-          "node_id": "5180",
-          "field": "image",
-          "value": "",
-          "type": "IMAGE",
-          "default": "",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "seed",
-          "target": {
-            "node_id": "3eaa20c4:5111",
-            "field": "noise_seed"
-          },
-          "node_id": "3eaa20c4:5111",
-          "field": "noise_seed",
-          "value": 43,
-          "type": "INT",
-          "default": 43,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "width",
-          "target": {
-            "node_id": "10955",
-            "field": "width"
-          },
-          "node_id": "10955",
-          "field": "width",
-          "value": 1332,
-          "type": "INT",
-          "default": 1332,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "height",
-          "target": {
-            "node_id": "10955",
-            "field": "height"
-          },
-          "node_id": "10955",
-          "field": "height",
-          "value": 720,
-          "type": "INT",
-          "default": 720,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "prompt",
-          "target": {
-            "node_id": "5174",
-            "field": "text"
-          },
-          "node_id": "5174",
-          "field": "text",
-          "value": "Cinematic action packed shot. the man says silently: \"We need to run.\" the camera zooms in on his mouth then immediately screams: \"NOW!\". the camera zooms back out, he turns around, and starts running away, the camera tracks his run in hand held style.",
-          "type": "STRING",
-          "default": "Cinematic action packed shot. the man says silently: \"We need to run.\" the camera zooms in on his mouth then immediately screams: \"NOW!\". the camera zooms back out, he turns around, and starts running away, the camera tracks his run in hand held style.",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "text",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "5176",
-            "field": "ckpt_name"
-          },
-          "node_id": "5176",
-          "field": "ckpt_name",
-          "value": "ltx-2-19b-distilled.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        }
-      ],
-      "public_outputs": [
-        {
-          "name": "video",
-          "node_id": "4958",
-          "output_type": "SaveVideo",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "IAMCCS(LTX2_LL_1",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
-      "artifact_expectations": [
-        {
-          "name": "video",
-          "node_id": "4958",
-          "output_type": "SaveVideo",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "IAMCCS(LTX2_LL_1",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
-      "public_input_status": "declared",
-      "public_output_status": "declared",
-      "custom_node_count": 0,
-      "strict_ready_diagnostic_counts": {},
-      "readiness_class": "ready",
-      "marker": "generated",
-      "app_active": false,
-      "blocked": false,
-      "reference": false,
-      "supplemental": true,
-      "vibecomfy_version": "2.8.0",
-      "comfy_core": {
-        "version": "0.43.0",
-        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
-        "status": "static_source_schema_only"
-      },
-      "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/iamccs/IAMCCS_LTX2_I2V_LONG_LENGTH.json",
       "source_sha256": null
     },
     {
@@ -4645,7 +4025,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -4856,7 +4236,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -4889,7 +4269,7 @@
       "capability": "video",
       "coverage_tier": "required",
       "custom_nodes": [],
-      "model_count": 3,
+      "model_count": 4,
       "public_inputs": [
         {
           "name": "seed",
@@ -5046,7 +4426,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -5063,7 +4443,7 @@
       "capability": "video",
       "coverage_tier": "required",
       "custom_nodes": [],
-      "model_count": 3,
+      "model_count": 4,
       "public_inputs": [
         {
           "name": "image",
@@ -5276,7 +4656,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -5293,7 +4673,7 @@
       "capability": "video",
       "coverage_tier": "supplemental",
       "custom_nodes": [],
-      "model_count": 3,
+      "model_count": 4,
       "public_inputs": [
         {
           "name": "image",
@@ -5470,7 +4850,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -5487,7 +4867,7 @@
       "capability": "video",
       "coverage_tier": "required",
       "custom_nodes": [],
-      "model_count": 3,
+      "model_count": 4,
       "public_inputs": [
         {
           "name": "image",
@@ -5736,7 +5116,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -5746,170 +5126,19 @@
       "source_sha256": null
     },
     {
-      "id": "video/ltx2_3_runexx_custom_audio",
-      "path": "ready_templates/video/ltx2_3_runexx_custom_audio.py",
-      "source_scope": "repo",
-      "indexed": true,
-      "capability": "video",
-      "coverage_tier": "supplemental",
-      "custom_nodes": [],
-      "model_count": 6,
-      "public_inputs": [
-        {
-          "name": "seed",
-          "target": {
-            "node_id": "114",
-            "field": "noise_seed"
-          },
-          "node_id": "114",
-          "field": "noise_seed",
-          "value": 420,
-          "type": "INT",
-          "default": 420,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "image",
-          "target": {
-            "node_id": "167",
-            "field": "image"
-          },
-          "node_id": "167",
-          "field": "image",
-          "value": "liam-neeson-in-retribution-ra.jpg",
-          "type": "IMAGE",
-          "default": "liam-neeson-in-retribution-ra.jpg",
-          "required": true,
-          "range": null,
-          "aliases": [
-            "input_image"
-          ],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "input_image",
-          "target": {
-            "node_id": "167",
-            "field": "image"
-          },
-          "node_id": "167",
-          "field": "image",
-          "value": "liam-neeson-in-retribution-ra.jpg",
-          "type": "IMAGE",
-          "default": "liam-neeson-in-retribution-ra.jpg",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "prompt",
-          "target": {
-            "node_id": "110",
-            "field": "text"
-          },
-          "node_id": "110",
-          "field": "text",
-          "value": "blurry, oversaturated, pixelated, low resolution, grainy, distorted, noise, compression artifacts, jpeg artifacts, glitches, watermark, text, logo, signature, copyright, subtitles, distorted sound, saturated sound, loud",
-          "type": "STRING",
-          "default": "blurry, oversaturated, pixelated, low resolution, grainy, distorted, noise, compression artifacts, jpeg artifacts, glitches, watermark, text, logo, signature, copyright, subtitles, distorted sound, saturated sound, loud",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "text",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "189",
-            "field": "model_name"
-          },
-          "node_id": "189",
-          "field": "model_name",
-          "value": "ltx-2.3-spatial-upscaler-x2-1.0.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        }
-      ],
-      "public_outputs": [
-        {
-          "name": "video",
-          "node_id": "140",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "LTX-2",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
-      "artifact_expectations": [
-        {
-          "name": "video",
-          "node_id": "140",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "LTX-2",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
-      "public_input_status": "declared",
-      "public_output_status": "declared",
-      "custom_node_count": 0,
-      "strict_ready_diagnostic_counts": {},
-      "readiness_class": "ready",
-      "marker": "generated",
-      "app_active": false,
-      "blocked": false,
-      "reference": false,
-      "supplemental": true,
-      "vibecomfy_version": "2.8.0",
-      "comfy_core": {
-        "version": "0.43.0",
-        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
-        "status": "static_source_schema_only"
-      },
-      "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/runexx/LTX-2.3_Custom_Audio.json",
-      "source_sha256": null
-    },
-    {
       "id": "video/ltx2_3_runexx_first_last_frame",
       "path": "ready_templates/video/ltx2_3_runexx_first_last_frame.py",
       "source_scope": "repo",
       "indexed": true,
       "capability": "video",
       "coverage_tier": "supplemental",
-      "custom_nodes": [],
-      "model_count": 7,
+      "custom_nodes": [
+        "ComfyUI-KJNodes",
+        "ComfyUI-LTXVideo",
+        "ComfyUI-VideoHelperSuite",
+        "rgthree-comfy"
+      ],
+      "model_count": 8,
       "public_inputs": [
         {
           "name": "enhance_prompt",
@@ -6094,7 +5323,7 @@
       ],
       "public_input_status": "declared",
       "public_output_status": "declared",
-      "custom_node_count": 0,
+      "custom_node_count": 4,
       "strict_ready_diagnostic_counts": {},
       "readiness_class": "ready",
       "marker": "generated",
@@ -6102,7 +5331,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -6124,7 +5353,7 @@
         "ComfyUI-VideoHelperSuite",
         "rgthree-comfy"
       ],
-      "model_count": 6,
+      "model_count": 8,
       "public_inputs": [
         {
           "name": "seed",
@@ -6263,7 +5492,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -6303,1250 +5532,6 @@
       ]
     },
     {
-      "id": "video/ltx2_3_runexx_first_middle_last_frame",
-      "path": "ready_templates/video/ltx2_3_runexx_first_middle_last_frame.py",
-      "source_scope": "repo",
-      "indexed": true,
-      "capability": "video",
-      "coverage_tier": "supplemental",
-      "custom_nodes": [],
-      "model_count": 7,
-      "public_inputs": [
-        {
-          "name": "enhance_prompt",
-          "target": {
-            "node_id": "8fa4f93a:2002",
-            "field": "switch"
-          },
-          "node_id": "8fa4f93a:2002",
-          "field": "switch",
-          "value": true,
-          "type": null,
-          "default": true,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "middleframe_strength",
-          "target": {
-            "node_id": "2221",
-            "field": "num_guides.strength_2"
-          },
-          "node_id": "2221",
-          "field": "num_guides.strength_2",
-          "value": 0.3,
-          "type": null,
-          "default": 0.3,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "seed",
-          "target": {
-            "node_id": "14",
-            "field": "noise_seed"
-          },
-          "node_id": "14",
-          "field": "noise_seed",
-          "value": 43,
-          "type": "INT",
-          "default": 43,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "image",
-          "target": {
-            "node_id": "45",
-            "field": "image"
-          },
-          "node_id": "45",
-          "field": "image",
-          "value": "",
-          "type": "IMAGE",
-          "default": "",
-          "required": true,
-          "range": null,
-          "aliases": [
-            "input_image"
-          ],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "input_image",
-          "target": {
-            "node_id": "45",
-            "field": "image"
-          },
-          "node_id": "45",
-          "field": "image",
-          "value": "",
-          "type": "IMAGE",
-          "default": "",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "prompt",
-          "target": {
-            "node_id": "11",
-            "field": "text"
-          },
-          "node_id": "11",
-          "field": "text",
-          "value": "blurry, oversaturated, pixelated, low resolution, grainy, distorted, noise, compression artifacts, jpeg artifacts, glitches, watermark, text, logo, signature, copyright, subtitles, distorted sound, saturated sound, loud",
-          "type": "STRING",
-          "default": "blurry, oversaturated, pixelated, low resolution, grainy, distorted, noise, compression artifacts, jpeg artifacts, glitches, watermark, text, logo, signature, copyright, subtitles, distorted sound, saturated sound, loud",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "text",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "182",
-            "field": "model_name"
-          },
-          "node_id": "182",
-          "field": "model_name",
-          "value": "ltx-2.3-spatial-upscaler-x2-1.1.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        }
-      ],
-      "public_outputs": [
-        {
-          "name": "video",
-          "node_id": "43",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "LTX-2",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
-      "artifact_expectations": [
-        {
-          "name": "video",
-          "node_id": "43",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "LTX-2",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
-      "public_input_status": "declared",
-      "public_output_status": "declared",
-      "custom_node_count": 0,
-      "strict_ready_diagnostic_counts": {},
-      "readiness_class": "ready",
-      "marker": "generated",
-      "app_active": false,
-      "blocked": false,
-      "reference": false,
-      "supplemental": true,
-      "vibecomfy_version": "2.8.0",
-      "comfy_core": {
-        "version": "0.43.0",
-        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
-        "status": "static_source_schema_only"
-      },
-      "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/runexx/LTX-2.3_FML2V_First_Middle_Last_Frame_guider.json",
-      "source_sha256": null
-    },
-    {
-      "id": "video/ltx2_3_runexx_lipsync_custom_audio",
-      "path": "ready_templates/video/ltx2_3_runexx_lipsync_custom_audio.py",
-      "source_scope": "repo",
-      "indexed": true,
-      "capability": "video",
-      "coverage_tier": "supplemental",
-      "custom_nodes": [],
-      "model_count": 8,
-      "public_inputs": [
-        {
-          "name": "enable_promptenhance",
-          "target": {
-            "node_id": "e428c881:878",
-            "field": "switch"
-          },
-          "node_id": "e428c881:878",
-          "field": "switch",
-          "value": false,
-          "type": null,
-          "default": false,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "last_latent_strength",
-          "target": {
-            "node_id": "799",
-            "field": "strength"
-          },
-          "node_id": "799",
-          "field": "strength",
-          "value": 1.0,
-          "type": null,
-          "default": 1.0,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "seed",
-          "target": {
-            "node_id": "115",
-            "field": "noise_seed"
-          },
-          "node_id": "115",
-          "field": "noise_seed",
-          "value": 790774741312584,
-          "type": "INT",
-          "default": 790774741312584,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "prompt",
-          "target": {
-            "node_id": "110",
-            "field": "text"
-          },
-          "node_id": "110",
-          "field": "text",
-          "value": "text, subtitles, logo, low quality, distorted, bad anatomy, oversaturated, pixelated, low resolution, grainy, compression artifacts, jpeg artifacts, glitches, watermark, signature, copyright,  distortedsound, saturated sound, loud sound , deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, blurry teeth, disfigured teeth",
-          "type": "STRING",
-          "default": "text, subtitles, logo, low quality, distorted, bad anatomy, oversaturated, pixelated, low resolution, grainy, compression artifacts, jpeg artifacts, glitches, watermark, signature, copyright,  distortedsound, saturated sound, loud sound , deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, blurry teeth, disfigured teeth",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "text",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "negative_prompt",
-          "target": {
-            "node_id": "626",
-            "field": "text"
-          },
-          "node_id": "626",
-          "field": "text",
-          "value": " distorted sound, saturated sound, loud sound",
-          "type": "STRING",
-          "default": " distorted sound, saturated sound, loud sound",
-          "required": false,
-          "range": null,
-          "aliases": [
-            "negative"
-          ],
-          "media_semantics": "text",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "negative",
-          "target": {
-            "node_id": "626",
-            "field": "text"
-          },
-          "node_id": "626",
-          "field": "text",
-          "value": " distorted sound, saturated sound, loud sound",
-          "type": "STRING",
-          "default": " distorted sound, saturated sound, loud sound",
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "text",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "465",
-            "field": "model_name"
-          },
-          "node_id": "465",
-          "field": "model_name",
-          "value": "ltx-2.3-spatial-upscaler-x2-1.1.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        }
-      ],
-      "public_outputs": [
-        {
-          "name": "video",
-          "node_id": "578",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "LTX-2",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
-      "artifact_expectations": [
-        {
-          "name": "video",
-          "node_id": "578",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "LTX-2",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
-      "public_input_status": "declared",
-      "public_output_status": "declared",
-      "custom_node_count": 0,
-      "strict_ready_diagnostic_counts": {},
-      "readiness_class": "ready",
-      "marker": "generated",
-      "app_active": false,
-      "blocked": false,
-      "reference": false,
-      "supplemental": true,
-      "vibecomfy_version": "2.8.0",
-      "comfy_core": {
-        "version": "0.43.0",
-        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
-        "status": "static_source_schema_only"
-      },
-      "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/runexx/LTX-2.3_V2V_Just_Talk_custom_audio_lipsync.json",
-      "source_sha256": null
-    },
-    {
-      "id": "video/ltx2_3_runexx_motion_transfer_dwpose",
-      "path": "ready_templates/video/ltx2_3_runexx_motion_transfer_dwpose.py",
-      "source_scope": "repo",
-      "indexed": true,
-      "capability": "video",
-      "coverage_tier": "supplemental",
-      "custom_nodes": [],
-      "model_count": 9,
-      "public_inputs": [
-        {
-          "name": "enhance_prompt",
-          "target": {
-            "node_id": "94e8f3a0:1928",
-            "field": "switch"
-          },
-          "node_id": "94e8f3a0:1928",
-          "field": "switch",
-          "value": false,
-          "type": null,
-          "default": false,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "ref_strength",
-          "target": {
-            "node_id": "5012",
-            "field": "strength"
-          },
-          "node_id": "5012",
-          "field": "strength",
-          "value": 0.7,
-          "type": null,
-          "default": 0.7,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "image",
-          "target": {
-            "node_id": "2004",
-            "field": "image"
-          },
-          "node_id": "2004",
-          "field": "image",
-          "value": "fjf1oxsjnnrgphxxrnzx6dh4k9-nano-banana-gemini-3-pro-image-ultra-realistic-black-and-white-cinematic-fullbody-portrait-of-muhammad-ali-standing-side-lighting-strong-contrast-intense-mysterious-expression-sharp.jpg",
-          "type": "IMAGE",
-          "default": "fjf1oxsjnnrgphxxrnzx6dh4k9-nano-banana-gemini-3-pro-image-ultra-realistic-black-and-white-cinematic-fullbody-portrait-of-muhammad-ali-standing-side-lighting-strong-contrast-intense-mysterious-expression-sharp.jpg",
-          "required": true,
-          "range": null,
-          "aliases": [
-            "input_image"
-          ],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "input_image",
-          "target": {
-            "node_id": "2004",
-            "field": "image"
-          },
-          "node_id": "2004",
-          "field": "image",
-          "value": "fjf1oxsjnnrgphxxrnzx6dh4k9-nano-banana-gemini-3-pro-image-ultra-realistic-black-and-white-cinematic-fullbody-portrait-of-muhammad-ali-standing-side-lighting-strong-contrast-intense-mysterious-expression-sharp.jpg",
-          "type": "IMAGE",
-          "default": "fjf1oxsjnnrgphxxrnzx6dh4k9-nano-banana-gemini-3-pro-image-ultra-realistic-black-and-white-cinematic-fullbody-portrait-of-muhammad-ali-standing-side-lighting-strong-contrast-intense-mysterious-expression-sharp.jpg",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "seed",
-          "target": {
-            "node_id": "4832",
-            "field": "noise_seed"
-          },
-          "node_id": "4832",
-          "field": "noise_seed",
-          "value": 42,
-          "type": "INT",
-          "default": 42,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "negative_prompt",
-          "target": {
-            "node_id": "2612",
-            "field": "text"
-          },
-          "node_id": "2612",
-          "field": "text",
-          "value": "low contrast, washed out, text, subtitles, logo, still image, still video, blurry, low quality, distorted, bad anatomy, oversaturated, pixelated, low resolution, grainy, compression artifacts, jpeg artifacts, glitches, watermark, signature, copyright,  distortedsound, saturated sound, loud sound , deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, blurry teeth, disfigured teeth",
-          "type": "STRING",
-          "default": "low contrast, washed out, text, subtitles, logo, still image, still video, blurry, low quality, distorted, bad anatomy, oversaturated, pixelated, low resolution, grainy, compression artifacts, jpeg artifacts, glitches, watermark, signature, copyright,  distortedsound, saturated sound, loud sound , deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, blurry teeth, disfigured teeth",
-          "required": false,
-          "range": null,
-          "aliases": [
-            "negative"
-          ],
-          "media_semantics": "text",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "negative",
-          "target": {
-            "node_id": "2612",
-            "field": "text"
-          },
-          "node_id": "2612",
-          "field": "text",
-          "value": "low contrast, washed out, text, subtitles, logo, still image, still video, blurry, low quality, distorted, bad anatomy, oversaturated, pixelated, low resolution, grainy, compression artifacts, jpeg artifacts, glitches, watermark, signature, copyright,  distortedsound, saturated sound, loud sound , deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, blurry teeth, disfigured teeth",
-          "type": "STRING",
-          "default": "low contrast, washed out, text, subtitles, logo, still image, still video, blurry, low quality, distorted, bad anatomy, oversaturated, pixelated, low resolution, grainy, compression artifacts, jpeg artifacts, glitches, watermark, signature, copyright,  distortedsound, saturated sound, loud sound , deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, blurry teeth, disfigured teeth",
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "text",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "5130",
-            "field": "unet_name"
-          },
-          "node_id": "5130",
-          "field": "unet_name",
-          "value": "LTXVideo/v2/ltx-2.3-22b-distilled-1.1_transformer_only_fp8_scaled.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        },
-        {
-          "name": "prompt",
-          "target": {
-            "node_id": "2612",
-            "field": "text"
-          },
-          "node_id": "2612",
-          "field": "text",
-          "value": "low contrast, washed out, text, subtitles, logo, still image, still video, blurry, low quality, distorted, bad anatomy, oversaturated, pixelated, low resolution, grainy, compression artifacts, jpeg artifacts, glitches, watermark, signature, copyright,  distortedsound, saturated sound, loud sound , deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, blurry teeth, disfigured teeth",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        }
-      ],
-      "public_outputs": [
-        {
-          "name": "video",
-          "node_id": "5120",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "AnimateDiff",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
-      "artifact_expectations": [
-        {
-          "name": "video",
-          "node_id": "5120",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "AnimateDiff",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
-      "public_input_status": "declared",
-      "public_output_status": "declared",
-      "custom_node_count": 0,
-      "strict_ready_diagnostic_counts": {},
-      "readiness_class": "ready",
-      "marker": "generated",
-      "app_active": false,
-      "blocked": false,
-      "reference": false,
-      "supplemental": true,
-      "vibecomfy_version": "2.8.0",
-      "comfy_core": {
-        "version": "0.43.0",
-        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
-        "status": "static_source_schema_only"
-      },
-      "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/runexx/LTX-2.3_Motion_Transfer_DWPose.json",
-      "source_sha256": null
-    },
-    {
-      "id": "video/ltx2_3_runexx_music_video_low_ram",
-      "path": "ready_templates/video/ltx2_3_runexx_music_video_low_ram.py",
-      "source_scope": "repo",
-      "indexed": true,
-      "capability": "video",
-      "coverage_tier": "supplemental",
-      "custom_nodes": [],
-      "model_count": 7,
-      "public_inputs": [
-        {
-          "name": "image_strength",
-          "target": {
-            "node_id": "2183",
-            "field": "strength"
-          },
-          "node_id": "2183",
-          "field": "strength",
-          "value": 0.7,
-          "type": null,
-          "default": 0.7,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "window_sec_02",
-          "target": {
-            "node_id": "c4106aee:2324",
-            "field": "variables.a"
-          },
-          "node_id": "c4106aee:2324",
-          "field": "variables.a",
-          "value": 10.0,
-          "type": null,
-          "default": 10.0,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "enhance_prompt",
-          "target": {
-            "node_id": "3bd4eeb9:1928",
-            "field": "switch"
-          },
-          "node_id": "3bd4eeb9:1928",
-          "field": "switch",
-          "value": false,
-          "type": null,
-          "default": false,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "window_sec_03",
-          "target": {
-            "node_id": "17238add:5041",
-            "field": "variables.a"
-          },
-          "node_id": "17238add:5041",
-          "field": "variables.a",
-          "value": 18.0,
-          "type": null,
-          "default": 18.0,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "window_sec_04",
-          "target": {
-            "node_id": "a3fb563d:5116",
-            "field": "variables.a"
-          },
-          "node_id": "a3fb563d:5116",
-          "field": "variables.a",
-          "value": 15.0,
-          "type": null,
-          "default": 15.0,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "window_sec_05",
-          "target": {
-            "node_id": "4acc9924:5191",
-            "field": "variables.a"
-          },
-          "node_id": "4acc9924:5191",
-          "field": "variables.a",
-          "value": 10.0,
-          "type": null,
-          "default": 10.0,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "image",
-          "target": {
-            "node_id": "444",
-            "field": "image"
-          },
-          "node_id": "444",
-          "field": "image",
-          "value": "",
-          "type": "IMAGE",
-          "default": "",
-          "required": true,
-          "range": null,
-          "aliases": [
-            "input_image"
-          ],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "input_image",
-          "target": {
-            "node_id": "444",
-            "field": "image"
-          },
-          "node_id": "444",
-          "field": "image",
-          "value": "",
-          "type": "IMAGE",
-          "default": "",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "seed",
-          "target": {
-            "node_id": "2169",
-            "field": "noise_seed"
-          },
-          "node_id": "2169",
-          "field": "noise_seed",
-          "value": 420,
-          "type": "INT",
-          "default": 420,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "prompt",
-          "target": {
-            "node_id": "1626",
-            "field": "text"
-          },
-          "node_id": "1626",
-          "field": "text",
-          "value": "text, subtitles, logo, still image, still video, no motion, static, frozen, blurry, low quality, distorted, bad anatomy, oversaturated, pixelated, low resolution, grainy, compression artifacts, jpeg artifacts, glitches, watermark, signature, copyright,  distortedsound, saturated sound, loud sound , deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, blurry teeth, disfigured teeth",
-          "type": "STRING",
-          "default": "text, subtitles, logo, still image, still video, no motion, static, frozen, blurry, low quality, distorted, bad anatomy, oversaturated, pixelated, low resolution, grainy, compression artifacts, jpeg artifacts, glitches, watermark, signature, copyright,  distortedsound, saturated sound, loud sound , deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, blurry teeth, disfigured teeth",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "text",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "1561",
-            "field": "model_name"
-          },
-          "node_id": "1561",
-          "field": "model_name",
-          "value": "ltx-2.3-spatial-upscaler-x2-1.1.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        }
-      ],
-      "public_outputs": [
-        {
-          "name": "video",
-          "node_id": "4709",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": null,
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
-      "artifact_expectations": [
-        {
-          "name": "video",
-          "node_id": "4709",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": null,
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
-      "public_input_status": "declared",
-      "public_output_status": "declared",
-      "custom_node_count": 0,
-      "strict_ready_diagnostic_counts": {},
-      "readiness_class": "ready",
-      "marker": "generated",
-      "app_active": false,
-      "blocked": false,
-      "reference": false,
-      "supplemental": true,
-      "vibecomfy_version": "2.8.0",
-      "comfy_core": {
-        "version": "0.43.0",
-        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
-        "status": "static_source_schema_only"
-      },
-      "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/runexx/LTX-2.3_Music_Video_Creator_Low_RAM.json",
-      "source_sha256": null
-    },
-    {
-      "id": "video/ltx2_3_runexx_talking_avatar_qwen_tts",
-      "path": "ready_templates/video/ltx2_3_runexx_talking_avatar_qwen_tts.py",
-      "source_scope": "repo",
-      "indexed": true,
-      "capability": "video",
-      "coverage_tier": "supplemental",
-      "custom_nodes": [],
-      "model_count": 6,
-      "public_inputs": [
-        {
-          "name": "enhance_prompt",
-          "target": {
-            "node_id": "a8d7fd9f:1928",
-            "field": "switch"
-          },
-          "node_id": "a8d7fd9f:1928",
-          "field": "switch",
-          "value": true,
-          "type": null,
-          "default": true,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "image",
-          "target": {
-            "node_id": "444",
-            "field": "image"
-          },
-          "node_id": "444",
-          "field": "image",
-          "value": "",
-          "type": "IMAGE",
-          "default": "",
-          "required": true,
-          "range": null,
-          "aliases": [
-            "input_image"
-          ],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "input_image",
-          "target": {
-            "node_id": "444",
-            "field": "image"
-          },
-          "node_id": "444",
-          "field": "image",
-          "value": "",
-          "type": "IMAGE",
-          "default": "",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "seed",
-          "target": {
-            "node_id": "1832",
-            "field": "noise_seed"
-          },
-          "node_id": "1832",
-          "field": "noise_seed",
-          "value": 420,
-          "type": "INT",
-          "default": 420,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "prompt",
-          "target": {
-            "node_id": "1626",
-            "field": "text"
-          },
-          "node_id": "1626",
-          "field": "text",
-          "value": "text, subtitles, logo, still image, still video, no motion, static, frozen, blurry, low quality, distorted, bad anatomy, oversaturated, pixelated, low resolution, grainy, compression artifacts, jpeg artifacts, glitches, watermark, signature, copyright,  distortedsound, saturated sound, loud sound , deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, blurry teeth, disfigured teeth",
-          "type": "STRING",
-          "default": "text, subtitles, logo, still image, still video, no motion, static, frozen, blurry, low quality, distorted, bad anatomy, oversaturated, pixelated, low resolution, grainy, compression artifacts, jpeg artifacts, glitches, watermark, signature, copyright,  distortedsound, saturated sound, loud sound , deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, blurry teeth, disfigured teeth",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "text",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "1561",
-            "field": "model_name"
-          },
-          "node_id": "1561",
-          "field": "model_name",
-          "value": "ltx-2.3-spatial-upscaler-x2-1.1.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        }
-      ],
-      "public_outputs": [
-        {
-          "name": "video",
-          "node_id": "1837",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "LTX-2",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
-      "artifact_expectations": [
-        {
-          "name": "video",
-          "node_id": "1837",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "LTX-2",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
-      "public_input_status": "declared",
-      "public_output_status": "declared",
-      "custom_node_count": 0,
-      "strict_ready_diagnostic_counts": {},
-      "readiness_class": "ready",
-      "marker": "generated",
-      "app_active": false,
-      "blocked": false,
-      "reference": false,
-      "supplemental": true,
-      "vibecomfy_version": "2.8.0",
-      "comfy_core": {
-        "version": "0.43.0",
-        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
-        "status": "static_source_schema_only"
-      },
-      "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/runexx/LTX-2.3_Talking_Avatar_Qwen_TTS.json",
-      "source_sha256": null
-    },
-    {
-      "id": "video/ltx2_3_runexx_video_to_video_extend",
-      "path": "ready_templates/video/ltx2_3_runexx_video_to_video_extend.py",
-      "source_scope": "repo",
-      "indexed": true,
-      "capability": "video",
-      "coverage_tier": "supplemental",
-      "custom_nodes": [],
-      "model_count": 7,
-      "public_inputs": [
-        {
-          "name": "enable_promptenhance",
-          "target": {
-            "node_id": "6002fb3c:593",
-            "field": "switch"
-          },
-          "node_id": "6002fb3c:593",
-          "field": "switch",
-          "value": true,
-          "type": null,
-          "default": true,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "seed",
-          "target": {
-            "node_id": "115",
-            "field": "noise_seed"
-          },
-          "node_id": "115",
-          "field": "noise_seed",
-          "value": 42,
-          "type": "INT",
-          "default": 42,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "prompt",
-          "target": {
-            "node_id": "110",
-            "field": "text"
-          },
-          "node_id": "110",
-          "field": "text",
-          "value": "text, subtitles, logo, low quality, distorted, bad anatomy, oversaturated, pixelated, low resolution, grainy, compression artifacts, jpeg artifacts, glitches, watermark, signature, copyright,  distortedsound, saturated sound, loud sound , deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, blurry teeth, disfigured teeth",
-          "type": "STRING",
-          "default": "text, subtitles, logo, low quality, distorted, bad anatomy, oversaturated, pixelated, low resolution, grainy, compression artifacts, jpeg artifacts, glitches, watermark, signature, copyright,  distortedsound, saturated sound, loud sound , deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, blurry teeth, disfigured teeth",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "text",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "negative_prompt",
-          "target": {
-            "node_id": "626",
-            "field": "text"
-          },
-          "node_id": "626",
-          "field": "text",
-          "value": " distorted sound, saturated sound, loud sound",
-          "type": "STRING",
-          "default": " distorted sound, saturated sound, loud sound",
-          "required": false,
-          "range": null,
-          "aliases": [
-            "negative"
-          ],
-          "media_semantics": "text",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "negative",
-          "target": {
-            "node_id": "626",
-            "field": "text"
-          },
-          "node_id": "626",
-          "field": "text",
-          "value": " distorted sound, saturated sound, loud sound",
-          "type": "STRING",
-          "default": " distorted sound, saturated sound, loud sound",
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "text",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "465",
-            "field": "model_name"
-          },
-          "node_id": "465",
-          "field": "model_name",
-          "value": "ltx-2.3-spatial-upscaler-x2-1.1.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        },
-        {
-          "name": "steps",
-          "target": {
-            "node_id": "164",
-            "field": "steps"
-          },
-          "node_id": "164",
-          "field": "steps",
-          "value": 8,
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        }
-      ],
-      "public_outputs": [
-        {
-          "name": "video",
-          "node_id": "578",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "LTX-2",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
-      "artifact_expectations": [
-        {
-          "name": "video",
-          "node_id": "578",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "LTX-2",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
-      "public_input_status": "declared",
-      "public_output_status": "declared",
-      "custom_node_count": 0,
-      "strict_ready_diagnostic_counts": {},
-      "readiness_class": "ready",
-      "marker": "generated",
-      "app_active": false,
-      "blocked": false,
-      "reference": false,
-      "supplemental": true,
-      "vibecomfy_version": "2.8.0",
-      "comfy_core": {
-        "version": "0.43.0",
-        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
-        "status": "static_source_schema_only"
-      },
-      "source_workflow": "ready_templates/sources/custom_nodes/ltxvideo/runexx/LTX-2.3_V2V_Extend_Any_Video.json",
-      "source_sha256": null
-    },
-    {
       "id": "video/ltx2_3_t2v",
       "path": "ready_templates/video/ltx2_3_t2v.py",
       "source_scope": "repo",
@@ -7554,7 +5539,7 @@
       "capability": "video",
       "coverage_tier": "required",
       "custom_nodes": [],
-      "model_count": 2,
+      "model_count": 4,
       "public_inputs": [
         {
           "name": "image",
@@ -7803,7 +5788,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -8089,7 +6074,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -8358,7 +6343,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -8588,7 +6573,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -8834,7 +6819,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -8851,7 +6836,7 @@
       "capability": "video",
       "coverage_tier": "supplemental",
       "custom_nodes": [],
-      "model_count": 2,
+      "model_count": 3,
       "public_inputs": [
         {
           "name": "seed",
@@ -8934,149 +6919,13 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
         "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan13b_control_lora.json",
-      "source_sha256": null
-    },
-    {
-      "id": "video/wanvideo_wrapper_13b_recammaster",
-      "path": "ready_templates/video/wanvideo_wrapper_13b_recammaster.py",
-      "source_scope": "repo",
-      "indexed": true,
-      "capability": "video",
-      "coverage_tier": "supplemental",
-      "custom_nodes": [],
-      "model_count": 3,
-      "public_inputs": [
-        {
-          "name": "width",
-          "target": {
-            "node_id": "59",
-            "field": "width"
-          },
-          "node_id": "59",
-          "field": "width",
-          "value": 480,
-          "type": "INT",
-          "default": 480,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "height",
-          "target": {
-            "node_id": "122",
-            "field": "height"
-          },
-          "node_id": "122",
-          "field": "height",
-          "value": 32,
-          "type": "INT",
-          "default": 32,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "seed",
-          "target": {
-            "node_id": "155",
-            "field": "seed"
-          },
-          "node_id": "155",
-          "field": "seed",
-          "value": 42,
-          "type": "INT",
-          "default": 42,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "11",
-            "field": "model_name"
-          },
-          "node_id": "11",
-          "field": "model_name",
-          "value": "umt5-xxl-enc-bf16.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        }
-      ],
-      "public_outputs": [
-        {
-          "name": "video",
-          "node_id": "30",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "WanVideo2_1_ReCamMaster",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
-      "artifact_expectations": [
-        {
-          "name": "video",
-          "node_id": "30",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "WanVideo2_1_ReCamMaster",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
-      "public_input_status": "declared",
-      "public_output_status": "declared",
-      "custom_node_count": 0,
-      "strict_ready_diagnostic_counts": {},
-      "readiness_class": "ready",
-      "marker": "generated",
-      "app_active": false,
-      "blocked": false,
-      "reference": false,
-      "supplemental": true,
-      "vibecomfy_version": "2.8.0",
-      "comfy_core": {
-        "version": "0.43.0",
-        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
-        "status": "static_source_schema_only"
-      },
-      "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan13b_recammaster.json",
       "source_sha256": null
     },
     {
@@ -9244,789 +7093,13 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
         "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan13b_vace.json",
-      "source_sha256": null
-    },
-    {
-      "id": "video/wanvideo_wrapper_21_14b_flf2v",
-      "path": "ready_templates/video/wanvideo_wrapper_21_14b_flf2v.py",
-      "source_scope": "repo",
-      "indexed": true,
-      "capability": "video",
-      "coverage_tier": "supplemental",
-      "custom_nodes": [],
-      "model_count": 4,
-      "public_inputs": [
-        {
-          "name": "seed",
-          "target": {
-            "node_id": "27",
-            "field": "seed"
-          },
-          "node_id": "27",
-          "field": "seed",
-          "value": 43,
-          "type": "INT",
-          "default": 43,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "image",
-          "target": {
-            "node_id": "58",
-            "field": "image"
-          },
-          "node_id": "58",
-          "field": "image",
-          "value": "pasted/image (853).png",
-          "type": "IMAGE",
-          "default": "pasted/image (853).png",
-          "required": true,
-          "range": null,
-          "aliases": [
-            "input_image"
-          ],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "input_image",
-          "target": {
-            "node_id": "58",
-            "field": "image"
-          },
-          "node_id": "58",
-          "field": "image",
-          "value": "pasted/image (853).png",
-          "type": "IMAGE",
-          "default": "pasted/image (853).png",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "height",
-          "target": {
-            "node_id": "95",
-            "field": "height"
-          },
-          "node_id": "95",
-          "field": "height",
-          "value": 32,
-          "type": "INT",
-          "default": 32,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "width",
-          "target": {
-            "node_id": "97",
-            "field": "width"
-          },
-          "node_id": "97",
-          "field": "width",
-          "value": 8,
-          "type": "INT",
-          "default": 8,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "11",
-            "field": "model_name"
-          },
-          "node_id": "11",
-          "field": "model_name",
-          "value": "umt5-xxl-enc-bf16.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        }
-      ],
-      "public_outputs": [
-        {
-          "name": "video",
-          "node_id": "30",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "WanVideoWrapper_I2V_endframe",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
-      "artifact_expectations": [
-        {
-          "name": "video",
-          "node_id": "30",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "WanVideoWrapper_I2V_endframe",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
-      "public_input_status": "declared",
-      "public_output_status": "declared",
-      "custom_node_count": 0,
-      "strict_ready_diagnostic_counts": {},
-      "readiness_class": "ready",
-      "marker": "generated",
-      "app_active": false,
-      "blocked": false,
-      "reference": false,
-      "supplemental": true,
-      "vibecomfy_version": "2.8.0",
-      "comfy_core": {
-        "version": "0.43.0",
-        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
-        "status": "static_source_schema_only"
-      },
-      "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan21_14b_flf2v.json",
-      "source_sha256": null
-    },
-    {
-      "id": "video/wanvideo_wrapper_21_14b_fun_control",
-      "path": "ready_templates/video/wanvideo_wrapper_21_14b_fun_control.py",
-      "source_scope": "repo",
-      "indexed": true,
-      "capability": "video",
-      "coverage_tier": "supplemental",
-      "custom_nodes": [],
-      "model_count": 4,
-      "public_inputs": [
-        {
-          "name": "seed",
-          "target": {
-            "node_id": "27",
-            "field": "seed"
-          },
-          "node_id": "27",
-          "field": "seed",
-          "value": 42,
-          "type": "INT",
-          "default": 42,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "width",
-          "target": {
-            "node_id": "75",
-            "field": "width"
-          },
-          "node_id": "75",
-          "field": "width",
-          "value": 640,
-          "type": "INT",
-          "default": 640,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "11",
-            "field": "model_name"
-          },
-          "node_id": "11",
-          "field": "model_name",
-          "value": "umt5-xxl-enc-bf16.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        }
-      ],
-      "public_outputs": [
-        {
-          "name": "video",
-          "node_id": "30",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "WanVideoWrapper_FunControl",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
-      "artifact_expectations": [
-        {
-          "name": "video",
-          "node_id": "30",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "WanVideoWrapper_FunControl",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
-      "public_input_status": "declared",
-      "public_output_status": "declared",
-      "custom_node_count": 0,
-      "strict_ready_diagnostic_counts": {},
-      "readiness_class": "ready",
-      "marker": "generated",
-      "app_active": false,
-      "blocked": false,
-      "reference": false,
-      "supplemental": true,
-      "vibecomfy_version": "2.8.0",
-      "comfy_core": {
-        "version": "0.43.0",
-        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
-        "status": "static_source_schema_only"
-      },
-      "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan21_14b_fun_control.json",
-      "source_sha256": null
-    },
-    {
-      "id": "video/wanvideo_wrapper_21_14b_fun_control_camera",
-      "path": "ready_templates/video/wanvideo_wrapper_21_14b_fun_control_camera.py",
-      "source_scope": "repo",
-      "indexed": true,
-      "capability": "video",
-      "coverage_tier": "supplemental",
-      "custom_nodes": [],
-      "model_count": 3,
-      "public_inputs": [
-        {
-          "name": "seed",
-          "target": {
-            "node_id": "27",
-            "field": "seed"
-          },
-          "node_id": "27",
-          "field": "seed",
-          "value": 43,
-          "type": "INT",
-          "default": 43,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "image",
-          "target": {
-            "node_id": "58",
-            "field": "image"
-          },
-          "node_id": "58",
-          "field": "image",
-          "value": "",
-          "type": "IMAGE",
-          "default": "",
-          "required": true,
-          "range": null,
-          "aliases": [
-            "input_image"
-          ],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "input_image",
-          "target": {
-            "node_id": "58",
-            "field": "image"
-          },
-          "node_id": "58",
-          "field": "image",
-          "value": "",
-          "type": "IMAGE",
-          "default": "",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "width",
-          "target": {
-            "node_id": "97",
-            "field": "width"
-          },
-          "node_id": "97",
-          "field": "width",
-          "value": 624,
-          "type": "INT",
-          "default": 624,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "height",
-          "target": {
-            "node_id": "97",
-            "field": "height"
-          },
-          "node_id": "97",
-          "field": "height",
-          "value": 624,
-          "type": "INT",
-          "default": 624,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "11",
-            "field": "model_name"
-          },
-          "node_id": "11",
-          "field": "model_name",
-          "value": "umt5-xxl-enc-bf16.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        }
-      ],
-      "public_outputs": [
-        {
-          "name": "video",
-          "node_id": "30",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "WanVideoWrapper_FunControlCamera",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
-      "artifact_expectations": [
-        {
-          "name": "video",
-          "node_id": "30",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "WanVideoWrapper_FunControlCamera",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
-      "public_input_status": "declared",
-      "public_output_status": "declared",
-      "custom_node_count": 0,
-      "strict_ready_diagnostic_counts": {},
-      "readiness_class": "ready",
-      "marker": "generated",
-      "app_active": false,
-      "blocked": false,
-      "reference": false,
-      "supplemental": true,
-      "vibecomfy_version": "2.8.0",
-      "comfy_core": {
-        "version": "0.43.0",
-        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
-        "status": "static_source_schema_only"
-      },
-      "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan21_14b_fun_control_camera.json",
-      "source_sha256": null
-    },
-    {
-      "id": "video/wanvideo_wrapper_21_14b_i2v",
-      "path": "ready_templates/video/wanvideo_wrapper_21_14b_i2v.py",
-      "source_scope": "repo",
-      "indexed": true,
-      "capability": "video",
-      "coverage_tier": "supplemental",
-      "custom_nodes": [],
-      "model_count": 4,
-      "public_inputs": [
-        {
-          "name": "seed",
-          "target": {
-            "node_id": "27",
-            "field": "seed"
-          },
-          "node_id": "27",
-          "field": "seed",
-          "value": 1057359483639287,
-          "type": "INT",
-          "default": 1057359483639287,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "image",
-          "target": {
-            "node_id": "58",
-            "field": "image"
-          },
-          "node_id": "58",
-          "field": "image",
-          "value": "",
-          "type": "IMAGE",
-          "default": "",
-          "required": true,
-          "range": null,
-          "aliases": [
-            "input_image"
-          ],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "input_image",
-          "target": {
-            "node_id": "58",
-            "field": "image"
-          },
-          "node_id": "58",
-          "field": "image",
-          "value": "",
-          "type": "IMAGE",
-          "default": "",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "width",
-          "target": {
-            "node_id": "68",
-            "field": "width"
-          },
-          "node_id": "68",
-          "field": "width",
-          "value": 624,
-          "type": "INT",
-          "default": 624,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "height",
-          "target": {
-            "node_id": "68",
-            "field": "height"
-          },
-          "node_id": "68",
-          "field": "height",
-          "value": 624,
-          "type": "INT",
-          "default": 624,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "11",
-            "field": "model_name"
-          },
-          "node_id": "11",
-          "field": "model_name",
-          "value": "umt5-xxl-enc-bf16.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        }
-      ],
-      "public_outputs": [
-        {
-          "name": "video",
-          "node_id": "30",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "WanVideoWrapper_I2V",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
-      "artifact_expectations": [
-        {
-          "name": "video",
-          "node_id": "30",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "WanVideoWrapper_I2V",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
-      "public_input_status": "declared",
-      "public_output_status": "declared",
-      "custom_node_count": 0,
-      "strict_ready_diagnostic_counts": {},
-      "readiness_class": "ready",
-      "marker": "generated",
-      "app_active": false,
-      "blocked": false,
-      "reference": false,
-      "supplemental": true,
-      "vibecomfy_version": "2.8.0",
-      "comfy_core": {
-        "version": "0.43.0",
-        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
-        "status": "static_source_schema_only"
-      },
-      "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan21_14b_i2v.json",
-      "source_sha256": null
-    },
-    {
-      "id": "video/wanvideo_wrapper_21_14b_t2v",
-      "path": "ready_templates/video/wanvideo_wrapper_21_14b_t2v.py",
-      "source_scope": "repo",
-      "indexed": true,
-      "capability": "video",
-      "coverage_tier": "supplemental",
-      "custom_nodes": [],
-      "model_count": 3,
-      "public_inputs": [
-        {
-          "name": "seed",
-          "target": {
-            "node_id": "27",
-            "field": "seed"
-          },
-          "node_id": "27",
-          "field": "seed",
-          "value": 42,
-          "type": "INT",
-          "default": 42,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "width",
-          "target": {
-            "node_id": "37",
-            "field": "width"
-          },
-          "node_id": "37",
-          "field": "width",
-          "value": 832,
-          "type": "INT",
-          "default": 832,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "height",
-          "target": {
-            "node_id": "37",
-            "field": "height"
-          },
-          "node_id": "37",
-          "field": "height",
-          "value": 480,
-          "type": "INT",
-          "default": 480,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "11",
-            "field": "model_name"
-          },
-          "node_id": "11",
-          "field": "model_name",
-          "value": "umt5-xxl-enc-bf16.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        }
-      ],
-      "public_outputs": [
-        {
-          "name": "video",
-          "node_id": "30",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "WanVideo2_1_T2V",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
-      "artifact_expectations": [
-        {
-          "name": "video",
-          "node_id": "30",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "WanVideo2_1_T2V",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
-      "public_input_status": "declared",
-      "public_output_status": "declared",
-      "custom_node_count": 0,
-      "strict_ready_diagnostic_counts": {},
-      "readiness_class": "ready",
-      "marker": "generated",
-      "app_active": false,
-      "blocked": false,
-      "reference": false,
-      "supplemental": true,
-      "vibecomfy_version": "2.8.0",
-      "comfy_core": {
-        "version": "0.43.0",
-        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
-        "status": "static_source_schema_only"
-      },
-      "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan21_14b_t2v.json",
       "source_sha256": null
     },
     {
@@ -10120,7 +7193,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -10294,7 +7367,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -10472,7 +7545,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -10633,7 +7706,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -10819,7 +7892,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -10843,180 +7916,6 @@
           "url": "https://github.com/kijai/ComfyUI-WanVideoWrapper.git"
         }
       ]
-    },
-    {
-      "id": "video/wanvideo_wrapper_22_5b_i2v",
-      "path": "ready_templates/video/wanvideo_wrapper_22_5b_i2v.py",
-      "source_scope": "repo",
-      "indexed": true,
-      "capability": "video",
-      "coverage_tier": "supplemental",
-      "custom_nodes": [],
-      "model_count": 3,
-      "public_inputs": [
-        {
-          "name": "seed",
-          "target": {
-            "node_id": "27",
-            "field": "seed"
-          },
-          "node_id": "27",
-          "field": "seed",
-          "value": 47,
-          "type": "INT",
-          "default": 47,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "image",
-          "target": {
-            "node_id": "58",
-            "field": "image"
-          },
-          "node_id": "58",
-          "field": "image",
-          "value": "",
-          "type": "IMAGE",
-          "default": "",
-          "required": true,
-          "range": null,
-          "aliases": [
-            "input_image"
-          ],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "input_image",
-          "target": {
-            "node_id": "58",
-            "field": "image"
-          },
-          "node_id": "58",
-          "field": "image",
-          "value": "",
-          "type": "IMAGE",
-          "default": "",
-          "required": true,
-          "range": null,
-          "aliases": [],
-          "media_semantics": "image",
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "width",
-          "target": {
-            "node_id": "71",
-            "field": "width"
-          },
-          "node_id": "71",
-          "field": "width",
-          "value": 1024,
-          "type": "INT",
-          "default": 1024,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "height",
-          "target": {
-            "node_id": "71",
-            "field": "height"
-          },
-          "node_id": "71",
-          "field": "height",
-          "value": 1024,
-          "type": "INT",
-          "default": 1024,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "11",
-            "field": "model_name"
-          },
-          "node_id": "11",
-          "field": "model_name",
-          "value": "umt5-xxl-enc-bf16.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        }
-      ],
-      "public_outputs": [
-        {
-          "name": "video",
-          "node_id": "92",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "WanVideoWrapper_5BI2V",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
-      "artifact_expectations": [
-        {
-          "name": "video",
-          "node_id": "92",
-          "output_type": "VHS_VideoCombine",
-          "artifact_kind": "video",
-          "mime_type": "video/mp4",
-          "filename_prefix": "WanVideoWrapper_5BI2V",
-          "expected_cardinality": "one",
-          "status": "static",
-          "source": "finalize"
-        }
-      ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
-      "public_input_status": "declared",
-      "public_output_status": "declared",
-      "custom_node_count": 0,
-      "strict_ready_diagnostic_counts": {},
-      "readiness_class": "ready",
-      "marker": "generated",
-      "app_active": false,
-      "blocked": false,
-      "reference": false,
-      "supplemental": true,
-      "vibecomfy_version": "2.8.0",
-      "comfy_core": {
-        "version": "0.43.0",
-        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
-        "status": "static_source_schema_only"
-      },
-      "source_workflow": "ready_templates/sources/custom_nodes/wanvideo_wrapper/kijai/wan22_5b_i2v.json",
-      "source_sha256": null
     },
     {
       "id": "video/wanvideo_wrapper_22_5b_i2v_controlnet",
@@ -11127,7 +8026,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -11319,7 +8218,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -11437,7 +8336,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -11611,7 +8510,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -11785,7 +8684,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -11931,7 +8830,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": false,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
@@ -12156,7 +9055,7 @@
       "blocked": false,
       "reference": false,
       "supplemental": true,
-      "vibecomfy_version": "2.8.0",
+      "vibecomfy_version": "0",
       "comfy_core": {
         "version": "0.43.0",
         "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",

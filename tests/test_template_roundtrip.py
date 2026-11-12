@@ -13,7 +13,7 @@ from vibecomfy.ingest.loader import load_workflow_json
 from vibecomfy.ingest.normalize import normalize_to_api
 from vibecomfy.porting.emit.ui import emit_ui_json
 from vibecomfy.porting.parity import class_type_counter, topology_counter
-from vibecomfy.registry.ready import workflow_from_ready
+from tests._template_fixtures import load_template_fixture_bundle, workflow_from_template_fixture
 from vibecomfy.workflow_context import _CURRENT_WORKFLOW
 from vibecomfy.workflow_bundle import (
     WorkflowBundleError,
@@ -55,6 +55,12 @@ def _template_rows() -> list[dict[str, Any]]:
     data = json.loads(TEMPLATE_INDEX.read_text(encoding="utf-8"))
     rows = data.get("templates")
     assert isinstance(rows, list), "template_index.json must contain a templates list"
+    # Preserve graph regression coverage for drafts removed from production discovery.
+    rows.extend(
+        {"id": path.relative_to(REPO_ROOT / "draft_templates").with_suffix("").as_posix(),
+         "path": path.relative_to(REPO_ROOT).as_posix(), "source_scope": "repo", "indexed": True}
+        for path in sorted((REPO_ROOT / "draft_templates").glob("*/*.py"))
+    )
     return [
         row
         for row in rows
@@ -76,7 +82,7 @@ def _coverage_rows() -> list[dict[str, Any]]:
 def _source_path_from_metadata(template_id: str) -> str | None:
     try:
         _CURRENT_WORKFLOW.set(None)
-        metadata = workflow_from_ready(template_id).metadata
+        metadata = workflow_from_template_fixture(template_id).metadata
     except Exception:
         return None
     for key in ("source_path", "source_workflow_path", "source_workflow"):
@@ -167,7 +173,7 @@ def _api_for_source(path: Path, *, named_widgets: bool = False) -> dict[str, Any
 
 def _api_for_ready(template_id: str) -> dict[str, Any]:
     _CURRENT_WORKFLOW.set(None)
-    return workflow_from_ready(template_id).compile("api")
+    return workflow_from_template_fixture(template_id).compile("api")
 
 
 def _is_link(value: Any) -> bool:
@@ -279,9 +285,9 @@ TEMPLATE_ROWS = _template_rows()
 
 @pytest.mark.parametrize("template_id", [row["id"] for row in TEMPLATE_ROWS])
 def test_all_ready_templates_load_compile_and_reopen_canonical_bundle(template_id: str) -> None:
-    first = load_bundle(template_id)
+    first = load_template_fixture_bundle(template_id)
     first_api = first.workflow.compile("api")
-    reopened = load_bundle(template_id)
+    reopened = load_template_fixture_bundle(template_id)
     reopened_api = reopened.workflow.compile("api")
 
     assert first.python_path is not None
@@ -292,7 +298,7 @@ def test_all_ready_templates_load_compile_and_reopen_canonical_bundle(template_i
 
 @pytest.mark.parametrize("template_id", [row["id"] for row in TEMPLATE_ROWS])
 def test_all_ready_templates_materialize_sidecar_ui(template_id: str) -> None:
-    bundle = load_bundle(template_id)
+    bundle = load_template_fixture_bundle(template_id)
     emitted = emit_ui_json(bundle.workflow)
     materialized = bundle.materialize_ui()
     emit_endpoints = [tuple(link[1:6]) for link in (emitted.get("links") or [])]
@@ -303,7 +309,7 @@ def test_all_ready_templates_materialize_sidecar_ui(template_id: str) -> None:
 
 @pytest.mark.parametrize("template_id", [row["id"] for row in TEMPLATE_ROWS])
 def test_approval_compile_succeeds_or_typed_fail_closed(template_id: str) -> None:
-    bundle = load_bundle(template_id)
+    bundle = load_template_fixture_bundle(template_id)
     try:
         bundle.compile()
     except WorkflowReconciliationError as exc:

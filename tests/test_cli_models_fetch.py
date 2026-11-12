@@ -60,13 +60,55 @@ def test_fetch_cli_invokes_download_many(tmp_path: Path, monkeypatch: pytest.Mon
                     "name": "present.safetensors",
                     "url": "https://example.test/present.safetensors",
                     "subdir": "checkpoints",
+                    "sha256": None,
+                    "size_bytes": None,
                 },
                 {
                     "name": "missing.safetensors",
                     "url": "https://example.test/missing.safetensors",
                     "subdir": "checkpoints",
+                    "sha256": None,
+                    "size_bytes": None,
                 },
             ],
             True,
         )
     ]
+
+
+def test_fetch_cli_rejects_model_field_alias_before_downloading(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    scratchpad = _write_fetch_scratchpad(tmp_path)
+    source = scratchpad.read_text(encoding="utf-8")
+    scratchpad.write_text(source.replace('"subdir": "checkpoints"', '"directory": "checkpoints"'), encoding="utf-8")
+
+    def unexpected_download(*_args, **_kwargs):
+        raise AssertionError("legacy alias reached downloader")
+
+    import vibecomfy.fetch as fetch_assets
+
+    monkeypatch.setattr(fetch_assets, "download_many", unexpected_download)
+
+    with pytest.raises(ValueError, match="filename/directory aliases"):
+        _cmd_fetch(argparse.Namespace(workflow=str(scratchpad), force=False, dry_run=False))
+
+
+def test_fetch_reads_structured_requirements_without_metadata() -> None:
+    from types import SimpleNamespace
+    from vibecomfy.commands._model_entries import model_entries_for_workflow
+
+    record = {"name": "weights.bin", "subdir": "vae", "url": None,
+              "sha256": None, "size_bytes": None}
+    workflow = SimpleNamespace(metadata={}, requirements=SimpleNamespace(models=[record]))
+    assert model_entries_for_workflow(workflow, "unmaterialized.py") == [{**record, "unresolved": True}]
+
+
+@pytest.mark.parametrize("record", ["weights.bin", {"name": "weights.bin"}])
+def test_fetch_refuses_undeclared_requirements_instead_of_omitting_them(record) -> None:
+    from types import SimpleNamespace
+    from vibecomfy.commands._model_entries import model_entries_for_workflow
+
+    workflow = SimpleNamespace(metadata={}, requirements=SimpleNamespace(models=[record]))
+    with pytest.raises(ValueError, match="explicit.*(name and subdir|subdir)"):
+        model_entries_for_workflow(workflow, "unmaterialized.py")

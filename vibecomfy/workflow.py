@@ -894,6 +894,14 @@ class VibeWorkflow:
             field_name: sorted(str(value) for value in getattr(self.requirements, field_name))
             for field_name in ("models", "custom_nodes", "missing_models", "missing_nodes", "unsupported")
         }
+        # Model declarations are records: dictionary insertion order is not
+        # semantic. Preserve their fields and multiplicity in canonical JSON.
+        from vibecomfy.testing.canonical import canonical_json
+
+        requirements["models"] = sorted(
+            (copy.deepcopy(value) for value in self.requirements.models),
+            key=canonical_json,
+        )
         semantic_custom_node_refs = list(self.requirements.custom_node_refs or ())
         if semantic_custom_node_refs:
             requirements["custom_node_refs"] = copy.deepcopy(

@@ -107,12 +107,11 @@ def test_ready_requirements_do_not_keep_edited_model_value_stale() -> None:
     wf = _wf("edited-model")
     wf.nodes["1"] = _regular_node("1", "CheckpointLoaderSimple")
     wf.nodes["1"].inputs["ckpt_name"] = "new-model.safetensors"
-    wf.metadata["model_assets"] = [{"name": "old-model.safetensors", "url": "https://example.test/old"}]
+    wf.metadata["model_assets"] = [{"name": "old-model.safetensors", "url": "https://example.test/old", "subdir": "checkpoints"}]
     wf.requirements.models = ["new-model.safetensors"]
 
-    requirements = convert_module._ready_requirements(wf)
-
-    assert requirements["models"] == ["new-model.safetensors"]
+    with pytest.raises(ValueError, match="unresolved model references"):
+        convert_module._ready_requirements(wf)
 
 
 def test_ready_requirements_refreshes_mixed_models_without_stale_assets() -> None:
@@ -123,14 +122,16 @@ def test_ready_requirements_refreshes_mixed_models_without_stale_assets() -> Non
     wf.nodes["2"].inputs["lora_name"] = "kept.safetensors"
     wf.metadata["model_assets"] = [
         {"name": "kept.safetensors", "url": "https://example.test/kept", "subdir": "loras"},
-        {"name": "stale.safetensors", "url": "https://example.test/stale"},
+        {"name": "stale.safetensors", "url": "https://example.test/stale", "subdir": "loras"},
+        {"name": "new.safetensors", "url": "https://example.test/new", "subdir": "checkpoints"},
     ]
 
     requirements = convert_module._ready_requirements(wf)
 
-    assert requirements["models"] == ["new.safetensors", {
-        "name": "kept.safetensors", "url": "https://example.test/kept", "subdir": "loras",
-    }]
+    assert requirements["models"] == [
+        {"name": "new.safetensors", "subdir": "checkpoints", "url": "https://example.test/new", "sha256": None, "size_bytes": None},
+        {"name": "kept.safetensors", "subdir": "loras", "url": "https://example.test/kept", "sha256": None, "size_bytes": None},
+    ]
 
 
 def test_ready_requirements_collapses_duplicate_inferred_picker_names() -> None:
@@ -138,8 +139,15 @@ def test_ready_requirements_collapses_duplicate_inferred_picker_names() -> None:
     for node_id in ("1", "2"):
         wf.nodes[node_id] = _regular_node(node_id, "CheckpointLoaderSimple")
         wf.nodes[node_id].inputs["ckpt_name"] = "shared.safetensors"
+    wf.metadata["model_assets"] = [{
+        "name": "shared.safetensors", "url": "https://example.test/shared", "subdir": "checkpoints",
+        "sha256": "a" * 64, "size_bytes": 10,
+    }]
 
-    assert convert_module._ready_requirements(wf)["models"] == ["shared.safetensors"]
+    assert convert_module._ready_requirements(wf)["models"] == [{
+        "name": "shared.safetensors", "subdir": "checkpoints", "url": "https://example.test/shared",
+        "sha256": "a" * 64, "size_bytes": 10,
+    }]
 
 
 def test_ready_requirements_preserves_authored_duplicates_and_adds_new_names_once() -> None:
@@ -148,11 +156,34 @@ def test_ready_requirements_preserves_authored_duplicates_and_adds_new_names_onc
     wf.nodes["1"].inputs["ckpt_name"] = "shared.safetensors"
     wf.nodes["2"] = _regular_node("2", "CheckpointLoaderSimple")
     wf.nodes["2"].inputs["ckpt_name"] = "new.safetensors"
-    wf.requirements.models = ["shared.safetensors", "shared.safetensors"]
+    shared = {"name": "shared.safetensors", "url": "https://example.test/shared", "subdir": "checkpoints", "sha256": "a" * 64, "size_bytes": 10}
+    new = {"name": "new.safetensors", "url": "https://example.test/new", "subdir": "checkpoints", "sha256": "b" * 64, "size_bytes": 20}
+    wf.requirements.models = [shared, shared]
+    wf.metadata["model_assets"] = [shared, new]
 
-    assert convert_module._ready_requirements(wf)["models"] == [
-        "shared.safetensors", "shared.safetensors", "new.safetensors",
-    ]
+    assert convert_module._ready_requirements(wf)["models"] == [shared, shared, new]
+
+
+def test_ready_requirements_migrates_live_bare_names_to_exact_resolved_records() -> None:
+    wf = _wf("migrate-live-bare-models")
+    wf.nodes["1"] = _regular_node("1", "CheckpointLoaderSimple")
+    wf.nodes["1"].inputs["ckpt_name"] = "known.safetensors"
+    asset = {
+        "name": "known.safetensors", "url": "https://example.test/known", "subdir": "checkpoints",
+        "sha256": "c" * 64, "size_bytes": 30,
+    }
+    wf.metadata["model_assets"] = [asset]
+    wf.requirements.models = ["known.safetensors", "known.safetensors"]
+
+    assert convert_module._ready_requirements(wf)["models"] == [asset, asset]
+
+
+def test_ready_requirements_refuses_graphless_bare_names() -> None:
+    wf = _wf("refuse-graphless-bare-model")
+    wf.requirements.models = ["known.safetensors"]
+
+    with pytest.raises(ValueError, match="structured asset records"):
+        convert_module._ready_requirements(wf)
 
 
 def test_ready_requirements_refreshes_one_of_two_shared_loaders() -> None:
@@ -160,18 +191,36 @@ def test_ready_requirements_refreshes_one_of_two_shared_loaders() -> None:
     for node_id, value in (("1", "old.safetensors"), ("2", "new.safetensors")):
         wf.nodes[node_id] = _regular_node(node_id, "CheckpointLoaderSimple")
         wf.nodes[node_id].inputs["ckpt_name"] = value
-    wf.requirements.models = ["old.safetensors"]
+    old = {"name": "old.safetensors", "url": "https://example.test/old", "subdir": "checkpoints", "sha256": "a" * 64, "size_bytes": 10}
+    new = {"name": "new.safetensors", "url": "https://example.test/new", "subdir": "checkpoints", "sha256": "b" * 64, "size_bytes": 20}
+    wf.requirements.models = [old]
+    wf.metadata["model_assets"] = [old, new]
 
-    assert convert_module._ready_requirements(wf)["models"] == [
-        "old.safetensors", "new.safetensors",
-    ]
+    assert convert_module._ready_requirements(wf)["models"] == [old, new]
 
 
 def test_ready_requirements_keeps_no_picker_fallback() -> None:
     wf = _wf("no-picker-fallback")
-    wf.requirements.models = ["authored.safetensors"]
+    wf.requirements.models = [{
+        "name": "authored.safetensors", "subdir": "checkpoints",
+    }]
 
-    assert convert_module._ready_requirements(wf)["models"] == ["authored.safetensors"]
+    assert convert_module._ready_requirements(wf)["models"] == [{
+        "name": "authored.safetensors", "subdir": "checkpoints",
+        "url": None, "sha256": None, "size_bytes": None,
+    }]
+
+
+@pytest.mark.parametrize("record, message", [
+    ("legacy.safetensors", "malformed"),
+    ({"name": "missing-subdir.safetensors", "url": "https://example.test/model", "sha256": "a" * 64, "size_bytes": 10}, "subdir"),
+])
+def test_ready_requirements_refuses_unstructured_graphless_model_assets(record, message) -> None:
+    wf = _wf("invalid-graphless-model")
+    wf.metadata["model_assets"] = [record]
+
+    with pytest.raises(ValueError, match=message):
+        convert_module._ready_requirements(wf)
 
 
 def test_scratchpad_pair_uses_picker_model_requirements_for_v2_rebuild(
@@ -186,12 +235,13 @@ def test_scratchpad_pair_uses_picker_model_requirements_for_v2_rebuild(
     wf.nodes["3"] = _regular_node("3", "CheckpointLoaderSimple")
     wf.nodes["3"].inputs["ckpt_name"] = "second.safetensors"
     wf.metadata["model_assets"] = [
-        {"name": "repeated.safetensors", "url": "https://example.test/repeated", "subdir": "checkpoints"},
-        {"name": "second.safetensors", "url": "https://example.test/second", "subdir": "checkpoints"},
+        {"name": "repeated.safetensors", "url": "https://example.test/repeated", "subdir": "checkpoints", "sha256": None, "size_bytes": None},
+        {"name": "second.safetensors", "url": "https://example.test/second", "subdir": "checkpoints", "sha256": None, "size_bytes": None},
     ]
-    # This is the stale source witness that previously made the external v2
-    # rebuild fail its staged semantic-digest check.
-    wf.requirements.models = ["repeated.safetensors"]
+    wf.requirements.models = [{
+        "name": "repeated.safetensors", "url": "https://example.test/repeated", "subdir": "checkpoints",
+        "sha256": None, "size_bytes": None,
+    }]
     before = wf.copy()
 
     result = port_convert_workflow(wf, validate=False)
@@ -207,8 +257,8 @@ def test_scratchpad_pair_uses_picker_model_requirements_for_v2_rebuild(
     emit_bundle_with_candidate(staged, destination, {"operation": "authored"}, None)
     reloaded = load_bundle(destination, trust=Provenance.USER_CONFIRMED).workflow
     assert reloaded.requirements.models == [
-        {"name": "repeated.safetensors", "url": "https://example.test/repeated", "subdir": "checkpoints"},
-        {"name": "second.safetensors", "url": "https://example.test/second", "subdir": "checkpoints"},
+        {"name": "repeated.safetensors", "url": "https://example.test/repeated", "subdir": "checkpoints", "sha256": None, "size_bytes": None},
+        {"name": "second.safetensors", "url": "https://example.test/second", "subdir": "checkpoints", "sha256": None, "size_bytes": None},
     ]
 
 

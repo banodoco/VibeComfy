@@ -451,6 +451,8 @@ def test_ready_metadata_build_serializes_inputs_models_and_filters_none_extras()
             "name": "model.safetensors",
             "url": "https://example.test/model.safetensors",
             "subdir": "checkpoints",
+            "sha256": None,
+            "size_bytes": None,
         },
         {
             "name": "aux.safetensors",
@@ -466,6 +468,8 @@ def test_ready_metadata_build_serializes_inputs_models_and_filters_none_extras()
             "url": "https://example.test/gated.safetensors",
             "subdir": "diffusion_models",
             "gated": True,
+            "sha256": None,
+            "size_bytes": None,
         },
     ]
     assert metadata["edit_guide"] == "Public inputs:\n- prompt: Prompt text.\n- image: Controls image."
@@ -506,7 +510,7 @@ def test_ready_metadata_build_appends_edit_guide_extra_and_warns_once_on_model_d
 
     assert metadata["edit_guide"] == "Public inputs:\n- prompt: Text prompt.\nUse short prompts for smoke tests."
     assert metadata["requirements"]["models"] == [
-        {"name": "model.safetensors", "url": "https://example.test/model.safetensors", "subdir": "checkpoints"},
+        {"name": "model.safetensors", "url": "https://example.test/model.safetensors", "subdir": "checkpoints", "sha256": None, "size_bytes": None},
     ]
     assert len(caught) == 1
     assert "differs from MODELS-derived" in str(caught[0].message)

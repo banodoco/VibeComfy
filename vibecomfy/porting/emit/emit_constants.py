@@ -964,22 +964,41 @@ def _drop_output_prefix_constants(
 def _model_assets_for_emit(
     metadata: Mapping[str, Any],
     requirements: Mapping[str, Any],
+    *,
+    preserve_draft_names: bool = False,
 ) -> list[Mapping[str, Any]]:
-    def usable(asset: Mapping[str, Any]) -> bool:
-        return bool(
-            asset.get("url")
-            or (
-                isinstance(asset.get("name", asset.get("filename")), str)
-                and bool(asset.get("subdir", asset.get("directory")))
-            )
-        )
+    def records(values: Any, *, source: str) -> list[Mapping[str, Any]]:
+        if not isinstance(values, list):
+            raise ValueError(f"ready {source} model declarations must be a list")
+        result: list[Mapping[str, Any]] = []
+        for index, asset in enumerate(values):
+            # Companion-backed publication also preserves editable drafts.
+            # Their picker-name witness stays in requirements, but cannot
+            # become a ModelAsset without an explicit declaration. Promotion
+            # through the port converter and preparation remain strict.
+            if preserve_draft_names and source == "requirements" and isinstance(asset, str):
+                continue
+            if not isinstance(asset, Mapping):
+                raise ValueError(f"ready {source} model declaration {index} must be a structured record")
+            name = asset.get("name", asset.get("filename"))
+            subdir = asset.get("subdir", asset.get("directory"))
+            if not isinstance(name, str) or not name:
+                raise ValueError(f"ready {source} model declaration {index} needs an explicit name")
+            if "subdir" not in asset and "directory" not in asset:
+                raise ValueError(f"ready model asset must declare subdir (or directory) explicitly: {name!r}")
+            if not isinstance(subdir, str) or not subdir:
+                raise ValueError("model asset subdir must be a non-empty string")
+            result.append(dict(asset))
+        return result
 
     raw_assets = metadata.get("model_assets")
-    if isinstance(raw_assets, list):
-        return [dict(asset) for asset in raw_assets if isinstance(asset, Mapping) and usable(asset)]
+    if "model_assets" in metadata:
+        metadata_records = records(raw_assets, source="metadata")
+        if metadata_records:
+            return metadata_records
     raw_requirement_models = requirements.get("models") if isinstance(requirements, Mapping) else None
-    if isinstance(raw_requirement_models, list):
-        return [dict(asset) for asset in raw_requirement_models if isinstance(asset, Mapping) and usable(asset)]
+    if isinstance(requirements, Mapping) and "models" in requirements:
+        return records(raw_requirement_models, source="requirements")
     return []
 
 
@@ -1044,7 +1063,7 @@ def _format_models_block(model_assets: list[Mapping[str, Any]]) -> list[str]:
         elif "directory" in asset:
             subdir = asset["directory"]
         else:
-            subdir = "checkpoints"
+            raise ValueError("model asset must declare subdir (or directory) explicitly")
         if not isinstance(subdir, str) or not subdir:
             raise ValueError("model asset subdir must be a non-empty string")
         args: list[str] = []

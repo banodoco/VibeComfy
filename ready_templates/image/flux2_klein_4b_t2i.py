@@ -15,6 +15,26 @@ WIDGET__NAME_4 = 'flux-2-klein-4b.safetensors'
 
 READY_METADATA = ReadyMetadata.build(
     capability='image',
+    requirements={'models': [{'name': 'flux-2-klein-base-4b.safetensors',
+             'url': 'https://huggingface.co/Comfy-Org/flux2-klein/resolve/main/split_files/diffusion_models/flux-2-klein-base-4b.safetensors',
+             'subdir': 'diffusion_models',
+             'sha256': None,
+             'size_bytes': None},
+            {'name': 'qwen_3_4b.safetensors',
+             'url': 'https://huggingface.co/Comfy-Org/flux2-klein/resolve/main/split_files/text_encoders/qwen_3_4b.safetensors',
+             'subdir': 'text_encoders',
+             'sha256': None,
+             'size_bytes': None},
+            {'name': 'flux2-vae.safetensors',
+             'url': 'https://huggingface.co/Comfy-Org/flux2-dev/resolve/main/split_files/vae/flux2-vae.safetensors',
+             'subdir': 'vae',
+             'sha256': None,
+             'size_bytes': None},
+            {'name': 'flux-2-klein-4b.safetensors',
+             'url': 'https://huggingface.co/Comfy-Org/flux2-klein/resolve/main/split_files/diffusion_models/flux-2-klein-4b.safetensors',
+             'subdir': 'diffusion_models',
+             'sha256': None,
+             'size_bytes': None}]},
     provenance={'source_path': 'ready_templates/sources/official/image/flux2_klein_4b_t2i.json', 'source_id': 'image/flux2_klein_4b_t2i', 'upstream_source_id': 'flux2_klein_4b_t2i', 'source_type': 'api', 'source_workflow_path': 'ready_templates/sources/official/image/flux2_klein_4b_t2i.json', 'output_mode': 'ready_template', 'ready_id': 'image/flux2_klein_4b_t2i'},
 )
 

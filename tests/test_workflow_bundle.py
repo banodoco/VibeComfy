@@ -153,7 +153,7 @@ def test_model_bundle_rebuild_preserves_admitted_custom_node_refs(
     )
     model_asset = {
         "name": "bundle-model.safetensors", "url": "https://example.test/bundle-model.safetensors",
-        "subdir": "diffusion_models",
+        "subdir": "diffusion_models", "sha256": None, "size_bytes": None,
     }
     workflow.requirements = WorkflowRequirements(
         models=[model_asset],

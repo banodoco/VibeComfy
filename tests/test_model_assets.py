@@ -22,6 +22,31 @@ from vibecomfy.schema import InputSpec, NodeSchema
 from vibecomfy.workflow_bundle import WorkflowBundleError, load_bundle
 
 
+def _expected_asset(name: str, url: str | None, subdir: str, **extra: object) -> dict[str, object]:
+    return {
+        "name": name,
+        "url": url,
+        "subdir": subdir,
+        "sha256": None,
+        "size_bytes": None,
+        **extra,
+    }
+
+
+def _author_registry_backed_assets(workflow: VibeWorkflow) -> None:
+    """Resolve registry knowledge at authoring time and store canonical records."""
+    resolved, unresolved = resolve_referenced_assets(workflow)
+    assert unresolved == []
+    internal = {
+        "node_id", "class_type", "field", "value", "reference_type",
+        "downloadable", "unresolved",
+    }
+    workflow.metadata["model_assets"] = [
+        {key: value for key, value in asset.items() if key not in internal}
+        for asset in resolved
+    ]
+
+
 def test_extract_from_raw_workflow_normalises_model_metadata() -> None:
     raw = {
         "nodes": [
@@ -74,21 +99,9 @@ def test_extract_from_raw_workflow_normalises_model_metadata() -> None:
     }
 
     assert extract_from_raw_workflow(raw) == [
-        {
-            "name": "explicit.safetensors",
-            "url": "https://example.test/models/explicit.safetensors?x=1",
-            "subdir": "custom_dir",
-        },
-        {
-            "name": "split.safetensors",
-            "url": "https://huggingface.co/org/repo/resolve/main/split_files/vae/split.safetensors",
-            "subdir": "vae",
-        },
-        {
-            "name": "fallback.safetensors",
-            "url": "https://example.test/models/fallback.safetensors",
-            "subdir": "diffusion_models",
-        },
+        _expected_asset("explicit.safetensors", "https://example.test/models/explicit.safetensors?x=1", "custom_dir"),
+        _expected_asset("split.safetensors", "https://huggingface.co/org/repo/resolve/main/split_files/vae/split.safetensors", "vae"),
+        _expected_asset("fallback.safetensors", "https://example.test/models/fallback.safetensors", "diffusion_models"),
     ]
 
 
@@ -135,6 +148,7 @@ def test_scratchpad_malformed_target_path_is_preserved_and_rejected(
         "READY_REQUIREMENTS = {'models': [{"
         "'name': 'model.safetensors', "
         "'url': 'https://example.test/model.safetensors', "
+        "'subdir': 'checkpoints', "
         f"'target_path': {target_path!r}"
         "}] }\n",
         encoding="utf-8",
@@ -197,8 +211,8 @@ def test_extract_from_raw_workflow_recurses_nested_subgraphs() -> None:
     }
 
     assert extract_from_raw_workflow(raw) == [
-        {"name": "outer.safetensors", "url": "https://example.test/outer.safetensors", "subdir": "text_encoders"},
-        {"name": "inner.safetensors", "url": "https://example.test/inner.safetensors", "subdir": "vae"},
+        _expected_asset("outer.safetensors", "https://example.test/outer.safetensors", "text_encoders"),
+        _expected_asset("inner.safetensors", "https://example.test/inner.safetensors", "vae"),
     ]
 
 
@@ -206,20 +220,70 @@ def test_extract_from_raw_workflow_returns_empty_for_api_shaped_workflow() -> No
     assert extract_from_raw_workflow({"1": {"class_type": "VAELoader", "inputs": {}}}) == []
 
 
+def test_extract_from_raw_workflow_rejects_downloadable_asset_with_unknown_placement() -> None:
+    raw = {
+        "nodes": [
+            {
+                "id": 1,
+                "type": "UnknownLoader",
+                "properties": {
+                    "models": [{
+                        "name": "model.safetensors",
+                        "url": "https://example.test/model.safetensors",
+                    }]
+                },
+            }
+        ]
+    }
+
+    with pytest.raises(ValueError, match="unknown placement.*declare subdir explicitly"):
+        extract_from_raw_workflow(raw)
+
+
+def test_preparation_extraction_requires_authored_subdir_even_for_known_loader() -> None:
+    raw = {
+        "nodes": [
+            {
+                "id": 1,
+                "type": "CheckpointLoaderSimple",
+                "properties": {
+                    "models": [{
+                        "name": "model.safetensors",
+                        "url": "https://example.test/model.safetensors",
+                    }]
+                },
+            }
+        ]
+    }
+
+    with pytest.raises(ValueError, match="explicit non-empty subdir"):
+        extract_from_raw_workflow(raw, allow_authoring_derivation=False)
+
+
 def test_entries_from_scratchpad_path_reads_materialized_requirements(tmp_path: Path) -> None:
     scratchpad = tmp_path / "scratch.py"
     scratchpad.write_text(
         "READY_REQUIREMENTS = {'models': ["
         "{'name': 'model.safetensors', 'url': 'https://example.test/model.safetensors?download=true', 'subdir': 'checkpoints'},"
-        "'legacy.safetensors',"
         "{'name': 'model.safetensors', 'url': 'https://example.test/duplicate.safetensors', 'subdir': 'checkpoints'}"
         "], 'custom_nodes': []}\n",
         encoding="utf-8",
     )
 
     assert entries_from_scratchpad_path(scratchpad) == [
-        {"name": "model.safetensors", "url": "https://example.test/model.safetensors", "subdir": "checkpoints"}
+        _expected_asset("model.safetensors", "https://example.test/model.safetensors", "checkpoints")
     ]
+
+
+def test_entries_from_scratchpad_path_rejects_bare_model_filename(tmp_path: Path) -> None:
+    scratchpad = tmp_path / "scratch.py"
+    scratchpad.write_text(
+        "READY_REQUIREMENTS = {'models': ['legacy.safetensors']}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="records with explicit name and subdir"):
+        entries_from_scratchpad_path(scratchpad)
 
 
 def test_entries_from_scratchpad_path_preserves_reproducibility_pins(tmp_path: Path) -> None:
@@ -256,9 +320,7 @@ def test_entries_from_scratchpad_path_resolves_literal_module_constants(tmp_path
 
     assert entries_from_scratchpad_path(scratchpad) == [
         {
-            "name": "from_constant.safetensors",
-            "url": "https://example.test/from_constant.safetensors",
-            "subdir": "vae",
+            **_expected_asset("from_constant.safetensors", "https://example.test/from_constant.safetensors", "vae"),
         }
     ]
 
@@ -276,9 +338,7 @@ def test_entries_from_scratchpad_path_respects_explicit_subdir_for_non_split_ass
 
     assert entries_from_scratchpad_path(scratchpad) == [
         {
-            "name": "flux-2-klein-4b-fp8.safetensors",
-            "url": "https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-fp8/resolve/main/flux-2-klein-4b-fp8.safetensors",
-            "subdir": "diffusion_models",
+            **_expected_asset("flux-2-klein-4b-fp8.safetensors", "https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-fp8/resolve/main/flux-2-klein-4b-fp8.safetensors", "diffusion_models"),
         }
     ]
 
@@ -308,9 +368,7 @@ def test_resolve_referenced_assets_preserves_classified_unresolved_references() 
 
     assert resolved == [
         {
-            "name": "registry.safetensors",
-            "url": "https://example.test/registry.safetensors",
-            "subdir": "diffusion_models",
+            **_expected_asset("registry.safetensors", "https://example.test/registry.safetensors", "diffusion_models"),
             "node_id": "1",
             "class_type": "UNETLoader",
             "field": "unet_name",
@@ -348,6 +406,7 @@ def test_ensure_models_resolves_qualified_wan_alias_only_with_safe_separators(tm
             _model_assets_from_workflow(workflow)
         assert workflow.nodes['98'].inputs['lora'] == value
         return
+    _author_registry_backed_assets(workflow)
     entries = _model_assets_from_workflow(workflow)
 
     assert len(entries) == 1
@@ -580,15 +639,13 @@ def test_attempt_model_digest_reuses_fetch_verification_receipt(
     assert body_reads == 1
 
 
-def test_model_install_policy_only_requires_registry_or_authored_downloadables(
+def test_model_install_policy_only_requires_authored_downloadables(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     workflow = VibeWorkflow("models", WorkflowSource("models"))
     workflow.metadata["model_assets"] = [
         {
-            "name": "authored.safetensors",
-            "url": "https://example.test/authored.safetensors",
-            "subdir": "vae",
+            **_expected_asset("authored.safetensors", "https://example.test/authored.safetensors", "vae"),
         }
     ]
     workflow.nodes["1"] = VibeNode("1", "UNETLoader", inputs={"unet_name": "registry.safetensors"})
@@ -602,24 +659,13 @@ def test_model_install_policy_only_requires_registry_or_authored_downloadables(
         )
     ]
     monkeypatch.setattr("vibecomfy.registry.models_loader.load_registry", lambda: registry)
+    workflow.metadata["model_assets"].append(
+        _expected_asset("registry.safetensors", "https://example.test/registry.safetensors", "diffusion_models")
+    )
 
     assert _model_assets_from_workflow(workflow) == [
-        {
-            "name": "authored.safetensors",
-            "url": "https://example.test/authored.safetensors",
-            "subdir": "vae",
-        },
-        {
-            "name": "registry.safetensors",
-            "url": "https://example.test/registry.safetensors",
-            "subdir": "diffusion_models",
-            "node_id": "1",
-            "class_type": "UNETLoader",
-            "field": "unet_name",
-            "value": "registry.safetensors",
-            "reference_type": "registry-backed",
-            "downloadable": True,
-        },
+        _expected_asset("authored.safetensors", "https://example.test/authored.safetensors", "vae"),
+        _expected_asset("registry.safetensors", "https://example.test/registry.safetensors", "diffusion_models"),
     ]
 
     workflow.nodes["2"] = VibeNode(
@@ -635,6 +681,58 @@ def test_model_install_policy_only_requires_registry_or_authored_downloadables(
     assert "external.safetensors" in message
     assert "local.safetensors" in message
     assert "patch.safetensors" in message
+
+
+def test_preparation_does_not_infer_registry_only_assets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workflow = VibeWorkflow("registry-only", WorkflowSource("registry-only"))
+    workflow.nodes["1"] = VibeNode(
+        "1", "UNETLoader", inputs={"unet_name": "registry.safetensors"}
+    )
+    monkeypatch.setattr(
+        "vibecomfy.registry.models_loader.load_registry",
+        lambda: (_ for _ in ()).throw(AssertionError("preparation must not load registry")),
+    )
+
+    with pytest.raises(ModelAssetError, match="unresolved workflow model assets"):
+        _model_assets_from_workflow(workflow)
+
+
+def test_preparation_accepts_structured_requirements_as_authored_fallback() -> None:
+    workflow = VibeWorkflow("requirements-assets", WorkflowSource("requirements-assets"))
+    workflow.requirements.models = [
+        _expected_asset("declared.safetensors", "https://example.test/declared.safetensors", "diffusion_models")
+    ]
+    workflow.nodes["1"] = VibeNode(
+        "1", "UNETLoader", inputs={"unet_name": "declared.safetensors"}
+    )
+
+    assets = _model_assets_from_workflow(workflow)
+
+    assert [(asset["name"], asset["subdir"], asset["url"]) for asset in assets] == [
+        ("declared.safetensors", "diffusion_models", "https://example.test/declared.safetensors")
+    ]
+
+
+def test_preparation_uses_authored_metadata_without_legacy_requirement_strings() -> None:
+    workflow = VibeWorkflow("metadata-precedence", WorkflowSource("metadata-precedence"))
+    workflow.metadata["model_assets"] = [
+        _expected_asset("declared.safetensors", "https://example.test/declared.safetensors", "diffusion_models")
+    ]
+    # A companion loader may derive bare requirement strings from model
+    # pickers. They are not the authoritative asset manifest when metadata is
+    # present.
+    workflow.requirements.models = ["declared.safetensors"]
+    workflow.nodes["1"] = VibeNode(
+        "1", "UNETLoader", inputs={"unet_name": "declared.safetensors"}
+    )
+
+    assets = _model_assets_from_workflow(workflow)
+
+    assert [(asset["name"], asset["subdir"]) for asset in assets] == [
+        ("declared.safetensors", "diffusion_models")
+    ]
 
 
 def test_workflow_local_nested_model_asset_does_not_require_registry(

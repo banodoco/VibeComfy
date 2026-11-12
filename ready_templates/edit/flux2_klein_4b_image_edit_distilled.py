@@ -14,6 +14,21 @@ PUBLIC_INPUT_METADATA = {
 READY_METADATA = ReadyMetadata.build(
     capability='image',
     inputs=PUBLIC_INPUT_METADATA,
+    requirements={'models': [{'name': 'flux-2-klein-4b-fp8.safetensors',
+             'url': 'https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-fp8/resolve/main/flux-2-klein-4b-fp8.safetensors',
+             'subdir': 'diffusion_models',
+             'sha256': None,
+             'size_bytes': None},
+            {'name': 'qwen_3_4b.safetensors',
+             'url': 'https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b.safetensors',
+             'subdir': 'text_encoders',
+             'sha256': None,
+             'size_bytes': None},
+            {'name': 'flux2-vae.safetensors',
+             'url': 'https://huggingface.co/Comfy-Org/flux2-dev/resolve/main/split_files/vae/flux2-vae.safetensors',
+             'subdir': 'vae',
+             'sha256': None,
+             'size_bytes': None}]},
     provenance={'source_path': 'ready_templates/sources/official/edit/flux2_klein_4b_image_edit_distilled.json', 'source_id': 'edit/flux2_klein_4b_image_edit_distilled', 'upstream_source_id': 'flux2_klein_4b_image_edit_distilled', 'source_type': 'api', 'source_workflow_path': 'ready_templates/sources/official/edit/flux2_klein_4b_image_edit_distilled.json', 'output_mode': 'ready_template', 'ready_id': 'edit/flux2_klein_4b_image_edit_distilled'},
 )
 

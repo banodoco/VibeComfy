@@ -405,6 +405,21 @@ def test_download_supports_repo_relative_target_path(monkeypatch: pytest.MonkeyP
     assert path.read_bytes() == b"aux"
 
 
+def test_download_rejects_non_custom_node_target_path_before_network(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(
+        fetch.httpx,
+        "stream",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("unauthorized target path reached network")
+        ),
+    )
+
+    with pytest.raises(ValueError, match="only for files inside a custom-node pack"):
+        fetch.download({**ENTRY, "target_path": "checkpoints/model.safetensors"}, root=tmp_path)
+
+
 def test_download_supports_nested_destinations_and_relative_cwd_binding(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -623,11 +638,12 @@ def test_concurrent_downloads_use_invocation_owned_temp_files(tmp_path: Path) ->
     assert list(destination.parent.glob(".vibecomfy-download-*.tmp")) == []
 
 
-def test_local_path_accepts_ready_template_directory_alias(tmp_path: Path) -> None:
-    assert fetch.local_path(
-        {"name": "model.safetensors", "directory": "diffusion_models"},
-        root=tmp_path,
-    ) == tmp_path / "diffusion_models" / "model.safetensors"
+def test_local_path_rejects_ready_template_directory_alias(tmp_path: Path) -> None:
+    with pytest.raises((KeyError, ValueError), match="model asset|name and subdir"):
+        fetch.local_path(
+            {"name": "model.safetensors", "directory": "diffusion_models"},
+            root=tmp_path,
+        )
 
 
 @pytest.mark.parametrize("subdir", ["", None, 0])

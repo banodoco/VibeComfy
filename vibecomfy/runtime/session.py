@@ -1242,10 +1242,26 @@ def _model_assets_from_workflow(
         return _norm(name), _norm(subdir), target_marker
 
     raw_assets = workflow.metadata.get("model_assets", [])
+    raw_requirements = workflow.requirements.models or []
     local_root = Path(models_root).expanduser().resolve(strict=False) if models_root is not None else None
-    raw_assets = validate_authored_asset_declarations(
-        raw_assets if isinstance(raw_assets, list) else (), root=local_root,
-    )
+    if not isinstance(raw_assets, list):
+        raise ModelAssetError("workflow model_assets must be a structured list")
+    # Authored metadata is the primary manifest. Some legacy companion loads
+    # flatten requirements to picker strings; don't let that derived witness
+    # override a complete authored asset declaration. Requirements are a
+    # fallback only when no authored metadata exists, and then must be fully
+    # structured.
+    try:
+        if raw_assets:
+            raw_assets = validate_authored_asset_declarations(raw_assets, root=local_root)
+        else:
+            if not isinstance(raw_requirements, (list, tuple)):
+                raise ModelAssetError("workflow requirements.models must be a structured list")
+            raw_assets = validate_authored_asset_declarations(
+                _normalise_requirement_entries(raw_requirements), root=local_root,
+            )
+    except (TypeError, ValueError) as exc:
+        raise ModelAssetError(f"invalid workflow model asset declarations: {exc}") from exc
     from vibecomfy import fetch as fetch_assets
     unresolved_authored = [
         asset
@@ -1269,9 +1285,18 @@ def _model_assets_from_workflow(
             next_action=MODEL_DOCTOR_NEXT_ACTION,
         )
     authored = _normalise_requirement_entries(raw_assets) if isinstance(raw_assets, list) else []
-    resolved, unresolved = resolve_referenced_assets(workflow, models_root=local_root)
-    # The shared resolver already reconciles exact authored spellings. Never
-    # discharge a rejected picker through a basename or filesystem-path hint.
+    resolution_workflow = workflow
+    if not workflow.metadata.get("model_assets"):
+        # The shared resolver reads workflow-local declarations from metadata.
+        # For the structured requirements fallback, adapt a copy so resolution
+        # uses the selected authored set without mutating the caller's workflow.
+        resolution_workflow = workflow.copy()
+        resolution_workflow.metadata["model_assets"] = list(raw_assets)
+    resolved, unresolved = resolve_referenced_assets(
+        resolution_workflow, registry=(), models_root=local_root,
+    )
+    # Empty registry is deliberate: preparation must not derive or supplement
+    # a consuming node's asset declaration from global model knowledge.
     if unresolved:
         summary = ", ".join(
             f"{item['class_type']} {item['node_id']}.{item['field']}={item['value']!r}"

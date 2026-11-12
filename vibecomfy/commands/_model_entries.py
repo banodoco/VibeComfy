@@ -5,17 +5,21 @@ from typing import Any
 
 from vibecomfy.commands._workflow_path import resolve_workflow_path
 from vibecomfy.ingest.loader import load_workflow_json
-from vibecomfy.model_assets import extract_from_raw_workflow
+from vibecomfy.model_assets import _normalise_requirement_entries, extract_from_raw_workflow
 
 
 def model_entries_for_workflow(workflow: Any, workflow_ref: str) -> list[dict]:
     entries = getattr(workflow, "metadata", {}).get("model_assets", [])
     if entries:
-        return [entry for entry in entries if isinstance(entry, dict)]
+        return _normalise_requirement_entries(entries)
+    requirements = getattr(workflow, "requirements", None)
+    declared = getattr(requirements, "models", ())
+    if declared:
+        return _normalise_requirement_entries(declared)
     path = _json_path_for_reference(workflow_ref)
     if path is None:
         return []
-    return extract_from_raw_workflow(load_workflow_json(path))
+    return extract_from_raw_workflow(load_workflow_json(path), allow_authoring_derivation=False)
 
 
 def _json_path_for_reference(workflow_ref: str) -> str | None:

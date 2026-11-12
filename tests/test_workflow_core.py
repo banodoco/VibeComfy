@@ -2264,6 +2264,8 @@ class TestLookupId:
                 "name": "registry.safetensors",
                 "url": "https://example.test/registry.safetensors",
                 "subdir": "diffusion_models",
+                "sha256": None,
+                "size_bytes": None,
                 "node_id": "1",
                 "class_type": "UNETLoader",
                 "field": "unet_name",
@@ -2598,3 +2600,17 @@ def test_folded_widget_uses_typed_raw_payload_without_mutating_retained_ui() -> 
         emitted = emit_ui_json(workflow)
     assert emitted["nodes"][0]["widgets_values"] == [9]
     assert node.metadata["_ui"]["widgets_values"] == [999]
+
+
+def test_model_record_digest_ignores_key_order_but_preserves_values() -> None:
+    from vibecomfy.workflow import VibeWorkflow, WorkflowSource
+
+    workflow = VibeWorkflow("model-record", WorkflowSource("model-record"))
+    record = {"name": "weights.bin", "subdir": "vae", "url": None,
+              "sha256": None, "size_bytes": None}
+    workflow.requirements.models = [record]
+    original = workflow.semantic_digest()
+    workflow.requirements.models = [dict(reversed(list(record.items())))]
+    assert workflow.semantic_digest() == original
+    workflow.requirements.models[0]["subdir"] = "loras"
+    assert workflow.semantic_digest() != original

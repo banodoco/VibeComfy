@@ -42,7 +42,7 @@ def test_runtime_reference_refuses_same_basename_with_wrong_prefix(value):
 
 
 @pytest.mark.parametrize('change', [{}, {'sha256': '2' * 64},
-                                   {'target_path': 'elsewhere/model.pth'}])
+                                   {'target_path': 'custom_nodes/pack/model.pth'}])
 def test_runtime_reference_rejects_duplicate_or_conflicting_declarations(change):
     with pytest.raises(ValueError, match='ambiguous.*model asset'):
         resolve_referenced_assets(
@@ -77,10 +77,11 @@ def test_declared_subdirectory_is_normalized_without_repairing_picker_prefix():
     ('./diffusion_models', 'diffusion_models'),
 ])
 @pytest.mark.parametrize('target_path', [None, 'custom_nodes/pack/model.pth'])
-def test_runtime_stages_equivalent_aliases_once_without_changing_destination(
+def test_runtime_rejects_legacy_model_field_aliases_without_mutating_declaration(
     tmp_path, monkeypatch, subdir, directory, target_path,
 ):
     from vibecomfy.fetch import local_path
+    from vibecomfy.errors import ModelAssetError
     from vibecomfy.runtime.session import _model_assets_from_workflow
 
     asset = {**ASSET, 'subdir': subdir, 'directory': directory,
@@ -90,13 +91,10 @@ def test_runtime_stages_equivalent_aliases_once_without_changing_destination(
     workflow = _workflow(asset['name'], [asset])
     monkeypatch.setattr('vibecomfy.registry.models_loader.load_registry', lambda: ())
     before = dict(asset)
-    destination = local_path(asset, root=tmp_path)
-    entries = _model_assets_from_workflow(workflow, models_root=tmp_path)
-    assert len(entries) == 1
-    assert entries[0]['name'] == asset['name']
-    assert entries[0]['subdir'] == subdir
-    assert entries[0].get('target_path') == target_path
-    assert local_path(entries[0], root=tmp_path) == destination
+    with pytest.raises(ValueError, match='filename/directory aliases'):
+        local_path(asset, root=tmp_path)
+    with pytest.raises(ModelAssetError, match='invalid workflow model asset declarations: .*filename/directory aliases'):
+        _model_assets_from_workflow(workflow, models_root=tmp_path)
     assert asset == before
 
 
@@ -157,7 +155,7 @@ def test_local_foley_rejects_conflicting_asset_declarations(tmp_path, monkeypatc
     if change == 'hash':
         conflict['sha256'] = '0' * 64
     elif change == 'target_path':
-        conflict['target_path'] = 'other/vae_128d_48k.pth'
+        conflict['target_path'] = 'custom_nodes/pack/vae_128d_48k.pth'
     workflow.metadata['model_assets'].append(conflict)
     with pytest.raises(WorkflowBundleError, match='ambiguous.*model asset'):
         load_bundle(workflow).compile(schema_provider=provider, models_root=tmp_path)
@@ -202,6 +200,7 @@ def test_actual_foley_runtime_rejects_unresolved_picker_without_basename_repair(
 def test_all_foley_declarations_reject_conflicting_custody_before_deduplication(
     tmp_path, monkeypatch, consumer, conflict,
 ):
+    from vibecomfy.errors import ModelAssetError
     from vibecomfy.runtime.session import _model_assets_from_workflow
 
     root = tmp_path / 'models'
@@ -238,8 +237,14 @@ def test_all_foley_declarations_reject_conflicting_custody_before_deduplication(
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(content)
         assets.extend([first, second])
-    expected = ValueError if consumer == 'runtime' else WorkflowBundleError
-    with pytest.raises(expected, match='(ambiguous.*model asset|conflicting.*model asset)'):
+    expected = ModelAssetError if consumer == 'runtime' else WorkflowBundleError
+    if conflict in {'directory_alias', 'filename_alias'}:
+        rejection = 'filename/directory aliases'
+    elif conflict == 'cross_kind':
+        rejection = 'target_path is only for files inside a custom-node pack'
+    else:
+        rejection = 'ambiguous.*model asset'
+    with pytest.raises(expected, match=rejection):
         if consumer != 'runtime':
             load_bundle(workflow).compile(schema_provider=provider, models_root=root)
         else:
@@ -248,9 +253,10 @@ def test_all_foley_declarations_reject_conflicting_custody_before_deduplication(
 
 @pytest.mark.parametrize('consumer', ['runtime', 'approval'])
 @pytest.mark.parametrize('representation', ['target_path', 'nested_subdir'])
-def test_authored_and_registry_assets_cannot_claim_one_destination(
+def test_authored_target_path_misuse_or_registry_collision_is_refused(
     tmp_path, monkeypatch, consumer, representation,
 ):
+    from vibecomfy.errors import ModelAssetError
     from vibecomfy.registry.models_loader import ModelEntry, ModelSource, ModelTarget
     from vibecomfy.runtime.session import _model_assets_from_workflow
 
@@ -286,8 +292,14 @@ def test_authored_and_registry_assets_cannot_claim_one_destination(
     info['UNETLoader']['input']['required']['unet_name'] = [[authored_picker, registry_picker]]
     provider = TargetSchemaProvider.from_object_info(
         info, server_url='http://local.invalid:8188', model_availability='local')
-    expected = ValueError if consumer == 'runtime' else WorkflowBundleError
-    with pytest.raises(expected, match='ambiguous.*model asset'):
+    expected = ModelAssetError if consumer == 'runtime' else WorkflowBundleError
+    if representation == 'target_path':
+        rejection = 'target_path is only for files inside a custom-node pack'
+    elif consumer == 'runtime':
+        rejection = 'unresolved workflow model assets: UNETLoader 90.unet_name=.*UNETLoader 91.unet_name='
+    else:
+        rejection = 'ambiguous.*model asset'
+    with pytest.raises(expected, match=rejection):
         if consumer == 'runtime':
             _model_assets_from_workflow(workflow, models_root=root)
         else:

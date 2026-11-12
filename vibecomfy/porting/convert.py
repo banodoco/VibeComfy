@@ -37,7 +37,6 @@ from vibecomfy.porting.strict_ready import (
 from vibecomfy.porting.widgets.aliases import widget_alias_analysis
 from vibecomfy.utils import repo_relative_path
 from vibecomfy.workflow import ValidationIssue, ValidationReport, VibeWorkflow
-from vibecomfy.model_assets import reconcile_model_requirements
 
 # -- model-like value detection ----------------------------------------------
 
@@ -297,18 +296,13 @@ def port_convert_workflow(
             output_mode="scratchpad",
             ready_id=None,
         )
-        # The v2 bundle writer rebuilds the staged source with the external
-        # companion.  That rebuild refreshes ``requirements.models`` from the
-        # actual model-picker values so an edited loader cannot retain a stale
-        # requirement witness.  Keep the source workflow used for parity
-        # evidence unchanged, but give the scratchpad preflight the same
-        # effective model witness; otherwise the later atomic pair check sees
-        # an avoidable semantic-digest mismatch for workflows whose source
-        # requirements list omits one or more picker values.
+        # Draft scratchpads retain the historical editable witness. They are
+        # not installable manifests, so unresolved picker labels can survive
+        # here; strict structured resolution is applied only to ready output.
         emission_workflow = workflow
         if workflow.requirements.models:
             emission_workflow = workflow.copy()
-            emission_workflow.requirements.models = _ready_requirements(workflow)["models"]
+            emission_workflow.requirements.models = _scratchpad_model_requirements(workflow)
         text = emit_scratchpad_python(
             emission_workflow,
             workflow_id=workflow.id,
@@ -789,37 +783,92 @@ def _repo_relative_provenance_path(path: str) -> str:
 
 
 def _ready_requirements(workflow: VibeWorkflow) -> dict[str, Any]:
-    model_assets = workflow.metadata.get("model_assets")
-    references = _referenced_model_values_for_workflow(workflow)
-    current_model_names: list[str] = []
-    seen_names: set[str] = set()
-    for item in references:
-        if not isinstance(item, Mapping) or not item.get("value"):
-            continue
-        name = str(item["value"])
-        if name not in seen_names:
-            seen_names.add(name)
-            current_model_names.append(name)
-    if current_model_names:
-        rich_by_name = {
-            str(item.get("name", item.get("filename", ""))): item
-            for item in (model_assets or [])
-            if isinstance(item, Mapping)
-        }
-        inferred = [rich_by_name.get(name, name) for name in current_model_names]
-        models = (
-            reconcile_model_requirements(workflow.requirements.models, inferred)
-            if workflow.requirements.models
-            else inferred
+    # Ready metadata is an installable manifest, not a list of picker labels.
+    # Resolve each live picker against an explicit source declaration first,
+    # then the model registry. Refuse a ready manifest if any picker lacks an
+    # explicit structured declaration or registry entry.
+    from vibecomfy.model_assets import resolve_referenced_assets, validate_authored_asset_declarations
+    from vibecomfy.model_assets import _referenced_model_values
+    from vibecomfy.model_assets import reconcile_model_requirements
+
+    resolved, unresolved = resolve_referenced_assets(workflow)
+    if unresolved:
+        labels = ", ".join(
+            f"{item.get('class_type', 'model')} {item.get('node_id', '?')}.{item.get('field', '?')}={item.get('value')!r}"
+            for item in unresolved
         )
-    elif isinstance(model_assets, list):
-        models = []
-    else:
-        models = list(current_model_names)
-    # Empty model references retain the historical requirements witness. This
-    # matters for drafts whose graph has not yet acquired a model picker.
-    if not current_model_names and not isinstance(model_assets, list):
-        models = list(workflow.requirements.models)
+        raise ValueError(f"cannot emit ready requirements for unresolved model references: {labels}")
+
+    # Keep authored fields such as target_path, hf_revision and gated. The
+    # resolver annotates references for diagnostics; those annotations are not
+    # part of the ready manifest.
+    internal = {"node_id", "class_type", "field", "value", "reference_type", "downloadable", "unresolved"}
+    inferred_models: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for asset in resolved:
+        record = {key: value for key, value in asset.items() if key not in internal}
+        for key in ("name", "subdir", "url", "sha256", "size_bytes"):
+            record.setdefault(key, None)
+        if not isinstance(record["name"], str) or not record["name"] or not isinstance(record["subdir"], str) or not record["subdir"]:
+            raise ValueError("ready model assets require explicit non-empty name and subdir")
+        identity = (record["subdir"], record["name"])
+        if identity not in seen:
+            inferred_models.append(record)
+            seen.add(identity)
+
+    # Preserve explicit graphless declarations, but only when they already
+    # carry structured destinations. On a live graph, a legacy bare filename
+    # may be upgraded only by one exact resolved source/registry record.
+    references = _referenced_model_values(workflow)
+    inferred_by_name: dict[str, list[dict[str, Any]]] = {}
+    for item in inferred_models:
+        inferred_by_name.setdefault(str(item["name"]), []).append(item)
+    declared: list[dict[str, Any]] = []
+    for item in list(workflow.requirements.models or []):
+        if not isinstance(item, Mapping):
+            if isinstance(item, str) and references:
+                candidates = inferred_by_name.get(item, [])
+                if len(candidates) == 1:
+                    declared.append(dict(candidates[0]))
+                    continue
+                raise ValueError(f"cannot resolve bare ready model requirement by exact name: {item!r}")
+            raise ValueError("ready model requirements must be structured asset records")
+        for key in ("name", "subdir"):
+            if key not in item:
+                raise ValueError(f"ready model requirement is missing {key!r}")
+        record = dict(item)
+        for key in ("url", "sha256", "size_bytes"):
+            record.setdefault(key, None)
+        declared.append(record)
+    declared = [validate_authored_asset_declarations([item])[0] for item in declared]
+
+    if not references:
+        seen.update(
+            (str(item.get("subdir")), str(item.get("name")))
+            for item in declared
+            if isinstance(item, Mapping)
+        )
+    metadata_assets = workflow.metadata.get("model_assets")
+    if not references and isinstance(metadata_assets, list):
+        metadata_assets = validate_authored_asset_declarations(metadata_assets)
+        for raw in metadata_assets:
+            record = dict(raw)
+            for key in ("url", "sha256", "size_bytes"):
+                record.setdefault(key, None)
+            identity = (str(record["subdir"]), str(record["name"]))
+            if identity not in seen:
+                inferred_models.append(record)
+                seen.add(identity)
+
+    models = (
+        reconcile_model_requirements(declared, inferred_models)
+        if references and declared
+        else (declared + inferred_models if not references else inferred_models)
+    )
+    # Reconciliation retains authored multiplicity and source-only entries.
+    # Validate the result so no legacy string can become a ready manifest.
+    if any(not isinstance(item, Mapping) for item in models):
+        raise ValueError("ready model requirements must be structured asset records")
     requirements = {
         "models": models,
         "custom_nodes": list(workflow.requirements.custom_nodes),
@@ -850,13 +899,25 @@ def _ready_requirements(workflow: VibeWorkflow) -> dict[str, Any]:
     return requirements
 
 
-def _referenced_model_values_for_workflow(workflow: VibeWorkflow) -> list[dict[str, str]]:
-    from vibecomfy.model_assets import _referenced_model_values
+def _scratchpad_model_requirements(workflow: VibeWorkflow) -> list[Any]:
+    """Refresh draft requirements while preserving their legacy open-ended form."""
+    from vibecomfy.model_assets import _referenced_model_values, reconcile_model_requirements
 
-    try:
-        return list(_referenced_model_values(workflow))
-    except (TypeError, ValueError, AttributeError):
-        return []
+    current: list[str] = []
+    seen: set[str] = set()
+    for reference in _referenced_model_values(workflow):
+        value = reference.get("value")
+        if isinstance(value, str) and value and value not in seen:
+            current.append(value)
+            seen.add(value)
+    assets = workflow.metadata.get("model_assets")
+    rich_by_name = {
+        str(item.get("name", item.get("filename", ""))): item
+        for item in (assets or [])
+        if isinstance(item, Mapping)
+    }
+    inferred = [rich_by_name.get(name, name) for name in current]
+    return reconcile_model_requirements(workflow.requirements.models, inferred) if current else list(workflow.requirements.models)
 
 
 # ---------------------------------------------------------------------------

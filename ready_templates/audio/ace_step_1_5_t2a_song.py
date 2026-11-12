@@ -22,7 +22,12 @@ PUBLIC_INPUT_METADATA = {
 READY_METADATA = ReadyMetadata.build(
     capability='audio',
     inputs=PUBLIC_INPUT_METADATA,
-    requirements={'models': ['ace_1.5_vae.safetensors', 'acestep_v1.5_turbo.safetensors'], 'custom_nodes': ['EmptyAceStep1', 'TextEncodeAceStepAudio1']},
+    requirements={'models': [
+        {'name': 'qwen_0.6b_ace15.safetensors', 'url': 'https://huggingface.co/Comfy-Org/ace_step_1.5_ComfyUI_files/resolve/main/split_files/text_encoders/qwen_0.6b_ace15.safetensors', 'subdir': 'text_encoders', 'sha256': None, 'size_bytes': None},
+        {'name': 'qwen_4b_ace15.safetensors', 'url': 'https://huggingface.co/Comfy-Org/ace_step_1.5_ComfyUI_files/resolve/main/split_files/text_encoders/qwen_4b_ace15.safetensors', 'subdir': 'text_encoders', 'sha256': None, 'size_bytes': None},
+        {'name': 'ace_1.5_vae.safetensors', 'url': 'https://huggingface.co/Comfy-Org/ace_step_1.5_ComfyUI_files/resolve/main/split_files/vae/ace_1.5_vae.safetensors', 'subdir': 'vae', 'sha256': None, 'size_bytes': None},
+        {'name': 'acestep_v1.5_turbo.safetensors', 'url': 'https://huggingface.co/Comfy-Org/ace_step_1.5_ComfyUI_files/resolve/main/split_files/diffusion_models/acestep_v1.5_turbo.safetensors', 'subdir': 'diffusion_models', 'sha256': None, 'size_bytes': None},
+    ], 'custom_nodes': ['EmptyAceStep1', 'TextEncodeAceStepAudio1']},
     provenance={'source_path': 'ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json', 'source_id': 'audio/ace_step_1_5_t2a_song', 'upstream_source_id': 'ace_step_1_5_t2a_song', 'source_type': 'api', 'source_workflow_path': 'ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json', 'output_mode': 'ready_template', 'ready_id': 'audio/ace_step_1_5_t2a_song'},
 )
 

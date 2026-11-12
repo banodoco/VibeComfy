@@ -2041,15 +2041,13 @@ def _model_asset_metadata(model: ModelAsset) -> dict[str, Any]:
         "name": model.filename,
         "url": model.url,
         "subdir": model.subdir,
+        "sha256": model.sha256,
+        "size_bytes": model.size_bytes,
     }
     if model.target_path is not None:
         data["target_path"] = model.target_path
-    if model.sha256 is not None:
-        data["sha256"] = model.sha256
     if model.hf_revision is not None:
         data["hf_revision"] = model.hf_revision
-    if model.size_bytes is not None:
-        data["size_bytes"] = model.size_bytes
     if model.gated:
         data["gated"] = True
     return data

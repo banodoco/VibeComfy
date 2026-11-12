@@ -8,6 +8,21 @@ from vibecomfy.nodes.core import CFGGuider, CLIPLoader, CLIPTextEncode, EmptyFlu
 
 READY_METADATA = ReadyMetadata.build(
     capability='image',
+    requirements={'models': [{'name': 'flux-2-klein-base-9b-fp8.safetensors',
+             'url': 'https://huggingface.co/black-forest-labs/FLUX.2-klein-base-9b-fp8/resolve/main/flux-2-klein-base-9b-fp8.safetensors',
+             'subdir': 'diffusion_models',
+             'sha256': None,
+             'size_bytes': None},
+            {'name': 'qwen_3_8b_fp8mixed.safetensors',
+             'url': 'https://huggingface.co/Comfy-Org/flux2-klein-9B/resolve/main/split_files/text_encoders/qwen_3_8b_fp8mixed.safetensors',
+             'subdir': 'text_encoders',
+             'sha256': None,
+             'size_bytes': None},
+            {'name': 'full_encoder_small_decoder.safetensors',
+             'url': 'https://huggingface.co/black-forest-labs/FLUX.2-small-decoder/resolve/main/full_encoder_small_decoder.safetensors',
+             'subdir': 'vae',
+             'sha256': None,
+             'size_bytes': None}]},
     provenance={'source_path': 'ready_templates/sources/custom_nodes/flux2/flux2_klein_9b_gguf_t2i.json', 'source_id': 'image/flux2_klein_9b_gguf_t2i', 'upstream_source_id': 'flux2_klein_9b_gguf_t2i', 'source_type': 'api', 'source_workflow_path': 'ready_templates/sources/custom_nodes/flux2/flux2_klein_9b_gguf_t2i.json', 'output_mode': 'ready_template', 'ready_id': 'image/flux2_klein_9b_gguf_t2i'},
 )
 

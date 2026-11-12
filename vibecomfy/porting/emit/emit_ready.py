@@ -806,6 +806,7 @@ def emit_ready_template_python(
     preserve_node_ids: bool = False,
     external_custody: bool = False,
     preserve_authored_graph: bool = False,
+    preserve_draft_names: bool = False,
 ) -> str:
     from vibecomfy.porting.emitter import _use_object_info_identities, _drain_lookup_warning_diagnostics  # noqa: PLC0415
     with _use_object_info_identities(object_info_identities):
@@ -823,6 +824,7 @@ def emit_ready_template_python(
             preserve_node_ids=preserve_node_ids,
             external_custody=external_custody,
             preserve_authored_graph=preserve_authored_graph,
+            preserve_draft_names=preserve_draft_names,
         )
         lookup_warnings = _drain_lookup_warning_diagnostics(diagnostics)
         if lookup_warnings:
@@ -848,6 +850,7 @@ def _emit_ready_template_python_inner(
     preserve_node_ids: bool = False,
     external_custody: bool = False,
     preserve_authored_graph: bool = False,
+    preserve_draft_names: bool = False,
 ) -> str:
     from vibecomfy.porting.emit.emit_prepare import _prepare_workflow_for_emit  # noqa: PLC0415
     _preflight_object_info_identity_resolution(workflow)
@@ -982,7 +985,9 @@ def _emit_ready_template_python_inner(
         constant_lines=constant_lines,
         constant_map=constant_map,
     )
-    model_assets = _model_assets_for_emit(metadata, requirements)
+    model_assets = _model_assets_for_emit(
+        metadata, requirements, preserve_draft_names=preserve_draft_names or external_custody,
+    )
     # An explicitly empty requirements.models list is meaningful for an
     # editable draft even when a model-picker widget is already present.  It
     # is only serialized when the graph proves that such a picker exists;

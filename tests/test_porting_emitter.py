@@ -1043,6 +1043,48 @@ def test_model_block_rejects_explicit_malformed_subdir(field: str, subdir: Any) 
         )
 
 
+def test_model_block_rejects_missing_subdir_instead_of_defaulting_to_checkpoints() -> None:
+    with pytest.raises(ValueError, match="declare subdir.*explicitly"):
+        emit_ready_template_python(
+            _sample_workflow(),
+            ready_metadata={
+                "ready_template": "image/missing-model-subdir",
+                "capability": "image",
+                "model_assets": [{
+                    "name": "model.safetensors",
+                    "url": "https://example.test/model.safetensors",
+                }],
+            },
+            ready_requirements={},
+            template_id="image/missing-model-subdir",
+        )
+
+
+def test_model_block_refuses_bare_requirement_instead_of_dropping_it() -> None:
+    with pytest.raises(ValueError, match="structured record"):
+        emit_ready_template_python(
+            _sample_workflow(),
+            ready_metadata={"ready_template": "image/bare-model", "capability": "image"},
+            ready_requirements={"models": ["model.safetensors"]},
+            template_id="image/bare-model",
+        )
+
+
+def test_model_block_uses_structured_requirements_when_metadata_assets_are_empty() -> None:
+    text = emit_ready_template_python(
+        _sample_workflow(),
+        ready_metadata={
+            "ready_template": "image/requirements-model",
+            "capability": "image",
+            "model_assets": [],
+        },
+        ready_requirements={"models": [{"name": "vae.safetensors", "subdir": "vae"}]},
+        template_id="image/requirements-model",
+    )
+
+    assert "ModelAsset(filename='vae.safetensors', subdir='vae')" in text
+
+
 def test_raw_ui_subgraph_payload_is_not_an_emission_authority(tmp_path: Path) -> None:
     workflow = VibeWorkflow("canonical/no-sidecar", WorkflowSource("canonical/no-sidecar"))
     workflow.nodes["1"] = VibeNode("1", "INTConstant", inputs={"value": 1}, uid="one")
@@ -3018,10 +3060,11 @@ def test_canonical_emitter_rebuild_preserves_exact_materialized_input_alias(
 
 
 def test_canonical_emitter_does_not_infer_over_retained_motion_prompt_target(tmp_path: Path) -> None:
-    from vibecomfy.registry.ready import workflow_from_ready
+    from tests._template_fixtures import workflow_from_template_fixture
 
+    # Retain this graph regression even while undeclared assets keep it a draft.
     ready_id = "video/ltx2_3_runexx_motion_transfer_dwpose"
-    workflow = workflow_from_ready(ready_id)
+    workflow = workflow_from_template_fixture(ready_id)
     source = emit_canonical_python(workflow)
     rebuilt = _bundle_roundtrip(workflow, tmp_path, "motion_transfer.py")
 

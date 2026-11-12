@@ -13,6 +13,21 @@ WIDGET__NAME_3 = 'ae.safetensors'
 
 READY_METADATA = ReadyMetadata.build(
     capability='image',
+    requirements={'models': [{'name': 'qwen_3_4b.safetensors',
+             'url': 'https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b.safetensors',
+             'subdir': 'text_encoders',
+             'sha256': None,
+             'size_bytes': None},
+            {'name': 'ae.safetensors',
+             'url': 'https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/vae/ae.safetensors',
+             'subdir': 'vae',
+             'sha256': None,
+             'size_bytes': None},
+            {'name': 'z_image_bf16.safetensors',
+             'url': 'https://huggingface.co/Comfy-Org/z_image/resolve/main/split_files/diffusion_models/z_image_bf16.safetensors',
+             'subdir': 'diffusion_models',
+             'sha256': None,
+             'size_bytes': None}]},
     provenance={'source_path': 'ready_templates/sources/official/image/z_image.json', 'source_id': 'image/z_image', 'upstream_source_id': 'z_image', 'source_type': 'api', 'source_workflow_path': 'ready_templates/sources/official/image/z_image.json', 'output_mode': 'ready_template', 'ready_id': 'image/z_image'},
 )
 

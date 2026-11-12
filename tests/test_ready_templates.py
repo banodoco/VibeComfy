@@ -14,7 +14,8 @@ from vibecomfy.patches.ltx_lowvram import apply as apply_ltx_lowvram
 from vibecomfy.patches.resolution import resolution
 from vibecomfy.porting.parity import compile_equivalent
 from vibecomfy.registry import ready as ready_registry
-from vibecomfy.registry.ready import ready_template_ids, ready_template_source_info, workflow_from_ready
+from vibecomfy.registry.ready import ready_template_ids, ready_template_source_info
+from tests._template_fixtures import template_fixture_ids, workflow_from_template_fixture
 from vibecomfy.registry.ready_template import (
     _merge_requirements,
     apply_ready_template_policy,
@@ -49,7 +50,7 @@ def test_generated_foley_roundtrip_keeps_public_media_assets_and_node_pin(tmp_pa
     assert source.with_suffix('.vibe.json').is_file()
     load_bundle(source, trust=Provenance.USER_CONFIRMED).require_canonical_authority('production Foley source')
     lock = json.loads((root / 'ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/assets.json').read_text())
-    workflow = workflow_from_ready(identifier)
+    workflow = workflow_from_template_fixture(identifier)
     assert workflow.inputs['video_ref'].media_semantics == 'video'
     assert workflow.inputs['video_ref'].node_id == '23' and workflow.inputs['video_ref'].field == 'file'
     assert workflow.inputs['prompt'].node_id == '22' and workflow.inputs['prompt'].field == 'prompt'
@@ -368,7 +369,7 @@ def test_wan_static_steps_target_matches_explicit_built_wrapper_id() -> None:
         item for item in rows["video/wan_i2v"]["public_inputs"]
         if item["name"] == "steps"
     )
-    compiled = workflow_from_ready("video/wan_i2v").compile()
+    compiled = workflow_from_template_fixture("video/wan_i2v").compile()
 
     assert static_steps["target"] == {"node_id": "3", "field": "steps"}
     assert compiled["3"]["class_type"] == "KSampler"
@@ -386,7 +387,7 @@ def test_protected_template_index_contracts_match_built_contracts() -> None:
     offenders: list[tuple[str, dict[str, list[dict[str, str]]]]] = []
 
     for row in rows:
-        contract = build_contract(workflow_from_ready(row["id"])).to_dict()
+        contract = build_contract(workflow_from_template_fixture(row["id"])).to_dict()
         comparison = compare_public_contracts(
             static_inputs=row.get("public_inputs") or [],
             static_outputs=row.get("public_outputs") or [],
@@ -413,7 +414,7 @@ def test_ltx_lightricks_templates_static_index_includes_built_public_inputs() ->
         static_names = {item["name"] for item in rows[template_id]["public_inputs"]}
         built_names = {
             item["name"]
-            for item in build_contract(workflow_from_ready(template_id)).to_dict()["public_inputs"]
+            for item in build_contract(workflow_from_template_fixture(template_id)).to_dict()["public_inputs"]
         }
         assert {"model", "prompt", "seed"} <= static_names
         assert static_names == built_names
@@ -434,7 +435,7 @@ def test_ready_templates_are_pure_python_builders() -> None:
 
 
 def test_ltx_raw_video_guide_uses_live_resize_schema_inputs() -> None:
-    workflow = workflow_from_ready("video/ltx2_3_runexx_first_last_raw_video_guide")
+    workflow = workflow_from_template_fixture("video/ltx2_3_runexx_first_last_raw_video_guide")
 
     compiled = workflow.compile()
     resize = [
@@ -455,7 +456,7 @@ def test_ltx_raw_video_guide_uses_live_resize_schema_inputs() -> None:
 
 
 def test_ltx_iclora_control_uses_live_resize_schema_inputs() -> None:
-    workflow = workflow_from_ready("video/ltx2_3_first_last_frame_travel_iclora_control")
+    workflow = workflow_from_template_fixture("video/ltx2_3_first_last_frame_travel_iclora_control")
 
     compiled = workflow.compile()
     resize = [
@@ -638,7 +639,7 @@ def build():
         encoding="utf-8",
     )
     discovery = ready_registry.ready_template_discovery(roots=[root])
-    workflow = workflow_from_ready("manual/metadata", _discovery=discovery)
+    workflow = workflow_from_template_fixture("manual/metadata", _discovery=discovery)
 
     assert workflow.metadata["python_policy_applied"] is True
     expected = {"qwen_3_4b.safetensors", "ae.safetensors", "z_image_bf16.safetensors"}
@@ -659,8 +660,8 @@ def test_ready_templates_contract_doctor_matches_runtime_capabilities() -> None:
         ("video/ltx2_3_runexx_video_to_video_extend", "headless_preview_override_not_supported", "368"),
     }
     observed: set[tuple[str, str, str]] = set()
-    for template_id in ready_template_ids():
-        workflow = workflow_from_ready(template_id)
+    for template_id in template_fixture_ids():
+        workflow = workflow_from_template_fixture(template_id)
         contract = build_contract(workflow)
         report = doctor_contract(workflow, contract)
         for diagnostic in report.diagnostics:
@@ -688,8 +689,8 @@ def test_wanvideo_model_loaders_preserve_declared_runtime_profile_diagnostics() 
         ("video/wanvideo_wrapper_wan_animate", "22", "sageattn", "fp16_fast"),
     }
     observed: set[tuple[str, str, str, str]] = set()
-    for template_id in ready_template_ids():
-        workflow = workflow_from_ready(template_id)
+    for template_id in template_fixture_ids():
+        workflow = workflow_from_template_fixture(template_id)
         api = workflow.compile("api")
         for node_id, node in api.items():
             if node.get("class_type") != "WanVideoModelLoader":
@@ -701,7 +702,7 @@ def test_wanvideo_model_loaders_preserve_declared_runtime_profile_diagnostics() 
                 observed.add((template_id, node_id, str(attention_mode), str(base_precision)))
     assert observed == expected
     assert all(
-        workflow_from_ready(template_id).metadata.get("runpod_profile") is None
+        workflow_from_template_fixture(template_id).metadata.get("runpod_profile") is None
         for template_id, _node_id, _attention, _precision in expected
     )
 
@@ -716,7 +717,7 @@ def test_wanvideo_model_loaders_preserve_declared_runtime_profile_diagnostics() 
     ],
 )
 def test_ltx_travel_segment_outputs_omit_synthetic_audio(template_id: str) -> None:
-    api = workflow_from_ready(template_id).compile("api")
+    api = workflow_from_template_fixture(template_id).compile("api")
 
     video_combine_nodes = [
         node
@@ -729,7 +730,7 @@ def test_ltx_travel_segment_outputs_omit_synthetic_audio(template_id: str) -> No
 
 
 def test_ltx_runexx_first_last_frame_preserves_current_worker_roles() -> None:
-    workflow = workflow_from_ready("video/ltx2_3_runexx_first_last_frame")
+    workflow = workflow_from_template_fixture("video/ltx2_3_runexx_first_last_frame")
     assert workflow.validate().ok
     assert workflow.metadata["source_role"] == "materialized_ready_python_template"
     assert workflow.metadata["coverage_tier"] == "supplemental"
@@ -760,7 +761,7 @@ def test_ltx_runexx_first_last_frame_preserves_current_worker_roles() -> None:
     assert any(node["class_type"] == "LTX2SamplingPreviewOverride" for node in api.values())
 
 def test_ready_template_loads_vibe_workflow() -> None:
-    workflow = workflow_from_ready("edit/qwen_image_edit")
+    workflow = workflow_from_template_fixture("edit/qwen_image_edit")
 
     assert workflow.validate().ok
     assert workflow.metadata["ready_template"] == "edit/qwen_image_edit"
@@ -778,7 +779,7 @@ def test_ready_templates_validate_or_report_exact_ltx_audio_vae_profiles() -> No
         "video/ltx2_3_runexx_video_to_video_extend": ("471", "VAELoaderKJ", "LTX23_audio_vae_bf16_KJ.safetensors"),
     }
     for template_id in ready_template_ids():
-        workflow = workflow_from_ready(template_id)
+        workflow = workflow_from_template_fixture(template_id)
         assert workflow.id == template_id
         assert workflow.metadata["ready_template"] == template_id
         report = workflow.validate()
@@ -791,7 +792,7 @@ def test_ready_templates_validate_or_report_exact_ltx_audio_vae_profiles() -> No
         ]
 
 def test_ready_template_compile_emits_no_null_api_inputs() -> None:
-    workflow = workflow_from_ready("video/wanvideo_wrapper_22_wan_animate_preprocess_kijai")
+    workflow = workflow_from_template_fixture("video/wanvideo_wrapper_22_wan_animate_preprocess_kijai")
     api = workflow.compile("api")
 
     null_inputs = [
@@ -805,7 +806,7 @@ def test_ready_template_compile_emits_no_null_api_inputs() -> None:
 
 
 def test_wan_animate_template_compile_emits_executable_api_nodes() -> None:
-    workflow = workflow_from_ready("video/wanvideo_wrapper_22_wan_animate_preprocess_kijai")
+    workflow = workflow_from_template_fixture("video/wanvideo_wrapper_22_wan_animate_preprocess_kijai")
     api = workflow.compile("api")
 
     helper_nodes = {"Note", "MarkdownNote", "SetNode", "GetNode"}
@@ -818,13 +819,13 @@ def test_wan_animate_template_compile_emits_executable_api_nodes() -> None:
 
 
 def test_wan_animate_template_declares_sam2_node_pack() -> None:
-    workflow = workflow_from_ready("video/wanvideo_wrapper_22_wan_animate_preprocess_kijai")
+    workflow = workflow_from_template_fixture("video/wanvideo_wrapper_22_wan_animate_preprocess_kijai")
 
     assert "ComfyUI-segment-anything-2" in workflow.requirements.custom_nodes
 
 
 def test_wan_animate_template_declares_pose_preprocess_pack_and_models() -> None:
-    workflow = workflow_from_ready("video/wanvideo_wrapper_22_wan_animate_preprocess_kijai")
+    workflow = workflow_from_template_fixture("video/wanvideo_wrapper_22_wan_animate_preprocess_kijai")
 
     assert "ComfyUI-WanAnimatePreprocess" in workflow.requirements.custom_nodes
     model_names = _model_names(workflow.requirements.models)
@@ -841,13 +842,13 @@ def test_wan_animate_template_declares_pose_preprocess_pack_and_models() -> None
 
 
 def test_native_wan_animate_template_declares_frame_count_binding() -> None:
-    workflow = workflow_from_ready("video/wan22_animate_native_first_stage")
+    workflow = workflow_from_template_fixture("video/wan22_animate_native_first_stage")
 
     assert workflow.metadata["unbound_inputs"]["frames"] == 81
 
 
 def test_ready_template_build_has_category_qualified_metadata() -> None:
-    workflow = workflow_from_ready("qwen_image_edit")
+    workflow = workflow_from_template_fixture("qwen_image_edit")
 
     assert workflow.id == "edit/qwen_image_edit"
     assert workflow.metadata["ready_template"] == "edit/qwen_image_edit"
@@ -855,7 +856,7 @@ def test_ready_template_build_has_category_qualified_metadata() -> None:
 
 
 def test_ready_template_preserves_core_requirements_and_upstream_pack_provenance() -> None:
-    workflow = workflow_from_ready("video/ltx2_3_t2v")
+    workflow = workflow_from_template_fixture("video/ltx2_3_t2v")
     assert workflow.requirements.custom_nodes == []
     assert {"EmptyLTXVLatentVideo", "LTXVAudioVAELoader", "LTXVScheduler"} <= {
         node.class_type for node in workflow.nodes.values()
@@ -866,7 +867,7 @@ def test_ready_template_preserves_core_requirements_and_upstream_pack_provenance
     assert workflow.metadata["provenance"]["upstream_source_id"] == "ltx2_3_single_stage_distilled_full"
 
 def test_ltx_first_last_travel_iclora_control_exposes_current_worker_roles() -> None:
-    workflow = workflow_from_ready("video/ltx2_3_first_last_frame_travel_iclora_control")
+    workflow = workflow_from_template_fixture("video/ltx2_3_first_last_frame_travel_iclora_control")
     assert workflow.validate().ok
     assert {"seed", "model", "prompt", "image", "input_image"} == set(workflow.inputs)
     classes = Counter(node.class_type for node in workflow.nodes.values())
@@ -884,7 +885,7 @@ def test_ltx_first_last_travel_iclora_control_exposes_current_worker_roles() -> 
     assert api[guide]["inputs"]["latent_downscale_factor"] == [loader, 1]
 
 def test_ltx_lightricks_first_last_parity_exposes_current_worker_roles() -> None:
-    workflow = workflow_from_ready("video/ltx2_3_lightricks_first_last_parity")
+    workflow = workflow_from_template_fixture("video/ltx2_3_lightricks_first_last_parity")
     assert workflow.validate().ok
     assert {"seed", "model", "prompt", "image", "input_image", "frames", "fps"} == set(workflow.inputs)
     classes = Counter(node.class_type for node in workflow.nodes.values())
@@ -901,7 +902,7 @@ def test_ltx_lightricks_first_last_parity_exposes_current_worker_roles() -> None
     assert workflow.compile("api")
 
 def test_ltx_lightricks_first_last_parity_resolves_assets_from_registry() -> None:
-    workflow = workflow_from_ready("video/ltx2_3_lightricks_first_last_parity")
+    workflow = workflow_from_template_fixture("video/ltx2_3_lightricks_first_last_parity")
     assets = {asset["name"]: asset for asset in _model_assets_from_workflow(workflow)}
 
     assert assets["ltx-2.3-22b-distilled-fp8.safetensors"]["url"] == (
@@ -914,7 +915,7 @@ def test_ltx_lightricks_first_last_parity_resolves_assets_from_registry() -> Non
 
 
 def test_ltx_first_last_raw_video_guide_exposes_current_worker_roles() -> None:
-    workflow = workflow_from_ready("video/ltx2_3_runexx_first_last_raw_video_guide")
+    workflow = workflow_from_template_fixture("video/ltx2_3_runexx_first_last_raw_video_guide")
     assert workflow.validate().ok
     assert "rgthree-comfy" in workflow.requirements.custom_nodes
     assert workflow.metadata["source_role"] == "materialized_ready_python_template"
@@ -939,7 +940,7 @@ def test_ltx_first_last_raw_video_guide_exposes_current_worker_roles() -> None:
     }
 
 def test_wan_22_i2v_template_uses_eager_model_loaders() -> None:
-    workflow = workflow_from_ready("video/wanvideo_wrapper_22_14b_i2v_kijai")
+    workflow = workflow_from_template_fixture("video/wanvideo_wrapper_22_14b_i2v_kijai")
     api = workflow.compile("api")
 
     loader_nodes = [
@@ -956,7 +957,7 @@ def test_wan_22_i2v_template_uses_eager_model_loaders() -> None:
     ["video/wanvideo_wrapper_22_14b_t2i", "video/wanvideo_wrapper_22_14b_vace_cocktail"],
 )
 def test_wan_2_2_templates_use_canonical_wanvideo_lora_path(template_id: str) -> None:
-    workflow = workflow_from_ready(template_id)
+    workflow = workflow_from_template_fixture(template_id)
 
     lora_nodes = [
         node
@@ -987,7 +988,7 @@ def test_wan_2_2_templates_use_canonical_wanvideo_lora_path(template_id: str) ->
     ["video/wanvideo_wrapper_22_14b_t2i", "video/wanvideo_wrapper_22_14b_vace_cocktail"],
 )
 def test_wan_2_2_templates_use_torch_compatible_precision(template_id: str) -> None:
-    workflow = workflow_from_ready(template_id)
+    workflow = workflow_from_template_fixture(template_id)
 
     loader_nodes = [
         node
@@ -1000,7 +1001,7 @@ def test_wan_2_2_templates_use_torch_compatible_precision(template_id: str) -> N
 
 
 def test_wan_vace_template_uses_live_wanvideo_schema_inputs() -> None:
-    workflow = workflow_from_ready("video/wanvideo_wrapper_22_14b_vace_cocktail")
+    workflow = workflow_from_template_fixture("video/wanvideo_wrapper_22_14b_vace_cocktail")
     api = workflow.compile("api")
 
     wanvideo_nodes = {
@@ -1042,7 +1043,7 @@ def test_wan_vace_template_uses_live_wanvideo_schema_inputs() -> None:
 
 
 def test_wan_vace_template_uses_root_vace_module_asset() -> None:
-    workflow = workflow_from_ready("video/wanvideo_wrapper_22_14b_vace_cocktail")
+    workflow = workflow_from_template_fixture("video/wanvideo_wrapper_22_14b_vace_cocktail")
 
     assert any(
         isinstance(asset, dict)
@@ -1065,7 +1066,7 @@ def test_wan_vace_template_uses_root_vace_module_asset() -> None:
     ],
 )
 def test_video_parity_templates_have_resolvable_runtime_model_assets(template_id: str) -> None:
-    workflow = workflow_from_ready(template_id)
+    workflow = workflow_from_template_fixture(template_id)
 
     try:
         assets = _model_assets_from_workflow(workflow)
@@ -1080,7 +1081,7 @@ def test_video_parity_templates_have_resolvable_runtime_model_assets(template_id
     ["video/wanvideo_wrapper_22_14b_t2i", "video/wanvideo_wrapper_22_14b_vace_cocktail"],
 )
 def test_wan_2_2_template_asset_urls_match_upstream_locations(template_id: str) -> None:
-    workflow = workflow_from_ready(template_id)
+    workflow = workflow_from_template_fixture(template_id)
     assets = {
         asset["name"]: asset
         for asset in workflow.metadata["model_assets"]
@@ -1159,7 +1160,7 @@ def test_ready_template_requirements_accept_structured_model_assets() -> None:
 
 
 def test_ready_template_uses_real_python_before_comfy_compile() -> None:
-    workflow = workflow_from_ready("edit/qwen_image_edit")
+    workflow = workflow_from_template_fixture("edit/qwen_image_edit")
 
     marker = f"external_python:{workflow.metadata['ready_template']}"
     workflow.metadata["external_python_marker"] = marker
@@ -1176,9 +1177,9 @@ def test_representative_video_ready_templates_compile_under_memory_profiles(
     template_id: str,
     memory_profile: int,
 ) -> None:
-    baseline = workflow_from_ready(template_id)
+    baseline = workflow_from_template_fixture(template_id)
     baseline_api = baseline.compile("api")
-    workflow = workflow_from_ready(template_id)
+    workflow = workflow_from_template_fixture(template_id)
     workflow.metadata["comfy_configuration"] = {"memory_profile": memory_profile}
 
     config = SessionConfig.from_workflow_metadata(workflow)
@@ -1192,7 +1193,7 @@ def test_representative_video_ready_templates_compile_under_memory_profiles(
 
 @pytest.mark.parametrize("template_id", SNAPSHOT_IDS)
 def test_snapshotted_ready_template_graph_matches_pre_refactor_api(template_id: str) -> None:
-    workflow = workflow_from_ready(template_id)
+    workflow = workflow_from_template_fixture(template_id)
     actual = workflow.compile("api")
     snapshot_name = template_id.rsplit("/", 1)[-1]
     expected = json.loads((Path(__file__).parent / "snapshots" / f"{snapshot_name}.api.json").read_text(encoding="utf-8"))
@@ -1260,3 +1261,88 @@ def _opaque_component_nodes(api: dict[str, dict]) -> list[tuple[str, str]]:
         and len(node["class_type"]) == 36
         and node["class_type"].count("-") == 4
     ]
+
+
+def test_shipped_ready_template_model_declarations_are_structured() -> None:
+    """Managed preparation needs a models-root-relative location for each asset."""
+    invalid = []
+    for record in ready_registry.repo_ready_template_discovery().records:
+        path = record.path
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for call in ast.walk(tree):
+            if not (isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute)
+                    and isinstance(call.func.value, ast.Name)
+                    and call.func.value.id == "ReadyMetadata" and call.func.attr == "build"):
+                continue
+            keywords = {keyword.arg: keyword.value for keyword in call.keywords}
+            if "models" in keywords:
+                model_table = next(
+                    (node.value for node in tree.body if isinstance(node, ast.Assign)
+                     and any(isinstance(target, ast.Name) and target.id == "MODELS"
+                             for target in node.targets)),
+                    None,
+                )
+                if not (isinstance(keywords["models"], ast.Name)
+                        and keywords["models"].id == "MODELS" and isinstance(model_table, ast.Dict)):
+                    invalid.append(f"{path}: unsupported model table")
+                    continue
+                for model in model_table.values:
+                    if not (isinstance(model, ast.Call) and isinstance(model.func, ast.Name)
+                            and model.func.id == "ModelAsset"):
+                        invalid.append(f"{path}: {ast.unparse(model)}")
+                        continue
+                    fields = {item.arg: item.value for item in model.keywords}
+                    if not all(isinstance(fields.get(key), ast.Constant)
+                               and isinstance(fields[key].value, str) and fields[key].value
+                               for key in ("url", "subdir")):
+                        invalid.append(f"{path}: {ast.unparse(model)}")
+                continue
+            if "requirements" not in keywords:
+                continue
+            requirements = ast.literal_eval(keywords["requirements"])
+            for model in requirements.get("models", []):
+                if not (isinstance(model, dict)
+                        and {"name", "subdir", "url", "sha256", "size_bytes"} <= model.keys()
+                        and isinstance(model.get("name"), str)
+                        and model["name"] and isinstance(model.get("subdir"), str)
+                        and model["subdir"]):
+                    invalid.append(f"{path}: {model!r}")
+    # A template can omit requirements entirely yet inherit bare picker names
+    # from its companion. Check the actual preparation boundary as well as AST.
+    from vibecomfy.runtime.prepared import PreparationError, build_plan
+
+    for record in ready_registry.repo_ready_template_discovery().records:
+        try:
+            plan = build_plan(ready_registry.workflow_from_ready(record.template_id), reference=record.template_id)
+        except PreparationError as exc:
+            invalid.append(f"{record.path}: {exc}")
+            continue
+        for model in plan.models:
+            if not {"name", "subdir", "url", "sha256", "size_bytes"} <= model.keys():
+                invalid.append(f"{record.path}: {model!r}")
+    assert not invalid, "Noncanonical model declarations:\n" + "\n".join(invalid)
+
+
+def test_undeclared_drafts_are_absent_from_ready_discovery_and_index() -> None:
+    draft_root = Path("draft_templates")
+    drafts = {path.relative_to(draft_root).with_suffix("").as_posix()
+              for path in draft_root.glob("*/*.py")}
+    assert drafts, "the deferred declarations remain preserved as draft fixtures"
+    assert drafts.isdisjoint(ready_template_ids())
+    indexed = {row["id"] for row in json.loads(Path("template_index.json").read_text())["templates"]}
+    assert drafts.isdisjoint(indexed)
+
+
+def test_sfx_template_preparation_declares_every_pinned_manifest_asset() -> None:
+    from vibecomfy.runtime.prepared import build_plan
+
+    manifest = json.loads(Path(
+        "ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/assets.json"
+    ).read_text())["assets"]
+    workflow = workflow_from_template_fixture("audio/hunyuan_foley_v2a")
+    planned = build_plan(workflow, reference="audio/hunyuan_foley_v2a").models
+    actual = {(row["subdir"], row["name"]): row for row in planned}
+    assert len(planned) == len(actual) == len(manifest) == 10
+    for row in manifest:
+        assert all(actual[(row["subdir"], row["name"])][field] == row[field]
+                   for field in ("url", "sha256", "size_bytes", "hf_revision"))

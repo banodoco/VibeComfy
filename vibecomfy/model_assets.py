@@ -66,8 +66,13 @@ if TYPE_CHECKING:
 _HF_SPLIT_FILES_RE = re.compile(r"/split_files/([^/]+)/[^/]+$")
 
 
-def extract_from_raw_workflow(raw: Mapping[str, Any]) -> list[dict[str, Any]]:
-    """Extract structured model asset entries from a ComfyUI workflow JSON object."""
+def extract_from_raw_workflow(
+    raw: Mapping[str, Any], *, allow_authoring_derivation: bool = True,
+) -> list[dict[str, Any]]:
+    """Extract assets, translating source hints only during authoring/porting.
+
+    Preparation callers must disable derivation and supply canonical records.
+    """
 
     if not isinstance(raw, Mapping):
         return []
@@ -80,7 +85,7 @@ def extract_from_raw_workflow(raw: Mapping[str, Any]) -> list[dict[str, Any]]:
     entries: list[dict[str, Any]] = []
     seen: set[tuple[str, str, str]] = set()
     for node in _iter_workflow_nodes(raw):
-        for entry in _entries_from_node(node):
+        for entry in _entries_from_node(node, allow_authoring_derivation=allow_authoring_derivation):
             key = _asset_entry_key(entry)
             if key in seen:
                 continue
@@ -192,16 +197,23 @@ def _asset_entry_key(entry: Mapping[str, Any]) -> tuple[str, str, str]:
     return (str(entry["name"]), str(entry["subdir"]), target_marker)
 
 
-def _entries_from_node(node: Mapping[str, Any]) -> Iterable[dict[str, Any]]:
+def _entries_from_node(
+    node: Mapping[str, Any], *, allow_authoring_derivation: bool = True,
+) -> Iterable[dict[str, Any]]:
     properties = node.get("properties", {})
     if not isinstance(properties, Mapping):
         return []
     models = properties.get("models", [])
     if not isinstance(models, list):
         return []
+    if not allow_authoring_derivation:
+        return _normalise_requirement_entries(models)
     class_type = _node_class_type(node)
     entries: list[dict[str, Any]] = []
     for model in models:
+        # URL-less UI hints cannot declare a downloadable requirement.
+        if not isinstance(model, Mapping) or not isinstance(model.get("url"), str) or not model["url"].strip():
+            continue
         entry = _normalise_model_entry(model, class_type=class_type)
         # Raw UI ``properties.models`` is a discovery hint, not an authored
         # local-asset declaration. Keep URL-less entries in the canonical
@@ -306,11 +318,11 @@ def _asset_for_reference(
     url = _url_for_registry_entry(entry)
     if not url:
         return None
-    asset: dict[str, Any] = {"name": value, "url": url, "subdir": subdir}
-    if getattr(entry, "sha256", None):
-        asset["sha256"] = entry.sha256
-    if getattr(entry, "size_bytes", None) is not None:
-        asset["size_bytes"] = entry.size_bytes
+    asset: dict[str, Any] = {
+        "name": value, "url": url, "subdir": subdir,
+        "sha256": getattr(entry, "sha256", None),
+        "size_bytes": getattr(entry, "size_bytes", None),
+    }
     revision = getattr(entry.source, "revision", None)
     if revision:
         asset["hf_revision"] = revision
@@ -403,17 +415,10 @@ def validate_authored_asset_declarations(
         if not isinstance(raw, Mapping):
             raise ValueError("workflow model asset is malformed")
         asset = dict(raw)
-        for primary, alias in (("name", "filename"), ("subdir", "directory")):
-            value = raw.get(primary, raw.get(alias))
-            relative = _relative_asset_path(value, field=primary)
-            if primary in raw and alias in raw:
-                alternative = _relative_asset_path(raw[alias], field=alias)
-                if relative != alternative:
-                    raise ValueError(f"conflicting workflow model asset {primary}/{alias} aliases")
-                # All consumers must see the primary spelling after accepting
-                # equivalent aliases; normalization may prefer the alias.
-                asset[alias] = value
-            asset[primary] = value
+        if "filename" in raw or "directory" in raw:
+            raise ValueError("workflow model assets require name and subdir; filename/directory aliases are not supported")
+        for field in ("name", "subdir"):
+            _relative_asset_path(raw.get(field), field=field)
         identity = (
             _relative_asset_path(asset["subdir"], field="subdir").as_posix(),
             _relative_asset_path(asset["name"], field="name").as_posix(),
@@ -485,10 +490,14 @@ def _normalise_requirement_entries(models: Iterable[Any]) -> list[dict[str, Any]
     seen: set[tuple[str, str, str]] = set()
     for model in models:
         if not isinstance(model, Mapping):
-            continue
+            raise ValueError("model declarations must be records with explicit name and subdir; bare filenames are not supported")
+        if "directory" in model or "filename" in model:
+            raise ValueError("model declarations require name and subdir, not filename/directory aliases")
+        if not isinstance(model.get("subdir"), str) or not model["subdir"]:
+            raise ValueError("model declaration requires an explicit non-empty subdir")
         entry = _normalise_model_entry(model, class_type="")
         if entry is None:
-            continue
+            raise ValueError("model declaration requires a non-empty name and a valid url or None")
         key = _asset_entry_key(entry)
         if key in seen:
             continue
@@ -513,6 +522,8 @@ def _normalise_model_entry(model: Any, *, class_type: str) -> dict[str, Any] | N
         "name": name,
         "url": _strip_download_true(url) if isinstance(url, str) else None,
         "subdir": subdir,
+        "sha256": None,
+        "size_bytes": None,
     }
     if url is None:
         entry["unresolved"] = True
@@ -544,7 +555,10 @@ def _subdir_for_model(model: Mapping[str, Any], *, class_type: str, url: str) ->
     split_subdir = _hf_split_files_subdir(url)
     if split_subdir is not None:
         return split_subdir
-    return _CLASS_TYPE_SUBDIRS.get(class_type, "checkpoints")
+    subdir = _CLASS_TYPE_SUBDIRS.get(class_type)
+    if subdir is None:
+        raise ValueError(f"model {model.get('name')!r}: unknown placement for {class_type!r}; declare subdir explicitly")
+    return subdir
 
 
 def _hf_split_files_subdir(url: str) -> str | None:

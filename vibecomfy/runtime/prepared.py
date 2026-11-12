@@ -77,30 +77,36 @@ def _model_entries(workflow: Any) -> tuple[dict[str, Any], ...]:
     declared = getattr(requirements, "models", ())
     runtime = getattr(requirements, "runtime", None)
     runtime_models = getattr(runtime, "models", ()) if runtime is not None else ()
+    for label, value in (("model_assets", authored), ("requirements.models", declared), ("runtime.models", runtime_models)):
+        if value is not None and not isinstance(value, (list, tuple)):
+            raise PreparationError(f"{label} must be an array of model records with explicit name and subdir")
     # Preparation consumes only source-backed rows already present in the
     # canonical IR.  In particular, it must not turn a picker filename into a
     # URL by consulting a model registry.  Metadata is preferred because it is
     # the rich canonical representation; requirements.models is the explicit
     # fallback for older envelopes.
-    if isinstance(authored, list) and authored:
+    if isinstance(authored, (list, tuple)) and authored:
         entries = authored
     elif isinstance(declared, (list, tuple)) or isinstance(runtime_models, (list, tuple)):
         source_entries = list(declared) + list(runtime_models)
-        entries = [
-            item if isinstance(item, Mapping) else {"name": item}
-            for item in source_entries
-            if isinstance(item, (Mapping, str))
-        ]
+        entries = source_entries
     else:
         entries = []
     normalized: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
     for raw_entry in entries:
         if not isinstance(raw_entry, Mapping):
-            raise PreparationError("model declarations must contain objects")
+            raise PreparationError("model declarations must be records with explicit name and subdir; bare filenames are not supported")
         entry = dict(raw_entry)
-        name = str(entry.get("name", entry.get("filename", "")))
-        subdir = str(entry.get("subdir", entry.get("directory", "")))
+        if "filename" in entry or "directory" in entry:
+            raise PreparationError("model declarations require name and subdir; filename/directory aliases are not supported")
+        for field in ("name", "subdir"):
+            if not isinstance(entry.get(field), str) or not entry[field]:
+                raise PreparationError(f"model declaration requires an explicit non-empty {field}")
+        for field in ("url", "sha256", "size_bytes"):
+            entry.setdefault(field, None)
+        name = entry["name"]
+        subdir = entry["subdir"]
         target = str(entry.get("target_path", f"{subdir}/{name}"))
         identity = (target, json.dumps(entry, sort_keys=True, default=str))
         if identity in seen:

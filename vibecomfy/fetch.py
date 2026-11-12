@@ -130,23 +130,25 @@ def _authorized_destination(root: Path, relative: Path, *, field: str) -> tuple[
 def _destination_for_entry(
     entry: Mapping[str, Any], *, root: Path | AssetRoots | None = None
 ) -> tuple[Path, Path, str]:
+    if "filename" in entry or "directory" in entry:
+        raise ValueError("model assets require name and subdir; filename/directory aliases are not supported")
     roots = resolve_asset_roots(root=root)
     base = roots.models
     if "target_path" in entry:
         target_path = entry["target_path"]
         target = _relative_asset_path(target_path, field="target_path")
+        if len(target.parts) < 3 or target.parts[0] != "custom_nodes":
+            raise ValueError("model asset target_path is only for files inside a custom-node pack (custom_nodes/<pack>/...)")
         authorized_root, destination = _authorized_destination(
             roots.comfyui, target, field="target_path"
         )
         return authorized_root, destination, "target_path"
     if "subdir" in entry:
         subdir = entry["subdir"]
-    elif "directory" in entry:
-        subdir = entry["directory"]
     else:
         subdir = None
     if not isinstance(subdir, str) or not subdir:
-        raise KeyError("model asset entry requires 'subdir' or 'directory'")
+        raise KeyError("model asset entry requires explicit 'subdir'; directory aliases are not supported")
     relative_subdir = _relative_asset_path(subdir, field="subdir")
     relative_name = _relative_asset_path(entry["name"], field="name")
     authorized_root, destination = _authorized_destination(
