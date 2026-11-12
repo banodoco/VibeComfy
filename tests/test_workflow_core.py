@@ -1274,6 +1274,50 @@ def test_public_image_media_input_rejects_arbitrary_choice_widget() -> None:
     assert exc.value.code == "public_input_incompatible"
 
 
+def test_model_requirement_optional_defaults_are_semantic_equivalents() -> None:
+    declaration = {
+        "name": "fixture.safetensors",
+        "url": "https://example.com/fixture.safetensors",
+        "subdir": "checkpoints",
+    }
+    workflow = VibeWorkflow("model-defaults", WorkflowSource("model-defaults"))
+    workflow.requirements.models = [declaration, dict(declaration)]
+    explicit = workflow.copy()
+    explicit.requirements.models = [
+        {"size_bytes": None, **entry, "sha256": None}
+        for entry in workflow.requirements.models
+    ]
+
+    assert workflow.semantic_digest() == explicit.semantic_digest()
+    assert workflow.requirements.models == [declaration, declaration]
+    assert "sha256" not in declaration
+    assert "size_bytes" not in declaration
+    explicit.requirements.models.pop()
+    assert workflow.semantic_digest() != explicit.semantic_digest()
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("sha256", "a" * 64),
+        ("size_bytes", 128),
+        ("hf_revision", "pinned-revision"),
+        ("gated", True),
+        ("extra_constraint", {"value": 1}),
+    ],
+)
+def test_model_requirement_constraints_affect_semantic_digest(field, value) -> None:
+    workflow = VibeWorkflow("model-pins", WorkflowSource("model-pins"))
+    workflow.requirements.models = [{
+        "name": "fixture.safetensors",
+        "url": "https://example.com/fixture.safetensors",
+        "subdir": "checkpoints",
+    }]
+    changed = workflow.copy()
+    changed.requirements.models[0][field] = value
+    assert workflow.semantic_digest() != changed.semantic_digest()
+
+
 def test_typed_port_type_optionality_and_asset_kind_affect_semantic_digest() -> None:
     def make(**changes):
         workflow = VibeWorkflow("typed-digest", WorkflowSource("typed-digest"))

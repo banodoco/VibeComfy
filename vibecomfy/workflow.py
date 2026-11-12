@@ -892,14 +892,16 @@ class VibeWorkflow:
             raise ValueError("duplicate or colliding subgraph definition identity")
         requirements = {
             field_name: sorted(str(value) for value in getattr(self.requirements, field_name))
-            for field_name in ("models", "custom_nodes", "missing_models", "missing_nodes", "unsupported")
+            for field_name in ("custom_nodes", "missing_models", "missing_nodes", "unsupported")
         }
         # Model declarations are records: dictionary insertion order is not
-        # semantic. Preserve their fields and multiplicity in canonical JSON.
+        # semantic. Preserve their fields and multiplicity in canonical JSON,
+        # using the same optional defaults before and after source emission.
+        from vibecomfy.model_assets import canonical_model_requirement
         from vibecomfy.testing.canonical import canonical_json
 
         requirements["models"] = sorted(
-            (copy.deepcopy(value) for value in self.requirements.models),
+            (canonical_model_requirement(value) for value in self.requirements.models),
             key=canonical_json,
         )
         semantic_custom_node_refs = list(self.requirements.custom_node_refs or ())

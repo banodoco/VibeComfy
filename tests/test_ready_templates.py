@@ -101,6 +101,43 @@ def _ready_template_paths() -> list[Path]:
     return sorted(Path("ready_templates").glob("*/*.py"))
 
 
+@pytest.mark.parametrize("template_id", ready_template_ids())
+@pytest.mark.parametrize("omit_optional_defaults", [False, True], ids=["declared", "sparse"])
+def test_ready_template_canonical_first_build_matches_admitted_candidate(
+    template_id: str, omit_optional_defaults: bool, tmp_path: Path
+) -> None:
+    from vibecomfy.porting.object_info.consume import class_entry_snapshot
+    from vibecomfy.workflow_bundle import emit_bundle_with_candidate
+
+    workflow = ready_registry.workflow_from_ready(template_id)
+    if omit_optional_defaults:
+        workflow.requirements.models = [
+            {
+                key: value
+                for key, value in model.items()
+                if key not in ("sha256", "size_bytes") or value is not None
+            }
+            if isinstance(model, Mapping)
+            else model
+            for model in workflow.requirements.models
+        ]
+    # Publication performs an independent staged build and checks its digest
+    # against the admitted workflow before writing either member of the pair.
+    class_types = {str(node.class_type) for node in workflow.nodes.values()}
+    class_types.update(
+        str(node["class_type"])
+        for node in workflow._semantic_definition_nodes(workflow.definitions)
+    )
+    with class_entry_snapshot(class_types):
+        emit_bundle_with_candidate(
+            workflow,
+            tmp_path / "workflow.py",
+            {"operation": "authored"},
+            None,
+            operation="authored",
+        )
+
+
 def test_ready_template_ids_include_curated_workflows() -> None:
     ids = ready_template_ids()
 

@@ -22,6 +22,33 @@ from vibecomfy.schema import InputSpec, NodeSchema
 from vibecomfy.workflow_bundle import WorkflowBundleError, load_bundle
 
 
+@pytest.mark.parametrize(
+    "optional_fields",
+    [{}, {"sha256": None}, {"size_bytes": None}, {"sha256": None, "size_bytes": None}],
+)
+def test_canonical_model_requirement_preserves_authored_record(optional_fields):
+    from vibecomfy.model_assets import canonical_model_requirement
+
+    authored = {
+        "name": "fixture.safetensors",
+        "url": "https://example.com/fixture.safetensors",
+        "subdir": "checkpoints",
+        "extra_constraint": {"values": [1]},
+        **optional_fields,
+    }
+    canonical = canonical_model_requirement(authored)
+    assert canonical == {**authored, "sha256": None, "size_bytes": None}
+    canonical["extra_constraint"]["values"].append(2)
+    assert authored["extra_constraint"]["values"] == [1]
+    assert {key for key in authored if key in ("sha256", "size_bytes")} == set(optional_fields)
+
+
+def test_canonical_model_requirement_preserves_legacy_filename():
+    from vibecomfy.model_assets import canonical_model_requirement
+
+    assert canonical_model_requirement("fixture.safetensors") == "fixture.safetensors"
+
+
 def _expected_asset(name: str, url: str | None, subdir: str, **extra: object) -> dict[str, object]:
     return {
         "name": name,

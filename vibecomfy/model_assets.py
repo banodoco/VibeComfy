@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import copy
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Mapping, Sequence
@@ -254,6 +255,20 @@ def _referenced_model_values(workflow: VibeWorkflow) -> list[dict[str, str]]:
                     }
                 )
     return references
+
+
+def canonical_model_requirement(value: Any) -> Any:
+    """Copy a requirement with the optional defaults used by model records.
+
+    Omitted hash and size fields have the same meaning as explicit nulls.
+    Keep every other field and leave the authored declaration untouched.
+    """
+    if not isinstance(value, Mapping):
+        return copy.deepcopy(value)
+    record = copy.deepcopy(dict(value))
+    record.setdefault("sha256", None)
+    record.setdefault("size_bytes", None)
+    return record
 
 
 def reconcile_model_requirements(
