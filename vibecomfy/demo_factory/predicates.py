@@ -5,6 +5,8 @@ at the fault locus.
 """
 from __future__ import annotations
 
+from vibecomfy.socket_types import canonical_socket_type
+
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from enum import Enum
@@ -218,10 +220,10 @@ def _socket_types(socket: dict[str, Any] | None) -> set[str]:
         return set()
     value = socket.get("type")
     if isinstance(value, list):
-        return {str(item) for item in value}
+        return {canonical_socket_type(item) for item in value}
     if value is None:
         return set()
-    return {str(value)}
+    return {canonical_socket_type(value)}
 
 
 def _types_compatible(
@@ -232,7 +234,7 @@ def _types_compatible(
     """Check materialized socket/link types without inventing missing schema."""
     output_types = _socket_types(output_socket)
     input_types = _socket_types(input_socket)
-    declared = str(link_type) if link_type is not None else ""
+    declared = canonical_socket_type(link_type)
     wildcards = {"", "*", "ANY"}
 
     if output_types and input_types:

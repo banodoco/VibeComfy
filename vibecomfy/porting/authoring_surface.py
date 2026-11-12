@@ -2,15 +2,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from vibecomfy.socket_types import canonical_socket_type
+
 _LITERAL_WIDGET_TYPES: frozenset[str] = frozenset(
     {
         "BOOLEAN",
         "BOOL",
-        "CHOICE",
         "COMBO",
         "DICT",
         "DOUBLE",
-        "ENUM",
         "FLOAT",
         "INT",
         "INTEGER",
@@ -37,7 +37,7 @@ def input_spec_is_literal_widget(spec: Any) -> bool:
     choices = getattr(spec, "choices", None)
     if isinstance(choices, (list, tuple)) and choices:
         return True
-    input_type = normalized_input_type(getattr(spec, "type", None))
+    input_type = canonical_socket_type(getattr(spec, "type", None))
     if input_type in _LITERAL_WIDGET_TYPES:
         return True
     if input_type in _NON_LITERAL_TYPES:
@@ -50,7 +50,7 @@ def input_spec_is_socket_only(spec: Any) -> bool:
 
     if spec is None or input_spec_is_literal_widget(spec):
         return False
-    return normalized_input_type(getattr(spec, "type", None)) not in _NON_LITERAL_TYPES
+    return canonical_socket_type(getattr(spec, "type", None)) not in _NON_LITERAL_TYPES
 
 
 __all__ = [

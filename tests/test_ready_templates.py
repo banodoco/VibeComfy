@@ -24,7 +24,108 @@ from vibecomfy.registry.ready_template import (
 from vibecomfy.registry.static_contract import compare_public_contracts, extract_ready_template_contract
 from vibecomfy.runtime.session import SessionConfig, _model_assets_from_workflow
 from vibecomfy.testing.canonical import canonical_equal
-from vibecomfy.workflow import VibeNode, VibeWorkflow, WorkflowSource
+from vibecomfy.workflow import (
+    VibeInput,
+    VibeNode,
+    VibeWorkflow,
+    WorkflowSource,
+    _public_input_matches_target,
+)
+
+
+@pytest.mark.parametrize("template_id", ready_template_ids())
+def test_ready_template_enum_inputs_match_combo_schema(template_id: str) -> None:
+    workflow = workflow_from_template_fixture(template_id)
+    for name, public_input in workflow.inputs.items():
+        if str(public_input.type).upper() not in {"CHOICE", "ENUM", "COMBO"}:
+            continue
+        target = workflow.nodes[public_input.node_id]
+        assert _public_input_matches_target(public_input, target, public_input.field, "COMBO"), name
+
+
+@pytest.mark.parametrize("template_id", ready_template_ids())
+def test_template_enum_fields_admit_public_inputs_against_combo_schema(template_id: str) -> None:
+    workflow = workflow_from_template_fixture(template_id)
+    for node_id, target in workflow.nodes.items():
+        for field, declared_type in zip(target.native_input_names or [], target.native_input_types or []):
+            if str(declared_type).upper() not in {"CHOICE", "ENUM", "COMBO"}:
+                continue
+            public_input = VibeInput(
+                f"node:{node_id}.{field}", node_id, field,
+                value=target.inputs.get(field), type=declared_type,
+            )
+            assert _public_input_matches_target(public_input, target, field, "COMBO"), public_input.name
+
+
+@pytest.mark.parametrize("template_id", ready_template_ids())
+def test_ready_template_offline_schemas_by_identity(template_id: str) -> None:
+    from vibecomfy.custom_node_refs import effective_lock_entries
+    from vibecomfy.node_packs import read_lockfile
+    from vibecomfy.node_packs._lockfile import resolve_lockfile_path
+    from vibecomfy.porting.object_info.consume import get_class, resolve_class_entry
+    from vibecomfy.workflow import _types_match
+
+    workflow = workflow_from_template_fixture(template_id)
+    locks = effective_lock_entries(workflow, read_lockfile(resolve_lockfile_path()))
+    locks_by_class = {str(cls): pack for pack in locks for cls in (pack.class_set or ())}
+    locks_by_name = {str(name): pack for pack in locks for name in (pack.name, pack.slug) if name}
+    schemas = {}
+    errors = []
+    for node_id, api_node in workflow.compile("api").items():
+        class_type = str(api_node["class_type"])
+        cached = get_class(class_type) or {}
+        slug = cached.get("pack_slug") or cached.get("pack")
+        locked = locks_by_class.get(class_type) or locks_by_name.get(str(slug))
+        target = workflow.nodes.get(str(node_id))
+        metadata = target.metadata if target is not None else {}
+        identity = metadata.get("object_info_identity")
+        source = metadata.get("schema_source")
+        if identity is None and isinstance(source, dict) and (
+            source.get("git_commit") or source.get("evidence_identity")
+        ):
+            identity = source
+        if identity is None and locked is not None and (locked.commit or locked.git_commit_sha):
+            identity = {"pack_slug": locked.slug or locked.name,
+                        "git_commit": locked.commit or locked.git_commit_sha}
+        if identity is None:
+            pin = "git_commit" if cached.get("git_commit") else "evidence_identity"
+            identity = {"pack_slug": slug, pin: cached.get(pin)}
+        if not identity.get("pack_slug") or not (
+            identity.get("git_commit") or identity.get("evidence_identity")
+        ):
+            errors.append((str(node_id), class_type, "no offline identity"))
+            continue
+        result = resolve_class_entry(class_type, identity, allow_class_fallback=False)
+        if result.entry is None:
+            errors.append((str(node_id), class_type, "offline identity did not resolve", identity))
+            continue
+        schemas[str(node_id)] = result.entry
+
+    for name, public in workflow.inputs.items():
+        entry = schemas.get(str(public.node_id))
+        target = workflow.nodes.get(public.node_id)
+        spec = None
+        for section in ("required", "optional"):
+            block = entry.get("inputs", {}).get(section, {}) if entry else {}
+            if public.field in block:
+                spec = block[public.field]
+                break
+        raw_type = spec[0] if isinstance(spec, list) and spec else None
+        schema_type = "COMBO" if isinstance(raw_type, list) else raw_type
+        matches = False
+        if target is not None and schema_type is not None:
+            if public.type is not None:
+                matches = _public_input_matches_target(public, target, public.field, schema_type)
+            else:
+                # Untyped descriptors inherit their retained node field's type.
+                names = target.native_input_names or []
+                types = target.native_input_types or []
+                index = names.index(public.field) if public.field in names else -1
+                inherited_type = types[index] if 0 <= index < len(types) else None
+                matches = _types_match(inherited_type, schema_type)
+        if not matches:
+            errors.append((name, public.node_id, public.field, public.type, schema_type))
+    assert not errors, (template_id, errors)
 
 
 SNAPSHOT_IDS = (

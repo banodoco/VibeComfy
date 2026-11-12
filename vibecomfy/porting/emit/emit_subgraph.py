@@ -9,6 +9,8 @@ via explicit re-exports so that existing callers are unaffected.
 
 from __future__ import annotations
 
+from vibecomfy.socket_types import canonical_socket_type
+
 from vibecomfy.ingest.normalize import door_get_links, door_get_nodes, door_get_widgets_values, door_nodes
 import hashlib
 import json
@@ -607,7 +609,7 @@ def _subgraph_signature(subgraph: _SubgraphDef) -> str:
     lines = [f"def {subgraph.slug}("]
     lines.append("    *,")
     for port in subgraph.inputs:
-        hint = COMFY_TYPE_TO_PY_HINT.get(str(port.type or "").upper())
+        hint = COMFY_TYPE_TO_PY_HINT.get(canonical_socket_type(port.type))
         annotation = f": {hint}" if hint else ""
         lines.append(f"    {port.name}{annotation},")
     lines.append("):")
@@ -615,7 +617,7 @@ def _subgraph_signature(subgraph: _SubgraphDef) -> str:
 def _subgraph_docstring(subgraph: _SubgraphDef) -> list[str]:
     title = subgraph.raw_name or subgraph.slug.replace("_", " ").title()
     variant = ""
-    image_inputs = sum(1 for port in subgraph.inputs if str(port.type or "").upper() == "IMAGE")
+    image_inputs = sum(1 for port in subgraph.inputs if canonical_socket_type(port.type) == "IMAGE")
     if image_inputs == 1:
         variant = " - single-image variant"
     elif image_inputs > 1:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from vibecomfy.socket_types import canonical_socket_type
+
 import copy
 import hashlib
 import json
@@ -1242,7 +1244,7 @@ def _socket_type_tokens(value: Any) -> frozenset[str] | None:
         return None
     tokens = frozenset(
         token
-        for token in (part.strip().upper() for part in str(value).split(","))
+        for token in (canonical_socket_type(part) for part in str(value).split(","))
         if token
     )
     if not tokens or tokens & _WILDCARD_TYPE_TOKENS:

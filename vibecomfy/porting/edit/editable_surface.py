@@ -8,6 +8,8 @@ and are never given a positional alias (``widget_0`` / ``output_0``).
 
 from __future__ import annotations
 
+from vibecomfy.socket_types import canonical_socket_type
+
 from vibecomfy.ingest.normalize import door_get_widgets_values
 import re
 from dataclasses import dataclass
@@ -321,7 +323,7 @@ def _instance_socket_names(
             ):
                 names.add(str(name))
                 continue
-            type_name = normalized_input_type(socket_type)
+            type_name = canonical_socket_type(socket_type)
             if type_name and type_name.isupper() and spec is None:
                 # Instance socket with no schema: treat uppercase Comfy types
                 # as wiring, never as a guessed widget.

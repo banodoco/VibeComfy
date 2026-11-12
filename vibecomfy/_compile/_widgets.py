@@ -10,6 +10,8 @@ module; conversion/emission tooling keeps that behavior in
 
 from __future__ import annotations
 
+from vibecomfy.socket_types import canonical_socket_type
+
 from dataclasses import dataclass
 from typing import Any
 
@@ -845,7 +847,7 @@ def _input_alias_from_schema(schema: Any | None) -> list[str | None]:
         return []
     names: list[str | None] = []
     for name, spec in inputs.items():
-        input_type = str(getattr(spec, "type", "") or "").upper()
+        input_type = canonical_socket_type(getattr(spec, "type", ""))
         if input_type in LINK_ONLY_TYPES:
             continue
         names.append(str(name))

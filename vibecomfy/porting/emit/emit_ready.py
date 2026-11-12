@@ -28,6 +28,8 @@ Part of the M2 structural decomposition of vibecomfy/porting/emitter.py.
 """
 from __future__ import annotations
 
+from vibecomfy.socket_types import canonical_socket_type
+
 from vibecomfy.ingest.normalize import canonical_definition_links, canonical_definition_nodes, canonical_node_widgets, canonical_node_widgets_values
 
 from vibecomfy.ingest.normalize import door_nodes
@@ -2122,12 +2124,12 @@ def _canonical_definition_helpers(
 
     def type_hint(member: Mapping[str, Any]) -> str:
         return {"INT": "int", "FLOAT": "float", "STRING": "str", "BOOLEAN": "bool"}.get(
-            str(member.get("type") or "").upper(), "Any"
+            canonical_socket_type(member.get("type")), "Any"
         )
 
     def capture_placeholder(member: Mapping[str, Any]) -> str:
         """Return a type-safe temporary value for recursive capture only."""
-        member_type = str(member.get("type") or "").upper()
+        member_type = canonical_socket_type(member.get("type"))
         if member_type in {"STRING", "COMBO"}:
             return repr("capture")
         if member_type == "INT":

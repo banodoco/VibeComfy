@@ -16,6 +16,7 @@ from vibecomfy.porting.widgets.compact_resolver import (
     WidgetNameResolution,
     compact_widget_names_for_node,
 )
+from vibecomfy.socket_types import COMBO, canonical_socket_type
 
 # ── structured field info ────────────────────────────────────────────────────
 
@@ -96,7 +97,7 @@ def _infer_kind(input_type: str | None) -> str:
     """Map a schema input type string to a compact field kind."""
     if input_type is None:
         return "unknown"
-    t = input_type.upper()
+    t = canonical_socket_type(input_type)
     if t in {"INT", "INTEGER"}:
         return "int"
     if t in {"FLOAT", "DOUBLE"}:
@@ -105,7 +106,7 @@ def _infer_kind(input_type: str | None) -> str:
         return "string"
     if t in {"BOOLEAN", "BOOL"}:
         return "bool"
-    if t in {"COMBO", "ENUM"}:
+    if t == COMBO:
         return "enum"
     return "unknown"
 

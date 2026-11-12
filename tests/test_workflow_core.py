@@ -1231,6 +1231,22 @@ def test_compile_rewrites_set_get_nodes_to_direct_links() -> None:
     assert api["4"]["inputs"]["images"] == ["1", 0]
 
 
+@pytest.mark.parametrize("public_type", ["CHOICE", "ENUM", "COMBO"])
+@pytest.mark.parametrize("target_type", ["CHOICE", "ENUM", "COMBO"])
+def test_public_enum_input_accepts_choice_schema_types(public_type, target_type) -> None:
+    workflow = VibeWorkflow("enum-input", WorkflowSource("enum-input"))
+    workflow.nodes["choice"] = VibeNode(
+        "choice", "Chooser", inputs={"mode": "fast"},
+        native_input_names=["mode"], native_input_types=[target_type],
+        native_input_optional=[False],
+    )
+    workflow.inputs["mode"] = VibeInput(
+        "mode", "choice", "mode", value="slow", type=public_type,
+    )
+
+    assert workflow.compile()["choice"]["inputs"]["mode"] == "slow"
+
+
 def test_public_image_media_input_accepts_only_retained_image_asset_widget() -> None:
     workflow = VibeWorkflow("image-asset", WorkflowSource("image-asset"))
     workflow.nodes["load"] = VibeNode(

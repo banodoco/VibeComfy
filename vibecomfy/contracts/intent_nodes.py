@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from vibecomfy.socket_types import canonical_socket_type
+
 import ast
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
@@ -1125,7 +1127,7 @@ def _validate_runtime_json_io(io_payload: Mapping[str, Any]) -> list[IntentNodeP
         if entry_problems:
             continue
         for name, socket_type in entries:
-            normalized = socket_type.strip().upper()
+            normalized = canonical_socket_type(socket_type)
             if normalized in RUNTIME_CODE_ALLOWED_IO_TYPES:
                 continue
             if normalized in RUNTIME_CODE_REJECTED_IO_TYPES or "TENSOR" in normalized:

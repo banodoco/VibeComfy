@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from vibecomfy.socket_types import canonical_socket_type
+
 from vibecomfy.ingest.normalize import door_get_nodes
 from dataclasses import asdict, dataclass, field
 from collections.abc import Mapping, Sequence
@@ -401,9 +403,9 @@ def filter_signature_rows_to_in_graph_nodes(
 
 
 def _compatible_output_signature_rank(row: NodeSignatureRow, compatible_output_type: str) -> int:
-    compatible_type = str(compatible_output_type).upper()
-    input_types = {str(field.type or "").upper() for field in row.inputs}
-    output_types = {str(field.type or "").upper() for field in row.outputs}
+    compatible_type = canonical_socket_type(compatible_output_type)
+    input_types = {canonical_socket_type(field.type) for field in row.inputs}
+    output_types = {canonical_socket_type(field.type) for field in row.outputs}
     auth_gated = any(type_name.startswith("AUTH_") for type_name in input_types)
 
     if compatible_type == "IMAGE" and not auth_gated:

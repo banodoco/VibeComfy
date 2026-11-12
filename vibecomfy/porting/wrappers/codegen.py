@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Sequence
 
+from vibecomfy.socket_types import COMBO, canonical_socket_type
+
 from .discovery import ClassSpec, InputFieldSpec
 
 GENERATOR_VERSION = "2.0.0"
@@ -235,7 +237,7 @@ def _parameter_specs(spec: ClassSpec) -> list[dict[str, Any]]:
 
 def _annotation_for(param: dict[str, Any]) -> str:
     field: InputFieldSpec = param["field"]
-    if field.type == "COMBO" and field.options and all(isinstance(value, str) for value in field.options):
+    if canonical_socket_type(field.type) == COMBO and field.options and all(isinstance(value, str) for value in field.options):
         return f"Literal[{', '.join(repr(value) for value in field.options)}] | _Omitted"
     return f"{SCALAR_TYPE_TO_ANNOTATION.get(field.type, 'Any')} | _Omitted"
 
