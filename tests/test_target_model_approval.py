@@ -76,26 +76,158 @@ def test_turbo_compiles_via_canonical_approval_with_exact_graph_bindings(templat
     assert all('sha256' not in d for d in refs)
 
 
-def test_literal_backslash_model_name_serializes_but_fails_approval():
+def _workflow_with_vae(value):
     workflow = workflow_from_ready('image/z_image_turbo')
-    workflow.set_input('vae', EXACT_VAE)
+    workflow.set_input('vae', value)
     # Remove the old source-backed asset, preserving exact picker authority.
     workflow.metadata['model_assets'] = [
         a for a in workflow.metadata['model_assets'] if a['name'] != 'ae.safetensors'
     ]
     workflow.requirements.models = [
-        EXACT_VAE if (a.get('name') if isinstance(a, dict) else a) == 'ae.safetensors' else a
+        value if (a.get('name') if isinstance(a, dict) else a) == 'ae.safetensors' else a
         for a in workflow.requirements.models
     ]
+    return workflow
+
+
+@pytest.mark.parametrize('advertised', [False, True])
+def test_literal_backslash_model_name_requires_target_authority(advertised):
+    workflow = _workflow_with_vae(EXACT_VAE)
     data = target_info(workflow)
-    data['VAELoader']['input']['required']['vae_name'] = [[EXACT_VAE]]
+    if advertised:
+        data['VAELoader']['input']['required']['vae_name'] = [[EXACT_VAE]]
     target = provider(data, model_availability='target')
     graph = workflow.compile('api')
     vae = next(n for n in graph.values() if n['class_type'] == 'VAELoader')
     assert vae['inputs']['vae_name'] == EXACT_VAE
     assert json.loads(json.dumps(graph))['3']['inputs']['vae_name'] == EXACT_VAE
+    if advertised:
+        record = load_bundle(workflow).compile(schema_provider=target)
+        assert record.api_projection['3']['inputs']['vae_name'] == EXACT_VAE
+    else:
+        with pytest.raises(WorkflowBundleError, match='model asset reference must be.*relative path'):
+            load_bundle(workflow).compile(schema_provider=target)
+
+
+@pytest.mark.parametrize('value', [
+    '../ae.safetensors', 'FLUX1/../ae.safetensors',
+    r'..\ae.safetensors', r'FLUX1\..\ae.safetensors',
+    '/models/ae.safetensors', r'C:\models\ae.safetensors',
+    'C:/models/ae.safetensors', r'\\server\models\ae.safetensors',
+    r'\models\ae.safetensors', 'C:ae.safetensors',
+])
+def test_unsafe_model_name_is_refused_even_when_advertised(value):
+    workflow = _workflow_with_vae(value)
+    data = target_info(workflow)
+    data['VAELoader']['input']['required']['vae_name'] = [[value]]
     with pytest.raises(WorkflowBundleError, match='model asset reference must be.*relative path'):
-        load_bundle(workflow).compile(schema_provider=target)
+        load_bundle(workflow).compile(schema_provider=provider(data, model_availability='target'))
+
+
+@pytest.mark.parametrize('advertised', [EXACT_VAE, 'FLUX1/ae.safetensors'])
+def test_windows_saved_workflow_imports_and_compiles_with_target_spelling(tmp_path, advertised):
+    from vibecomfy.security.provenance import Provenance
+    from vibecomfy.workflow_bundle import emit_bundle
+
+    source = tmp_path / 'windows-workflow.json'
+    saved = json.dumps({
+        'workflow_id': 'windows-saved-vae',
+        'nodes': [{'id': 3, 'type': 'VAELoader', 'widgets_values': [EXACT_VAE]}],
+        'links': [], 'groups': [],
+    })
+    source.write_text(saved, encoding='utf-8')
+    data = target_info(workflow_from_ready('image/z_image_turbo'))
+    data['VAELoader']['input']['required']['vae_name'] = [[advertised]]
+    target = provider(data, model_availability='target')
+    imported = load_bundle(source, schema_provider=target)
+    assert imported.workflow.compile('api')['3']['inputs']['vae_name'] == EXACT_VAE
+    destination = tmp_path / 'converted.py'
+    emit_bundle(imported.workflow, destination, {'operation': 'captured'})
+    bundle = load_bundle(destination, trust=Provenance.USER_CONFIRMED)
+    assert bundle.workflow.compile('api')['3']['inputs']['vae_name'] == EXACT_VAE
+    record = bundle.compile(schema_provider=target)
+    assert record.api_projection['3']['inputs']['vae_name'] == advertised
+    from vibecomfy.runtime.execution import authorized_queue_payload
+
+    assert authorized_queue_payload(record, bundle)['3']['inputs']['vae_name'] == advertised
+    assert source.read_text(encoding='utf-8') == saved
+
+
+@pytest.mark.parametrize('source,choices,expected', [
+    (EXACT_VAE, [EXACT_VAE, 'FLUX1/ae.safetensors'], EXACT_VAE),
+    (EXACT_VAE, ['FLUX1/ae.safetensors'], 'FLUX1/ae.safetensors'),
+    ('FLUX1/ae.safetensors', [EXACT_VAE], EXACT_VAE),
+])
+def test_target_picker_binding_uses_exact_advertised_spelling(source, choices, expected):
+    workflow = _workflow_with_vae(source)
+    data = target_info(workflow)
+    data['VAELoader']['input']['required']['vae_name'] = [choices]
+    target = provider(data, model_availability='target')
+    before = workflow.semantic_digest()
+    record = load_bundle(workflow).compile(schema_provider=target)
+    assert record.api_projection['3']['inputs']['vae_name'] == expected
+    record.assert_matches(load_bundle(workflow), api_projection=record.api_projection, ui_projection=record.ui_projection)
+    assert workflow.semantic_digest() == before
+
+
+def test_queue_record_still_refuses_a_different_model_prefix():
+    from vibecomfy.runtime.execution import authorized_queue_payload
+    from vibecomfy.testing.canonical import canonical_digest
+    from vibecomfy.workflow_bundle import ApprovedProjectionRecord
+
+    workflow = _workflow_with_vae(EXACT_VAE)
+    data = target_info(workflow)
+    data['VAELoader']['input']['required']['vae_name'] = [[EXACT_VAE]]
+    bundle = load_bundle(workflow)
+    approved = bundle.compile(schema_provider=provider(data, model_availability='target'))
+    forged = approved.to_dict()
+    forged['api_projection']['3']['inputs']['vae_name'] = 'other/ae.safetensors'
+    forged['api_digest'] = canonical_digest(forged['api_projection'])
+    with pytest.raises(WorkflowBundleError, match='does not match current bundle'):
+        authorized_queue_payload(ApprovedProjectionRecord.from_dict(forged), bundle)
+
+
+def test_target_picker_binding_does_not_match_only_a_basename():
+    workflow = _workflow_with_vae('FLUX1/ae.safetensors')
+    data = target_info(workflow)
+    data['VAELoader']['input']['required']['vae_name'] = [['other/ae.safetensors']]
+    with pytest.raises(WorkflowBundleError, match='not advertised by the selected target'):
+        load_bundle(workflow).compile(schema_provider=provider(data, model_availability='target'))
+
+
+@pytest.mark.parametrize('declaration', ['model_assets', 'requirements'])
+def test_target_picker_authority_does_not_relax_authored_asset_paths(declaration):
+    workflow = _workflow_with_vae(EXACT_VAE)
+    asset = {'name': EXACT_VAE, 'subdir': 'vae', 'url': None}
+    if declaration == 'model_assets':
+        workflow.metadata['model_assets'].append(asset)
+    else:
+        workflow.requirements.models.append(asset)
+    data = target_info(workflow)
+    data['VAELoader']['input']['required']['vae_name'] = [[EXACT_VAE]]
+    with pytest.raises(WorkflowBundleError, match='model asset (name|reference) must be.*relative path'):
+        load_bundle(workflow).compile(schema_provider=provider(data, model_availability='target'))
+
+
+@pytest.mark.parametrize('boundary', ['schema', 'edit'])
+def test_model_choice_validators_do_not_match_only_a_basename(boundary):
+    workflow = _workflow_with_vae('FLUX1/ae.safetensors')
+    data = target_info(workflow)
+    data['VAELoader']['input']['required']['vae_name'] = [['other/ae.safetensors']]
+    target = provider(data, model_availability='target')
+    if boundary == 'schema':
+        from vibecomfy.schema.validate import validate_api_against_schema
+
+        issues = validate_api_against_schema(workflow.compile('api'), target)
+        assert any(issue.code == 'value_not_in_enum' and issue.severity == 'error' for issue in issues)
+    else:
+        from vibecomfy.porting.edit.validate import validate_literal_value
+
+        issues = validate_literal_value(
+            value='FLUX1/ae.safetensors', spec=target.get_schema('VAELoader').inputs['vae_name'],
+            class_type='VAELoader', input_name='vae_name', context='test',
+        )
+        assert [(issue.code, issue.severity) for issue in issues] == [('asset_not_installed', 'warning')]
 
 
 def test_capture_is_detached_and_target_model_mode_is_explicit(tmp_path):

@@ -304,10 +304,12 @@ def resolve_model_entry(
     if entry is None:
         return None
     if subdir is not None:
-        normalized_subdir = subdir.replace("\\", "/")
+        normalized_subdir = _normalize_lookup_key(subdir)
+        if normalized_subdir is None:
+            return None
         if not any(
-            target.path.replace("\\", "/") == normalized_subdir
-            or target.path.replace("\\", "/").startswith(f"{normalized_subdir}/")
+            (target_key := _normalize_lookup_key(target.path)) is not None
+            and (target_key == normalized_subdir or target_key.startswith(f"{normalized_subdir}/"))
             for target in entry.targets
         ):
             return None
@@ -518,26 +520,14 @@ def _normalize_lookup_key(
     entry_id: str | None = None,
     field: str = "lookup alias",
 ) -> str | None:
-    if not isinstance(value, str) or not value or "\x00" in value:
+    from vibecomfy.model_assets import model_picker_reference
+
+    try:
+        return model_picker_reference(value, allow_backslash=True).logical_key
+    except ValueError:
         if entry_id is not None:
             raise ValueError(f"{entry_id}: invalid {field} {value!r}: must be a relative logical model path")
         return None
-    normalized = value.replace("\\", "/")
-    raw_parts = normalized.split("/")
-    posix, windows = PurePosixPath(normalized), PureWindowsPath(normalized)
-    if (
-        not normalized
-        or posix.is_absolute()
-        or windows.is_absolute()
-        or windows.root
-        or windows.drive
-        or normalized.endswith("/")
-        or any(part in {".", ".."} for part in raw_parts)
-    ):
-        if entry_id is not None:
-            raise ValueError(f"{entry_id}: invalid {field} {value!r}: must be a relative logical model path")
-        return None
-    return str(posix)
 
 
 def _lookup_index(

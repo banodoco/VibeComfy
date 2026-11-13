@@ -8,7 +8,10 @@ import threading
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path, PurePath
-from typing import Any, Callable, Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Callable, Literal, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    from vibecomfy.model_assets import ModelPickerReference
 
 from vibecomfy.comfy_command import has_comfyui_runtime
 from vibecomfy.runtime.client import ComfyClient
@@ -1618,21 +1621,29 @@ class TargetSchemaProvider(RuntimeSchemaProvider):
         return dict(asset) if asset is not None else None
 
     def target_model_reference(self, class_type: str, field: str, value: str) -> bool:
-        """Check one exact model-picker name in this target's captured schema."""
+        """Check whether this target advertises the model picker reference."""
+        return self.target_model_value(class_type, field, value) is not None
+
+    def target_model_value(self, class_type: str, field: str, value: str | ModelPickerReference) -> str | None:
+        """Bind a portable model reference to the target's exact wire spelling."""
         if self.model_availability != "target":
-            return False
+            return None
+        from vibecomfy.model_assets import ModelPickerReference, model_picker_reference
+
+        reference = (value if isinstance(value, ModelPickerReference)
+                     else model_picker_reference(value, allow_backslash=True))
         info = self.object_info().get(class_type)
         inputs = info.get("input") if isinstance(info, Mapping) else None
         if not isinstance(inputs, Mapping):
-            return False
+            return None
+        choices = []
         for section in ("required", "optional"):
             fields = inputs.get(section)
             spec = fields.get(field) if isinstance(fields, Mapping) else None
             if isinstance(spec, (list, tuple)) and spec:
-                choices = spec[0]
-                if isinstance(choices, (list, tuple)) and value in choices:
-                    return True
-        return False
+                if isinstance(spec[0], (list, tuple)):
+                    choices.extend(spec[0])
+        return reference.advertised_value(choices)
 
     def object_info(self) -> dict[str, Any]:
         if self._object_info is None:

@@ -45,14 +45,15 @@ def validate_literal_value(
         ]
     issues: list[PortIssue] = []
     choices = getattr(spec, "choices", None) or []
-    if choices and value not in choices and _coerce_choice_value(value, choices) is _NO_MATCH:
+    asset_enum = _is_asset_enum(value=value, spec=spec, input_name=input_name, choices=choices)
+    if choices and value not in choices and _coerce_choice_value(value, choices, model=asset_enum) is _NO_MATCH:
         detail = {
             "class_type": class_type,
             "input": input_name,
             "value": value,
             "choices": list(choices),
         }
-        if _is_asset_enum(value=value, spec=spec, input_name=input_name, choices=choices):
+        if asset_enum:
             issues.append(
                 _issue(
                     "asset_not_installed",
@@ -201,7 +202,15 @@ def _looks_like_asset_reference(value: str) -> bool:
     )
 
 
-def _coerce_choice_value(value: Any, choices: list[Any]) -> Any:
+def _coerce_choice_value(value: Any, choices: list[Any], *, model: bool = False) -> Any:
+    if model and isinstance(value, str):
+        from vibecomfy.model_assets import model_picker_reference
+
+        try:
+            match = model_picker_reference(value, allow_backslash=True).advertised_value(choices)
+        except ValueError:
+            return _NO_MATCH
+        return match if match is not None else _NO_MATCH
     if isinstance(value, str):
         normalized = value.replace("\\", "/")
         for choice in choices:

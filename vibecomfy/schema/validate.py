@@ -331,7 +331,7 @@ def validate_api_against_schema(api_dict: dict[str, Any], provider: SchemaProvid
             if (
                 choices
                 and value not in choices
-                and _coerce_choice_value(value, choices) is _NO_MATCH
+                and _coerce_choice_value(value, choices, class_type=class_type, input_name=name) is _NO_MATCH
                 and not _field_compatible(class_type, name, "value_not_in_enum")
                 and not _is_dynamic_file_choice(class_type, name)
             ):
@@ -771,7 +771,7 @@ def propose_schema_normalization(
                 if _is_api_link(value):
                     continue
                 choices = getattr(schema_inputs[name], "choices", None) or []
-                coerced = _coerce_choice_value(value, choices)
+                coerced = _coerce_choice_value(value, choices, class_type=class_type, input_name=name)
                 if coerced is not _NO_MATCH and not _same_value(coerced, value):
                     ops.append(
                         NormalizationOp(
@@ -1368,7 +1368,15 @@ def _truncate_dynamic_count_value(value: Any, n: int = 120) -> str:
 _NO_MATCH = object()
 
 
-def _coerce_choice_value(value: Any, choices: list[Any]) -> Any:
+def _coerce_choice_value(value: Any, choices: list[Any], *, class_type: str = "", input_name: str = "") -> Any:
+    if _choice_scope(class_type, input_name, value) == "environment_asset" and isinstance(value, str):
+        from vibecomfy.model_assets import model_picker_reference
+
+        try:
+            match = model_picker_reference(value, allow_backslash=True).advertised_value(choices)
+        except ValueError:
+            return _NO_MATCH
+        return match if match is not None and match != value else _NO_MATCH
     if value in choices:
         return _NO_MATCH
     if not isinstance(value, str):
