@@ -281,12 +281,16 @@ def referenced_model_requirements(
             for item in unresolved
         )
         raise ValueError(f"cannot emit ready requirements for unresolved model references: {labels}")
-    return [
-        canonical_model_requirement({
+    records = []
+    for asset in [*resolved, *unresolved]:
+        record = canonical_model_requirement({
             key: value for key, value in asset.items() if key not in _MODEL_REFERENCE_FIELDS
         })
-        for asset in [*resolved, *unresolved]
-    ]
+        # An unresolved draft still has the same record shape as a declared
+        # local ModelAsset, including its explicit lack of a download source.
+        record.setdefault("url", None)
+        records.append(record)
+    return records
 
 
 def model_picker_value(asset: Mapping[str, Any], folder_type: str = "", *, qualified: bool = False) -> str:

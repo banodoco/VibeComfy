@@ -78,7 +78,6 @@ __all__ = [
     "_model_path_parts",
     "_model_basename",
     "_model_family_constant_name",
-    "_canonical_prefixed_model_value",
     "_model_constant_base_priority",
     "_canonical_model_values_by_base",
     "_constant_name_for_model_value",
@@ -584,27 +583,6 @@ def _model_family_constant_name(value: str, format_suffix: str = "") -> str | No
     return None
 
 
-def _canonical_prefixed_model_value(values: list[str]) -> str | None:
-    unique = sorted(set(values))
-    if len(unique) < 2:
-        return None
-
-    prefixed = [
-        value
-        for value in unique
-        if len(_model_path_parts(value)) > 1
-    ]
-    if not prefixed:
-        return None
-
-    parent_dirs = {
-        "/".join(part.lower() for part in _model_path_parts(value)[:-1])
-        for value in prefixed
-    }
-    if len(parent_dirs) > 1:
-        return None
-
-    return max(prefixed, key=lambda value: (len(_model_path_parts(value)), len(value), value))
 _MODEL_CONSTANT_BASE_PRIORITY: tuple[str, ...] = (
     "MEL_BAND_ROFORMER_NAME",
     "SPATIAL_UPSCALER_NAME",
@@ -631,6 +609,12 @@ def _model_constant_base_priority(base: str) -> tuple[int, str]:
 def _canonical_model_values_by_base(
     candidates: list[tuple[str, str, Any, str]],
 ) -> dict[tuple[str, str], tuple[str, str]]:
+    """Share constant names only for exactly equal picker values.
+
+    A basename, case-folded spelling or directory prefix cannot establish
+    asset identity. Folder-aware resolution belongs to model_assets; emission
+    must preserve every authored widget value, including editable drafts.
+    """
     grouped: dict[str, list[tuple[str, str]]] = {}
     for _nid, field, value, category in candidates:
         if category != "model" or not isinstance(value, str):
@@ -638,18 +622,13 @@ def _canonical_model_values_by_base(
         base = _constant_name_for_model_value(field, value)
         if base is None:
             base = _constant_name_base_for_category(category, field)
-        grouped.setdefault(_model_basename(value).lower(), []).append((base, value))
+        grouped.setdefault(value, []).append((base, value))
 
     canonical_by_raw: dict[tuple[str, str], tuple[str, str]] = {}
-    for records in grouped.values():
-        values = [value for _base, value in records]
-        unique_values = set(values)
-        canonical = values[0] if len(unique_values) == 1 else _canonical_prefixed_model_value(values)
-        if canonical is None:
-            continue
+    for value, records in grouped.items():
         chosen_base = min({base for base, _value in records}, key=_model_constant_base_priority)
-        for base, value in records:
-            canonical_by_raw[(base, value)] = (chosen_base, canonical)
+        for base, _value in records:
+            canonical_by_raw[(base, value)] = (chosen_base, value)
     return canonical_by_raw
 
 
@@ -807,7 +786,6 @@ def _hoist_constants(
             if canonical_model is not None:
                 base, canonical_model_value = canonical_model
                 emit_value = canonical_model_value
-                value_key_value = _model_basename(value).lower()
             # Preserve the authored runtime spelling.  Backslashes are valid
             # model-library paths (and are meaningful on Windows); changing
             # them during emission makes an otherwise untouched workflow

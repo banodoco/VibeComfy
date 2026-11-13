@@ -1669,14 +1669,18 @@ def _finalize_impl(
     wf.finalize_metadata()
     # Recompute inferred requirements before applying ready metadata.  Edits
     # to model-picker fields must win over the source template's old witness.
-    if external_custody is not None and isinstance(requirements, Mapping):
-        # The companion stores the original requirement witness, but model
-        # picker values remain ordinary editable constructor inputs.  Refresh
-        # only the model field from the rebuilt IR so editing a loader cannot
-        # silently leave a stale model declaration behind.
+    existing_models = requirements.get("models") if isinstance(requirements, Mapping) else None
+    graph_model_labels = (
+        isinstance(existing_models, (list, tuple)) and bool(existing_models)
+        and all(isinstance(item, str) for item in existing_models)
+    )
+    if isinstance(requirements, Mapping) and (external_custody is not None or graph_model_labels):
+        # Companion witnesses and older draft graph labels must be refreshed
+        # from the constructed graph's structured records. Labels never select
+        # an asset by filename; the shared resolver uses the loader folder and
+        # declared destination. Graphless labels remain invalid declarations.
         from vibecomfy.model_assets import referenced_model_requirements
 
-        existing_models = requirements.get("models")
         current_models = referenced_model_requirements(wf)
         if current_models and isinstance(existing_models, (list, tuple)) and existing_models:
             requirements = dict(requirements)

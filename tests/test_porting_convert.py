@@ -237,6 +237,40 @@ def test_ready_requirements_refuses_unstructured_graphless_model_assets(record, 
         convert_module._ready_requirements(wf)
 
 
+def test_scratchpad_requirements_resolve_nested_picker_to_declared_destination() -> None:
+    workflow = _wf("nested-draft-model")
+    workflow.nodes["1"] = _regular_node("1", "CheckpointLoaderSimple")
+    workflow.nodes["1"].inputs["ckpt_name"] = "nested/model.safetensors"
+    asset = {
+        "name": "model.safetensors", "subdir": "checkpoints/nested",
+        "url": "https://example.test/model", "sha256": None, "size_bytes": None,
+    }
+    workflow.metadata["model_assets"] = [asset]
+    workflow.requirements.models = [asset]
+
+    assert convert_module._scratchpad_model_requirements(workflow) == [asset]
+
+
+def test_template_finalization_produces_records_from_graph_model_labels() -> None:
+    workflow = _wf("graph-model-labels")
+    workflow.nodes["1"] = _regular_node("1", "CheckpointLoaderSimple")
+    workflow.nodes["1"].inputs["ckpt_name"] = "nested/model.safetensors"
+    asset = {
+        "name": "model.safetensors", "subdir": "checkpoints/nested",
+        "url": "https://example.test/model", "sha256": None, "size_bytes": None,
+    }
+    metadata = {
+        "model_assets": [asset],
+        "requirements": {"models": ["nested/model.safetensors"]},
+    }
+    workflow.metadata.update(metadata)
+
+    workflow.finalize({}, metadata=metadata, outputs=[])
+
+    assert workflow.requirements.models == [asset]
+    assert convert_module._ready_requirements(workflow)["models"] == [asset]
+
+
 def test_scratchpad_pair_uses_picker_model_requirements_for_v2_rebuild(
     tmp_path,
 ) -> None:

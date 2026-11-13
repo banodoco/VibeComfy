@@ -298,9 +298,8 @@ def port_convert_workflow(
             output_mode="scratchpad",
             ready_id=None,
         )
-        # Draft scratchpads retain the historical editable witness. They are
-        # not installable manifests, so unresolved picker labels can survive
-        # here; strict structured resolution is applied only to ready output.
+        # Drafts can retain unresolved assets as records; only ready output
+        # requires every record to resolve to a declared source.
         emission_workflow = workflow
         if workflow.requirements.models:
             emission_workflow = workflow.copy()
@@ -882,24 +881,11 @@ def _ready_requirements(workflow: VibeWorkflow) -> dict[str, Any]:
 
 
 def _scratchpad_model_requirements(workflow: VibeWorkflow) -> list[Any]:
-    """Refresh draft requirements while preserving their legacy open-ended form."""
-    from vibecomfy.model_assets import _referenced_model_values, reconcile_model_requirements
+    """Refresh editable drafts with the same destination records as ready output."""
+    from vibecomfy.model_assets import referenced_model_requirements, reconcile_model_requirements
 
-    current: list[str] = []
-    seen: set[str] = set()
-    for reference in _referenced_model_values(workflow):
-        value = reference.get("value")
-        if isinstance(value, str) and value and value not in seen:
-            current.append(value)
-            seen.add(value)
-    assets = workflow.metadata.get("model_assets")
-    rich_by_name = {
-        str(item.get("name", item.get("filename", ""))): item
-        for item in (assets or [])
-        if isinstance(item, Mapping)
-    }
-    inferred = [rich_by_name.get(name, name) for name in current]
-    return reconcile_model_requirements(workflow.requirements.models, inferred) if current else list(workflow.requirements.models)
+    inferred = referenced_model_requirements(workflow)
+    return reconcile_model_requirements(workflow.requirements.models, inferred) if inferred else list(workflow.requirements.models)
 
 
 # ---------------------------------------------------------------------------
