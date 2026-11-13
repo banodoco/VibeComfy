@@ -57,14 +57,17 @@ def test_both_input_shapes_preserve_order_choices_and_defaults(shape, class_type
     raw = entry['inputs']['required'][field]
     expected = raw[0] if isinstance(raw[0], list) else raw[1]['options']
     expected_default = raw[1].get('default') if len(raw) > 1 else None
+    entry['input'] = entry.pop('inputs')
     selected = provider({class_type: entry}, model_availability='target')
     schema = selected.get_schema(class_type)
     assert schema.inputs[field].choices == expected
     assert schema.inputs[field].default == expected_default
     assert schema.inputs[field].required
-    assert list(schema.inputs) == [name for name in entry['input_order_all'] if name in schema.inputs]
+    widget_names = [name for name in entry['object_info_widget_order'] if isinstance(name, str)]
+    remaining = [name for group in entry['input'] for name in entry['input'][group]]
+    assert list(schema.inputs) == list(dict.fromkeys(widget_names + remaining))
     assert field in compact_literal_widget_order(entry)
-    assert field in widget_order(entry['inputs'], entry['input_order_all'])
+    assert field in widget_order(entry['input'], entry['input_order_all'])
     discovered = _inputs_from_object_info(entry)[field]
     assert discovered.options == tuple(str(value) for value in expected)
     assert discovered.default == expected_default
@@ -155,3 +158,29 @@ def test_queue_400_preserves_node_errors_and_truncates_body(monkeypatch, transpo
     excerpt = error.value.message.split('response body: ', 1)[1]
     assert len(excerpt) <= 600
     assert excerpt.endswith('...')
+
+
+def test_normalized_dict_specs_share_the_reader_and_keep_false_defaults(monkeypatch):
+    from vibecomfy.porting.object_info import consume
+    from vibecomfy.porting.wrappers.discovery import _inputs_from_object_info
+
+    entry = {'inputs': {
+        'required': {
+            'quality': {'type': 'COMBO', 'options': ['V0', '128k'], 'default': 'V0'},
+            'enabled': {'type': 'BOOLEAN', 'default': False},
+        },
+        'optional': {'count': {'type': 'INT', 'default': 0}},
+    }, 'input_order_all': ['enabled', 'quality', 'count'],
+        'object_info_widget_order': ['enabled', 'quality', 'count'], 'outputs': []}
+    selected = provider({'Normalized': entry}, model_availability='target')
+    schema = selected.get_schema('Normalized')
+    assert list(schema.inputs) == ['enabled', 'quality', 'count']
+    assert schema.inputs['quality'].choices == ['V0', '128k']
+    assert schema.inputs['enabled'].default is False
+    assert schema.inputs['enabled'].required and not schema.inputs['count'].required
+    discovered = _inputs_from_object_info(entry)
+    assert discovered['quality'].options == ('V0', '128k')
+    assert discovered['enabled'].has_default and discovered['enabled'].default is False
+    monkeypatch.setattr(consume, 'get_class', lambda class_type: entry)
+    assert consume.class_defaults('Normalized') == {'quality': 'V0', 'enabled': False, 'count': 0}
+    assert consume.class_input_types('Normalized') == {'quality': 'COMBO', 'enabled': 'BOOLEAN', 'count': 'INT'}

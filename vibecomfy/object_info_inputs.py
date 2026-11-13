@@ -17,6 +17,7 @@ class ObjectInfoInput:
     metadata: Mapping[str, Any]
     raw: Any
     required: bool = False
+    hidden: bool = False
 
     @property
     def default(self) -> Any:
@@ -27,7 +28,9 @@ class ObjectInfoInput:
         return "default" in self.metadata
 
 
-def read_object_info_input(raw: Any, *, required: bool = False) -> ObjectInfoInput:
+def read_object_info_input(
+    raw: Any, *, required: bool = False, hidden: bool = False,
+) -> ObjectInfoInput:
     """Read type, choices and widget metadata from one input spec.
 
     V1: ``[["a", "b"], {"default": "a"}]``.
@@ -61,21 +64,22 @@ def read_object_info_input(raw: Any, *, required: bool = False) -> ObjectInfoInp
         metadata=metadata,
         raw=raw,
         required=required,
+        hidden=hidden,
     )
 
 
 def object_info_input_order(info: Mapping[str, Any]) -> list[str]:
     """Read the declared order, retaining any unlisted fields in source order."""
-    order = info.get("input_order_all")
-    if isinstance(order, (list, tuple)):
-        return [name for name in order if isinstance(name, str) and name]
+    # Preserve recorded widget ordering: it is also used to bind native
+    # input rosters and therefore contributes to workflow semantic digests.
+    for key in ("object_info_widget_order", "input_order_all"):
+        order = info.get(key)
+        if isinstance(order, (list, tuple)):
+            return [name for name in order if isinstance(name, str) and name]
     order = info.get("input_order")
     if isinstance(order, Mapping):
         return [name for group in ("required", "optional", "hidden")
                 for name in order.get(group, ()) if isinstance(name, str) and name]
-    order = info.get("object_info_widget_order")
-    if isinstance(order, (list, tuple)):
-        return [name for name in order if isinstance(name, str) and name]
     return []
 
 
@@ -86,10 +90,11 @@ def read_object_info_inputs(info: Mapping[str, Any]) -> dict[str, ObjectInfoInpu
         groups = info.get("inputs")
     fields = {}
     if isinstance(groups, Mapping):
-        for group in ("required", "optional"):
-            rows = groups.get(group)
-            if isinstance(rows, Mapping):
+        for group, rows in groups.items():
+            if group in {"required", "optional", "hidden"} and isinstance(rows, Mapping):
                 for name, raw in rows.items():
-                    fields[str(name)] = read_object_info_input(raw, required=group == "required")
+                    fields[str(name)] = read_object_info_input(
+                        raw, required=group == "required", hidden=group == "hidden",
+                    )
     names = dict.fromkeys([*object_info_input_order(info), *fields])
     return {name: fields[name] for name in names if name in fields}

@@ -136,7 +136,7 @@ def _node_local_class_defaults(node: Any) -> dict[str, Any]:
         if entry is not None:
             return {
                 name: spec.default for name, spec in read_object_info_inputs(entry).items()
-                if spec.has_default
+                if not spec.hidden and spec.has_default
             }
     return dict(class_defaults(class_type))
 

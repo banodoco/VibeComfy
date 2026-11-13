@@ -2041,7 +2041,7 @@ def _parse_input_spec(raw: Any, *, required: bool, name: str | None = None) -> I
     return InputSpec(
         type=str(typ) if typ is not None else None,
         required=required and not (typ == AUTOGROW_V3_TYPE and auto_grow_min == 0),
-        default=attrs.get("default"),
+        default=declaration.default,
         choices=choices,
         min=typed_bound(attrs.get("min")),
         max=typed_bound(attrs.get("max")),

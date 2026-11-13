@@ -676,7 +676,6 @@ def _sanitize_observed_inputs(raw_inputs: Any) -> Any:
             if not (isinstance(spec, list) and spec):
                 fixed_group[name] = spec
                 continue
-            head = spec[0]
             choices = read_object_info_input(spec).choices
             if choices is not None:
                 # A combo is faithfully captured only when EVERY option is a
@@ -684,11 +683,11 @@ def _sanitize_observed_inputs(raw_inputs: Any) -> Any:
                 # lists, dummy artifacts) becomes the established unresolved
                 # marker instead of a fabricated option list.
                 if choices and all(isinstance(c, str) and not _is_artifact(c) for c in choices):
-                    fixed_group[name] = [head] + [_clean_meta(item) for item in spec[1:]]
+                    fixed_group[name] = [_clean_meta(item) for item in spec]
                 else:
                     fixed_group[name] = ["COMBO", {"unresolved_choices": True}]
             else:
-                fixed_group[name] = [head] + [_clean_meta(item) for item in spec[1:]]
+                fixed_group[name] = [_clean_meta(item) for item in spec]
         cleaned_sections[section] = fixed_group
     return cleaned_sections
 

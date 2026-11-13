@@ -515,7 +515,7 @@ def _inputs_from_object_info(info: dict[str, Any]) -> dict[str, InputFieldSpec]:
             options=tuple(str(item) for item in spec.choices) if spec.choices is not None else None,
             widget_metadata=dict(spec.metadata),
         )
-        for name, spec in read_object_info_inputs(info).items()
+        for name, spec in read_object_info_inputs(info).items() if not spec.hidden
     }
 
 

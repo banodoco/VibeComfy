@@ -881,7 +881,7 @@ def class_defaults(class_type: str) -> dict[str, Any]:
         return {}
     defaults: dict[str, Any] = {}
     for name, declaration in read_object_info_inputs(entry).items():
-        if declaration.has_default:
+        if not declaration.hidden and declaration.has_default:
             defaults[name] = declaration.default
     return defaults
 
@@ -893,7 +893,7 @@ def class_input_types(class_type: str) -> dict[str, str]:
         return {}
     return {
         name: ("ENUM" if spec.type == "CHOICE" else spec.type or "")
-        for name, spec in read_object_info_inputs(entry).items()
+        for name, spec in read_object_info_inputs(entry).items() if not spec.hidden
     }
 
 
@@ -1019,7 +1019,7 @@ def list_classes() -> list[str]:
 
 
 def _iter_input_specs(entry: dict[str, Any]) -> list[tuple[str, Any]]:
-    return [(name, spec.raw) for name, spec in read_object_info_inputs(entry).items()]
+    return [(name, spec.raw) for name, spec in read_object_info_inputs(entry).items() if not spec.hidden]
 
 
 def _normalize_input_type(value: Any) -> str:

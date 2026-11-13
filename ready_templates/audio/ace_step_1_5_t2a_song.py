@@ -40,14 +40,14 @@ READY_METADATA = ReadyMetadata.build(
     requirements={'custom_nodes': ['EmptyAceStep1', 'TextEncodeAceStepAudio1']},
     operation='authored',
     provenance={'operation': 'authored', 'source_workflow': 'ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json', 'source_id': 'audio/ace_step_1_5_t2a_song'},
-    source_id='audio/ace_step_1_5_t2a_song',
     source_path='ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json',
+    source_id='audio/ace_step_1_5_t2a_song',
     upstream_source_id='ace_step_1_5_t2a_song',
     source_type='api',
     source_workflow_path='ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json',
     output_mode='ready_template',
     ready_id='audio/ace_step_1_5_t2a_song',
-    source_bundle={'format_version': 2, 'generation_id': '902d6274acc0703850f01d6c8d06fa78e7b4973cef03eb0615eb88709d5be37a', 'custody_digest': 'b98a90b577626eb78376e8431d28b216dd9211013a7f9d4f9ba57fcaaf50c2c9'},
+    source_bundle={'format_version': 2, 'generation_id': '491b751abcc454c6ef70906515c2157c9515ef88c7c8e1c8c045ec35916ef4a4', 'custody_digest': 'bca2c0af3a2a387caa11438c48512228315508c20b736bb089109f0b71d2bc2f'},
 )
 
 def build() -> VibeWorkflow:
@@ -89,7 +89,7 @@ def build() -> VibeWorkflow:
         )
 
         modelsamplingauraflow = ModelSamplingAuraFlow(
-            _native_ports={'native_input_names': ['model', 'shift'], 'native_output_names': ['MODEL'], 'native_input_types': ['MODEL', 'FLOAT'], 'native_output_types': ['MODEL'], 'native_input_optional': [False, False], 'native_input_asset_kinds': None, 'native_output_slots': None},
+            _native_ports={'native_input_names': ['shift', 'model'], 'native_output_names': ['MODEL'], 'native_input_types': ['FLOAT', 'MODEL'], 'native_output_types': ['MODEL'], 'native_input_optional': [False, False], 'native_input_asset_kinds': None, 'native_output_slots': None},
             shift=3,
             model=unetloader.out('MODEL'),
             _id='78',
@@ -97,7 +97,7 @@ def build() -> VibeWorkflow:
         )
 
         textencodeacestepaudio1_5 = TextEncodeAceStepAudio1_5(
-            _native_ports={'native_input_names': ['clip', 'tags', 'lyrics', 'seed', 'bpm', 'duration', 'timesignature', 'language', 'keyscale', 'generate_audio_codes', 'cfg_scale', 'temperature', 'top_p', 'top_k', 'min_p'], 'native_output_names': ['CONDITIONING'], 'native_input_types': ['CLIP', 'STRING', 'STRING', 'INT', 'INT', 'FLOAT', 'COMBO', 'COMBO', 'COMBO', 'BOOLEAN', 'FLOAT', 'FLOAT', 'FLOAT', 'INT', 'FLOAT'], 'native_output_types': ['CONDITIONING'], 'native_input_optional': [False, False, False, False, False, False, False, False, False, False, False, False, False, False, False], 'native_input_asset_kinds': None, 'native_output_slots': None},
+            _native_ports={'native_input_names': ['tags', 'lyrics', 'seed', 'bpm', 'duration', 'timesignature', 'language', 'keyscale', 'generate_audio_codes', 'cfg_scale', 'temperature', 'top_p', 'top_k', 'min_p', 'clip'], 'native_output_names': ['CONDITIONING'], 'native_input_types': ['STRING', 'STRING', 'INT', 'INT', 'FLOAT', 'COMBO', 'COMBO', 'COMBO', 'BOOLEAN', 'FLOAT', 'FLOAT', 'FLOAT', 'INT', 'FLOAT', 'CLIP'], 'native_output_types': ['CONDITIONING'], 'native_input_optional': [False, False, False, False, False, False, False, False, False, False, False, False, False, False, False], 'native_input_asset_kinds': None, 'native_output_slots': None},
             tags='synthwave, techno, synthpop, futuristic, electro, with liquid drum & bass drive.\nRestless, confident, dreamy mood at 128 BPM.\nAnalog bass, pulsating arps, percussive synth stabs, gated drums.\nQuick build,  then explosive drum burst, then clean fade.\nBreathy, rhythmic female vocals, minimal emotion, metallic echo.',
             lyrics='Verse\nNeon rain on my screen,\nDreams compile in silver sheen.\nNo weight, just motion,\nI’m plugged into emotion.\n\nChorus\nComfy Cloud — breathing light,\nCode and color, spark and wire.\nDrift through data, feel alive,\nIn your circuits, I arrive.',
             seed=DEFAULT_SEED,
@@ -126,7 +126,7 @@ def build() -> VibeWorkflow:
 
         # Sampling
         ksampler = KSampler(
-            _native_ports={'native_input_names': ['model', 'seed', 'steps', 'cfg', 'sampler_name', 'scheduler', 'positive', 'negative', 'latent_image', 'denoise'], 'native_output_names': ['LATENT'], 'native_input_types': ['MODEL', 'INT', 'INT', 'FLOAT', 'CHOICE', 'CHOICE', 'CONDITIONING', 'CONDITIONING', 'LATENT', 'FLOAT'], 'native_output_types': ['LATENT'], 'native_input_optional': [False, False, False, False, False, False, False, False, False, False], 'native_input_asset_kinds': None, 'native_output_slots': None},
+            _native_ports={'native_input_names': ['seed', 'steps', 'cfg', 'sampler_name', 'scheduler', 'denoise', 'latent_image', 'model', 'negative', 'positive'], 'native_output_names': ['LATENT'], 'native_input_types': ['INT', 'INT', 'FLOAT', 'CHOICE', 'CHOICE', 'FLOAT', 'LATENT', 'MODEL', 'CONDITIONING', 'CONDITIONING'], 'native_output_types': ['LATENT'], 'native_input_optional': [False, False, False, False, False, False, False, False, False, False], 'native_input_asset_kinds': None, 'native_output_slots': None},
             seed=DEFAULT_SEED,
             steps=1,
             cfg=GUIDE_STRENGTH,
@@ -151,7 +151,7 @@ def build() -> VibeWorkflow:
 
         # Outputs
         saveaudiomp3 = SaveAudioMP3(
-            _native_ports={'native_input_names': ['audio', 'filename_prefix', 'quality'], 'native_output_names': None, 'native_input_types': ['AUDIO', 'STRING', 'COMBO'], 'native_output_types': None, 'native_input_optional': [False, False, False], 'native_input_asset_kinds': None, 'native_output_slots': None},
+            _native_ports={'native_input_names': ['filename_prefix', 'quality', 'extra_pnginfo', 'prompt', 'audio'], 'native_output_names': None, 'native_input_types': ['STRING', 'COMBO', 'EXTRA_PNGINFO', 'PROMPT', 'AUDIO'], 'native_output_types': None, 'native_input_optional': [False, False, True, True, False], 'native_input_asset_kinds': None, 'native_output_slots': None},
             filename_prefix='audio/vibecomfy_ace_step_smoke',
             quality='V0',
             audio=vaedecodeaudio.out('AUDIO'),
