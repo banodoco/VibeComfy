@@ -335,8 +335,9 @@ def test_authored_target_path_misuse_or_registry_collision_is_refused(
 
 @pytest.mark.parametrize('custody', ['local', 'target'])
 @pytest.mark.parametrize('value', ['/models/vae_128d_48k.pth', '../vae_128d_48k.pth',
-                                   'other/../vae_128d_48k.pth', r'hunyuan_foley\vae_128d_48k.pth'])
-def test_foley_approval_rejects_unsafe_paths_even_if_target_advertises_them(
+                                   'other/../vae_128d_48k.pth', r'other\..\vae_128d_48k.pth',
+                                   r'C:\models\vae_128d_48k.pth', r'hunyuan_foley\vae_128d_48k.pth'])
+def test_foley_approval_refuses_unsafe_paths_and_requires_target_authority_for_backslashes(
     tmp_path, monkeypatch, custody, value,
 ):
     workflow, provider = _local_foley(tmp_path, monkeypatch)
@@ -346,5 +347,9 @@ def test_foley_approval_rejects_unsafe_paths_even_if_target_advertises_them(
         info['LoadDACHunyuanVAE']['input']['required']['vae_name'] = [[value]]
         provider = TargetSchemaProvider.from_object_info(
             info, server_url='http://target.invalid:8188', model_availability='target')
-    with pytest.raises(WorkflowBundleError, match='model asset reference must be.*relative path'):
-        load_bundle(workflow).compile(schema_provider=provider, models_root=tmp_path)
+    if custody == 'target' and value == r'hunyuan_foley\vae_128d_48k.pth':
+        record = load_bundle(workflow).compile(schema_provider=provider, models_root=tmp_path)
+        assert record.api_projection['12']['inputs']['vae_name'] == value
+    else:
+        with pytest.raises(WorkflowBundleError, match='model asset reference must be.*relative path'):
+            load_bundle(workflow).compile(schema_provider=provider, models_root=tmp_path)

@@ -2452,25 +2452,38 @@ def _approval_preconditions(
         from vibecomfy.fetch import is_present, verify
         from vibecomfy.model_assets import (
             _referenced_model_values,
+            ModelPickerReference,
+            model_picker_reference,
             resolve_authored_asset_reference,
             validate_authored_asset_declarations,
-            validate_model_reference,
         )
         from vibecomfy.registry.models_loader import load_registry, resolve_model_entry
 
-        references: list[dict[str, Any]] = []
-        seen: set[tuple[str, str]] = set()
+        references: list[ModelPickerReference] = []
+        pickers: dict[tuple[str, str], ModelPickerReference] = {}
+        target_destinations: set[tuple[str, str]] = set()
+        target_spellings: set[str] = set()
+
+        def picker_for(value: str, subdir: str) -> ModelPickerReference:
+            key = (value, subdir)
+            if key not in pickers:
+                pickers[key] = model_picker_reference(value, subdir, allow_backslash=True)
+            return pickers[key]
+
+        def target_covers(picker: ModelPickerReference) -> bool:
+            return ((picker.subdir, picker.name) in target_destinations if picker.folder_type
+                    else picker.key in target_spellings)
 
         def add_reference(value: Any, subdir: Any = "") -> None:
             if not isinstance(value, str) or not value.strip():
                 raise WorkflowBundleError("workflow model reference is malformed")
             if subdir is not None and not isinstance(subdir, str):
                 raise WorkflowBundleError("workflow model reference subdir is malformed")
-            validate_model_reference(value)
-            key = (value, subdir or "")
-            if key not in seen:
-                seen.add(key)
-                references.append({"value": value, "subdir": subdir or ""})
+            picker = picker_for(value, subdir or "")
+            if not target_covers(picker):
+                picker.require_local()
+            if picker not in references:
+                references.append(picker)
 
         from vibecomfy.schema.provider import TargetSchemaProvider
 
@@ -2478,35 +2491,40 @@ def _approval_preconditions(
             isinstance(schema_provider, TargetSchemaProvider)
             and schema_provider.model_availability == "target"
         )
-        target_references: set[tuple[str, str]] = set()
         for reference in _referenced_model_values(workflow):
             if not isinstance(reference, Mapping):
                 raise WorkflowBundleError("workflow model reference is malformed")
-            add_reference(reference.get("value"), reference.get("subdir", ""))
             if target_models:
                 value = reference["value"]
-                if not schema_provider.target_model_reference(
-                    reference["class_type"], reference["field"], value
-                ):
+                picker = picker_for(value, reference["subdir"])
+                target_value = schema_provider.target_model_value(
+                    reference["class_type"], reference["field"], picker
+                )
+                if target_value is None:
+                    # Retain the local refusal (including its message) for an
+                    # unadvertised Windows spelling.
+                    picker.require_local()
                     raise WorkflowBundleError(
                         f"model picker value is not advertised by the selected target: "
                         f"{reference['class_type']}.{reference['field']}={value!r}"
                     )
-                target_references.add((value, reference.get("subdir", "")))
-                # requirements.models may declare only a filename.  It is
-                # covered only when that exact name has a graph picker witness.
-                target_references.add((value, ""))
+                target_destinations.add((picker.subdir, picker.name))
+                # Bare requirements need a graph picker witness, rather than
+                # an unrelated name elsewhere in the target inventory.
+                target_spellings.add(picker.key)
                 approval_diagnostics.append({
                     "code": "target_model_reference",
                     "status": "available_on_target",
                     "node_id": str(reference["node_id"]),
                     "class_type": reference["class_type"],
                     "field": reference["field"],
-                    "value": value,
+                    "source_value": value,
+                    "value": target_value,
                     "target_server_url": schema_provider.server_url,
                     "target_schema_digest": schema_provider._object_info_digest,
                     "model_bytes_status": "unverified_target_inventory",
                 })
+            add_reference(reference.get("value"), reference.get("subdir", ""))
 
         if isinstance(metadata, Mapping) and "model_assets" in metadata:
             assets = metadata["model_assets"]
@@ -2530,6 +2548,9 @@ def _approval_preconditions(
                     value.get("name"),
                     value.get("subdir", value.get("directory", "")),
                 )
+                # A structured declaration names a filesystem destination;
+                # target picker authority never relaxes its lexical boundary.
+                picker_for(value["name"], value.get("subdir", value.get("directory", "")) or "").require_local()
             elif isinstance(value, str):
                 add_reference(value)
             else:
@@ -2554,11 +2575,11 @@ def _approval_preconditions(
         registry_assets: list[dict[str, Any]] = []
 
         for reference in references:
-            value = reference.get("value")
-            subdir = reference.get("subdir")
-            asset = resolve_authored_asset_reference(str(value), str(subdir or ""), authored_assets, root=root)
-            if (value, subdir or "") in target_references:
+            value = reference.value
+            subdir = reference.folder_type
+            if target_covers(reference):
                 continue
+            asset = resolve_authored_asset_reference(str(value), str(subdir or ""), authored_assets, root=root)
             if (asset is not None and isinstance(schema_provider, TargetSchemaProvider)
                     and schema_provider.auxiliary_model_custody == "target"):
                 declaration = schema_provider.target_model_asset(asset["name"], asset["subdir"])
@@ -2602,8 +2623,7 @@ def _approval_preconditions(
                 continue
             effective_subdir = subdir
             if not effective_subdir and entry.targets:
-                target_path = str(entry.targets[0].path).replace("\\", "/")
-                effective_subdir = target_path.rsplit("/", 1)[0] if "/" in target_path else ""
+                effective_subdir = model_picker_reference(str(entry.targets[0].path)).subdir
             if not effective_subdir:
                 raise WorkflowBundleError(f"model reference has no deterministic local target: {value}")
             if asset is None:
@@ -2738,6 +2758,30 @@ class WorkflowBundle:
             raise WorkflowBundleError(
                 f"workflow API projection failed: {type(exc).__name__}: {exc}"
             ) from exc
+        # Bind only the detached submission to the selected target. The
+        # workflow and its saved Windows widget spelling remain unchanged.
+        from vibecomfy.schema.provider import TargetSchemaProvider
+        if isinstance(schema_provider, TargetSchemaProvider) and schema_provider.model_availability == "target":
+            from vibecomfy.model_assets import _subdir_for_model_reference
+
+            bindings = {
+                (item["node_id"], item["class_type"], item["field"]): item
+                for item in approval_diagnostics if item["code"] == "target_model_reference"
+            }
+            for node_id, node in api_projection.items():
+                class_type = node["class_type"]
+                for field, value in node["inputs"].items():
+                    if (isinstance(value, str) and value not in {"none", "None"}
+                            and _subdir_for_model_reference(class_type, field) is not None):
+                        witness = bindings.get((str(node_id), class_type, field))
+                        target_value = (witness["value"] if witness is not None and witness["source_value"] == value
+                                        else schema_provider.target_model_value(class_type, field, value))
+                        if target_value is None:
+                            raise WorkflowBundleError(
+                                f"model picker value is not advertised by the selected target: "
+                                f"{class_type}.{field}={value!r}"
+                            )
+                        node["inputs"][field] = target_value
         try:
             from vibecomfy.schema.validate import (
                 validate_api_against_schema,

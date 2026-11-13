@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import copy
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Mapping, Sequence
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -293,25 +294,87 @@ def referenced_model_requirements(
     return records
 
 
-def model_picker_value(asset: Mapping[str, Any], folder_type: str = "", *, qualified: bool = False) -> str:
-    """Map one declared destination back to its exact picker spelling.
+@dataclass(frozen=True)
+class ModelPickerReference:
+    """A wire spelling and its models-relative destination, without losing either."""
+
+    value: str
+    folder_type: str
+    subdir: str
+    name: str
+    key: str
+
+    def require_local(self) -> None:
+        """Apply the local spelling restriction to an already safe reference."""
+        if "\\" in self.value:
+            from vibecomfy.fetch import _relative_asset_path
+
+            _relative_asset_path(self.value, field="reference")
+
+    @property
+    def logical_key(self) -> str:
+        """The registry's canonical logical key, which also forbids dot segments."""
+        if "." in self.key.split("/"):
+            raise ValueError(f"invalid logical model path: {self.value!r}")
+        return f"{self.subdir}/{self.name}" if self.subdir else self.name
+
+    def advertised_value(self, choices: Iterable[Any]) -> str | None:
+        """Select the target's own spelling, preferring an exact witness.
+
+        Separator equivalence never permits basename matching, case folding,
+        or choosing between ambiguous advertised spellings.
+        """
+        matches: list[str] = []
+        for choice in choices:
+            if not isinstance(choice, str):
+                continue
+            if choice == self.value:
+                return choice
+            try:
+                candidate = model_picker_reference(choice, self.folder_type, allow_backslash=True)
+            except ValueError:
+                continue
+            if candidate.key == self.key and choice not in matches:
+                matches.append(choice)
+        return matches[0] if len(matches) == 1 else None
+
+
+def model_picker_reference(
+    value: str | Mapping[str, Any], folder_type: str = "", *,
+    qualified: bool = False, allow_backslash: bool = False,
+) -> ModelPickerReference:
+    """Map a picker to (folder type, subdir, name), or a declaration back.
 
     ``subdir`` includes the Comfy folder type and any nested directories;
-    ``name`` is preserved as authored (and may itself contain directories).
-    Picker values are relative to the node's folder type. Some nodes advertise
-    the full models-relative path instead; ``qualified`` represents that form.
-    Never discard a prefix or match just a basename.
+    a picker retains its original wire value. Only comparison keys use portable
+    separators. Portable comparison alone never authorizes a picker: approval
+    requires target authority for backslashes. Authored destinations always go
+    through fetch's unchanged filesystem validation.
     """
     from vibecomfy.fetch import _relative_asset_path
 
-    name = _relative_asset_path(asset["name"], field="name")
-    subdir = _relative_asset_path(asset["subdir"], field="subdir")
-    destination = subdir / name
-    if not folder_type:
-        return destination.as_posix() if qualified else name.as_posix()
-    folder = _relative_asset_path(folder_type, field="folder_type")
-    relative = destination.relative_to(folder)
-    return destination.as_posix() if qualified else relative.as_posix()
+    folder = _relative_asset_path(folder_type, field="folder_type") if folder_type else Path()
+    if isinstance(value, Mapping):
+        name = _relative_asset_path(value["name"], field="name")
+        subdir = _relative_asset_path(value["subdir"], field="subdir")
+        destination = subdir / name
+        relative = destination.relative_to(folder) if folder_type else name
+        value = (destination if qualified else relative).as_posix()
+    # Validate the portable interpretation before consulting target authority:
+    # drive paths, roots and traversal are forbidden even when advertised.
+    portable = value.replace("\\", "/") if isinstance(value, str) else value
+    path = _relative_asset_path(portable if allow_backslash else value, field="reference")
+    if urlsplit(portable).scheme:
+        raise ValueError(f"model asset reference must be a relative path: {value!r}")
+    destination = path if folder_type and path.is_relative_to(folder) else folder / path
+    parent = destination.parent.as_posix()
+    return ModelPickerReference(value, folder_type, "" if parent == "." else parent,
+                                destination.name, portable)
+
+
+def model_picker_value(asset: Mapping[str, Any], folder_type: str = "", *, qualified: bool = False) -> str:
+    """Return the picker spelling for one strictly validated authored asset."""
+    return model_picker_reference(asset, folder_type, qualified=qualified).value
 
 
 def canonical_model_requirement(value: Any) -> Any:
@@ -430,11 +493,7 @@ def _asset_for_authored_reference(
 
 def validate_model_reference(value: str) -> None:
     """Validate a local model spelling without repairing or changing it."""
-    from vibecomfy.fetch import _relative_asset_path
-
-    _relative_asset_path(value, field="reference")
-    if urlsplit(value).scheme:
-        raise ValueError(f"model asset reference must be a relative path: {value!r}")
+    model_picker_reference(value)
 
 
 def resolve_authored_asset_reference(
@@ -447,18 +506,18 @@ def resolve_authored_asset_reference(
     An empty folder type must still select exactly one declaration across all
     subdirectories. Only model_picker_value defines accepted path spellings.
     """
-    validate_model_reference(value)
+    reference = model_picker_reference(value, subdir)
     matches: list[dict[str, Any]] = []
     for raw in validate_authored_asset_declarations(authored, root=root):
         try:
             spellings = (
-                model_picker_value(raw, subdir),
-                model_picker_value(raw, subdir, qualified=True),
+                model_picker_reference(raw, subdir).key,
+                model_picker_reference(raw, subdir, qualified=True).key,
             )
         except ValueError:
             # The declaration is held by a different model folder type.
             continue
-        if value in spellings:
+        if reference.key in spellings:
             matches.append(dict(raw))
     if len(matches) > 1:
         raise ValueError(f"ambiguous workflow model asset reference: {value!r} (subdir={subdir!r})")
@@ -515,9 +574,19 @@ def _is_none_model_value(value: str) -> bool:
 
 def _unresolved_asset_for_reference(reference: Mapping[str, str]) -> dict[str, str | bool]:
     value = reference["value"]
+    # An imported picker is evidence, not an authored filesystem destination.
+    # Derive a safe local placeholder through the same mapping, retaining the
+    # wire spelling separately in reference metadata. Approval still requires
+    # target authority before a backslash picker may run.
+    try:
+        picker = model_picker_reference(value, reference["subdir"], allow_backslash=True)
+        name, subdir = ((picker.name, picker.subdir) if "\\" in value
+                        else (value, reference["subdir"]))
+    except ValueError:
+        name, subdir = value, reference["subdir"]
     return {
-        "name": value,
-        "subdir": reference["subdir"],
+        "name": name,
+        "subdir": subdir,
         **_reference_metadata(
             reference,
             reference_type=_model_reference_type(value),
