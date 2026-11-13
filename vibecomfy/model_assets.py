@@ -58,6 +58,7 @@ _CLASS_FIELD_SUBDIRS = {
     ("WanVideoTextEncodeCached", "model_name"): "text_encoders",
     ("WanVideoVAELoader", "model_name"): "vae",
     ("WanVideoModelLoader", "model_name"): "diffusion_models",
+    ("WanVideoModelLoader", "model"): "diffusion_models",
     ("WanVideoLoraSelect", "lora"): "loras",
     ("WanVideoLoraSelectMulti", "lora"): "loras",
 }
@@ -259,6 +260,56 @@ def _referenced_model_values(workflow: VibeWorkflow) -> list[dict[str, str]]:
     return references
 
 
+_MODEL_REFERENCE_FIELDS = frozenset({
+    "node_id", "class_type", "field", "value", "reference_type", "downloadable", "unresolved",
+})
+
+
+def referenced_model_requirements(
+    workflow: VibeWorkflow, *, require_resolved: bool = False,
+) -> list[dict[str, Any]]:
+    """Build structured picker requirements at the authoring boundary.
+
+    Resolution and identity belong here, shared by template reconstruction,
+    bundle publication and ready-manifest emission. Unresolved references stay
+    explicit local records; manifest emission separately refuses them.
+    """
+    resolved, unresolved = resolve_referenced_assets(workflow)
+    if require_resolved and unresolved:
+        labels = ", ".join(
+            f"{item.get('class_type', 'model')} {item.get('node_id', '?')}.{item.get('field', '?')}={item.get('value')!r}"
+            for item in unresolved
+        )
+        raise ValueError(f"cannot emit ready requirements for unresolved model references: {labels}")
+    return [
+        canonical_model_requirement({
+            key: value for key, value in asset.items() if key not in _MODEL_REFERENCE_FIELDS
+        })
+        for asset in [*resolved, *unresolved]
+    ]
+
+
+def model_picker_value(asset: Mapping[str, Any], folder_type: str = "", *, qualified: bool = False) -> str:
+    """Map one declared destination back to its exact picker spelling.
+
+    ``subdir`` includes the Comfy folder type and any nested directories;
+    ``name`` is preserved as authored (and may itself contain directories).
+    Picker values are relative to the node's folder type. Some nodes advertise
+    the full models-relative path instead; ``qualified`` represents that form.
+    Never discard a prefix or match just a basename.
+    """
+    from vibecomfy.fetch import _relative_asset_path
+
+    name = _relative_asset_path(asset["name"], field="name")
+    subdir = _relative_asset_path(asset["subdir"], field="subdir")
+    destination = subdir / name
+    if not folder_type:
+        return destination.as_posix() if qualified else name.as_posix()
+    folder = _relative_asset_path(folder_type, field="folder_type")
+    relative = destination.relative_to(folder)
+    return destination.as_posix() if qualified else relative.as_posix()
+
+
 def canonical_model_requirement(value: Any) -> Any:
     """Copy a requirement with the optional defaults used by model records.
 
@@ -279,33 +330,31 @@ def reconcile_model_requirements(
 ) -> list[Any]:
     """Refresh inferred requirements without erasing authored multiplicity.
 
-    Entries whose names are no longer referenced are stale and are removed;
+    Entries whose destinations are no longer referenced are removed;
     matching authored entries keep their original order and multiplicity,
-    while each newly referenced name is appended once with its rich metadata.
+    while each newly referenced destination is appended once with its rich metadata.
     """
     authored_entries = list(authored or [])
     if authored_entries == []:
         return []
 
-    inferred_names: list[str] = []
-    inferred_by_name: dict[str, Any] = {}
+    def identity(item: Any) -> tuple[str, ...]:
+        if isinstance(item, Mapping):
+            return ("asset", *_asset_entry_key(item))
+        # Open scratchpads may still carry draft labels. They never identify
+        # a structured asset, even when their spelling equals its filename.
+        return ("draft", str(item))
+
+    inferred_names: list[tuple[str, ...]] = []
+    inferred_by_name: dict[tuple[str, ...], Any] = {}
     for item in inferred:
-        name = (
-            str(item.get("name", item.get("filename", "")))
-            if isinstance(item, Mapping)
-            else str(item)
-        )
-        if name and name not in inferred_by_name:
+        name = identity(item)
+        if name not in inferred_by_name:
             inferred_names.append(name)
             inferred_by_name[name] = item
 
-    def entry_name(item: Any) -> str:
-        if isinstance(item, Mapping):
-            return str(item.get("name", item.get("filename", "")))
-        return str(item)
-
-    result = [item for item in authored_entries if entry_name(item) in inferred_names]
-    retained_names = {entry_name(item) for item in result}
+    result = [item for item in authored_entries if identity(item) in inferred_names]
+    retained_names = {identity(item) for item in result}
     for name in inferred_names:
         if name not in retained_names:
             result.append(inferred_by_name[name])
@@ -324,8 +373,10 @@ def _asset_for_reference(
 ) -> dict[str, Any] | None:
     from vibecomfy.registry.models_loader import resolve_model_entry
 
-    value = reference["value"].replace("\\", "/")
-    subdir = reference["subdir"].replace("\\", "/")
+    value = reference["value"]
+    subdir = reference["subdir"]
+    validate_model_reference(value)
+    validate_model_reference(subdir)
     entry = resolve_model_entry(value, registry=registry, subdir=subdir)
     if entry is None:
         return None
@@ -385,31 +436,26 @@ def validate_model_reference(value: str) -> None:
 def resolve_authored_asset_reference(
     value: str, subdir: str, authored: Sequence[Mapping[str, Any]], *, root: Path | None = None,
 ) -> dict[str, Any] | None:
-    """Bind an exact name or declared subdir/name to one authored asset.
+    """Bind a folder-relative or models-relative picker to one authored asset.
 
     Picker spelling never changes destination custody. Reject competing
     declarations before any caller can discard their identity fields.
-    An empty subdir is an unqualified requirements.models reference and must
-    still select exactly one declaration across all subdirectories.
+    An empty folder type must still select exactly one declaration across all
+    subdirectories. Only model_picker_value defines accepted path spellings.
     """
-    from vibecomfy.fetch import _relative_asset_path
-
     validate_model_reference(value)
-    requested_subdir = _relative_asset_path(subdir, field="subdir").as_posix() if subdir else ""
     matches: list[dict[str, Any]] = []
     for raw in validate_authored_asset_declarations(authored, root=root):
-        name, declared_subdir = raw["name"], raw["subdir"]
-        relative_name = _relative_asset_path(name, field="name")
-        relative_subdir = _relative_asset_path(declared_subdir, field="subdir")
-        destination = (relative_subdir / relative_name).as_posix()
-        if requested_subdir and relative_subdir.as_posix() != requested_subdir:
+        try:
+            spellings = (
+                model_picker_value(raw, subdir),
+                model_picker_value(raw, subdir, qualified=True),
+            )
+        except ValueError:
+            # The declaration is held by a different model folder type.
             continue
-        if value not in (name, destination):
-            continue
-        asset = dict(raw)
-        asset["name"] = name
-        asset["subdir"] = declared_subdir
-        matches.append(asset)
+        if value in spellings:
+            matches.append(dict(raw))
     if len(matches) > 1:
         raise ValueError(f"ambiguous workflow model asset reference: {value!r} (subdir={subdir!r})")
     return matches[0] if matches else None

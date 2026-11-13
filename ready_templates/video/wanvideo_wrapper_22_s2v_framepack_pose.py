@@ -43,7 +43,9 @@ PUBLIC_INPUT_METADATA = {
 READY_METADATA = ReadyMetadata.build(
     capability='video',
     inputs=PUBLIC_INPUT_METADATA,
-    requirements={'models': [{'name': 'umt5-xxl-enc-bf16.safetensors',
+    requirements={'models': [
+        {'name': 'WanVideo/S2V/Wan2_2-S2V-14B_fp8_e4m3fn_scaled_KJ.safetensors', 'subdir': 'diffusion_models', 'url': 'https://huggingface.co/Kijai/WanVideo_comfy_fp8_scaled/resolve/dd4886e7a8ee0415e4ac32076880303ef9be4a46/S2V/Wan2_2-S2V-14B_fp8_e4m3fn_scaled_KJ.safetensors', 'hf_revision': 'dd4886e7a8ee0415e4ac32076880303ef9be4a46', 'sha256': '01c50f3f368880d2aadcbcee4466e74fa14c228b03b23863827baf3e110e26d4', 'size_bytes': None},
+        {'name': 'umt5-xxl-enc-bf16.safetensors',
              'subdir': 'text_encoders',
              'url': 'https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/umt5-xxl-enc-bf16.safetensors',
              'sha256': None,

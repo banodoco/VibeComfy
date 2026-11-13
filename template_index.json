@@ -6836,7 +6836,7 @@
       "capability": "video",
       "coverage_tier": "supplemental",
       "custom_nodes": [],
-      "model_count": 3,
+      "model_count": 4,
       "public_inputs": [
         {
           "name": "seed",
@@ -6936,7 +6936,7 @@
       "capability": "image",
       "coverage_tier": "supplemental",
       "custom_nodes": [],
-      "model_count": 2,
+      "model_count": 3,
       "public_inputs": [
         {
           "name": "image",
@@ -7110,7 +7110,7 @@
       "capability": "video",
       "coverage_tier": "supplemental",
       "custom_nodes": [],
-      "model_count": 3,
+      "model_count": 4,
       "public_inputs": [
         {
           "name": "seed",
@@ -7210,7 +7210,7 @@
       "capability": "video",
       "coverage_tier": "supplemental",
       "custom_nodes": [],
-      "model_count": 3,
+      "model_count": 5,
       "public_inputs": [
         {
           "name": "seed",
@@ -7925,7 +7925,7 @@
       "capability": "video",
       "coverage_tier": "supplemental",
       "custom_nodes": [],
-      "model_count": 2,
+      "model_count": 3,
       "public_inputs": [
         {
           "name": "seed",
@@ -8043,7 +8043,7 @@
       "capability": "video",
       "coverage_tier": "supplemental",
       "custom_nodes": [],
-      "model_count": 2,
+      "model_count": 3,
       "public_inputs": [
         {
           "name": "seed",
@@ -8235,7 +8235,7 @@
       "capability": "video",
       "coverage_tier": "supplemental",
       "custom_nodes": [],
-      "model_count": 2,
+      "model_count": 3,
       "public_inputs": [
         {
           "name": "seed",
@@ -8353,7 +8353,7 @@
       "capability": "video",
       "coverage_tier": "supplemental",
       "custom_nodes": [],
-      "model_count": 2,
+      "model_count": 3,
       "public_inputs": [
         {
           "name": "seed",
@@ -8527,7 +8527,7 @@
       "capability": "video",
       "coverage_tier": "supplemental",
       "custom_nodes": [],
-      "model_count": 2,
+      "model_count": 3,
       "public_inputs": [
         {
           "name": "seed",

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from vibecomfy.model_assets import resolve_authored_asset_reference, resolve_referenced_assets
+from vibecomfy.model_assets import model_picker_value, resolve_authored_asset_reference, resolve_referenced_assets
 from vibecomfy.schema.provider import TargetSchemaProvider
 from vibecomfy.workflow import VibeNode, VibeWorkflow, WorkflowSource
 from vibecomfy.workflow_bundle import WorkflowBundleError, load_bundle
@@ -23,6 +23,26 @@ def _workflow(value, assets):
 
 ASSET = {'name': 'nested/model.pth', 'subdir': 'diffusion_models',
          'url': 'https://example.invalid/model.pth', 'sha256': '1' * 64, 'size_bytes': 5}
+
+
+@pytest.mark.parametrize('asset,folder,value', [
+    ({'name': 'model.pth', 'subdir': 'diffusion_models/nested'}, 'diffusion_models', 'nested/model.pth'),
+    (ASSET, 'diffusion_models', 'nested/model.pth'),
+    ({'name': 'vae_128d_48k.pth', 'subdir': 'hunyuan_foley'}, 'hunyuan_foley', 'vae_128d_48k.pth'),
+])
+@pytest.mark.parametrize('qualified', [False, True])
+def test_model_picker_mapping_roundtrips_declared_destination(asset, folder, value, qualified):
+    picker = model_picker_value(asset, folder, qualified=qualified)
+    assert picker == (f'{folder}/{value}' if qualified else value)
+    assert resolve_authored_asset_reference(picker, folder, [asset]) == asset
+
+
+def test_reconcile_model_requirements_retains_subdirectory_identity():
+    from vibecomfy.model_assets import reconcile_model_requirements
+
+    old = {'name': 'model.pth', 'subdir': 'diffusion_models/old'}
+    new = {'name': 'model.pth', 'subdir': 'diffusion_models/new'}
+    assert reconcile_model_requirements([old, old], [new]) == [new]
 
 
 @pytest.mark.parametrize('value', ['nested/model.pth', 'diffusion_models/nested/model.pth'])

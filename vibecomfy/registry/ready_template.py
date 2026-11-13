@@ -165,20 +165,25 @@ def _merge_requirements(workflow: VibeWorkflow, requirements: Mapping[str, list[
         raise ValueError(str(exc)) from exc
     if runtime is not None:
         workflow.requirements.runtime = runtime
+    from vibecomfy.model_assets import _asset_entry_key, canonical_model_requirement
+
+    # finalize_metadata's picker discovery is not an asset declaration. Ready
+    # policy replaces those labels with the source's structured records.
+    models = [dict(item) for item in workflow.requirements.models if isinstance(item, Mapping)]
+    seen = {_asset_entry_key(item) for item in models}
     for model in requirements.get("models", []):
-        if isinstance(model, Mapping):
-            name = model.get("name")
-            if not isinstance(name, str) or not name:
-                continue
-            if name not in workflow.requirements.models:
-                workflow.requirements.models.append(name)
-            _append_model_asset(workflow, model)
-        elif isinstance(model, str) and model not in workflow.requirements.models:
-            workflow.requirements.models.append(model)
+        if not isinstance(model, Mapping):
+            raise ValueError(f"ready model requirements must be structured asset records: {model!r}")
+        record = canonical_model_requirement(model)
+        key = _asset_entry_key(record)
+        if key not in seen:
+            models.append(record)
+            seen.add(key)
+        _append_model_asset(workflow, record)
+    workflow.requirements.models = sorted(models, key=lambda item: (item["name"], item["subdir"]))
     for custom_node in normalized.get("custom_nodes", []):
         if custom_node not in workflow.requirements.custom_nodes:
             workflow.requirements.custom_nodes.append(custom_node)
-    workflow.requirements.models.sort()
     workflow.requirements.custom_nodes.sort()
     if normalized.get("custom_node_refs"):
         meta_reqs = workflow.metadata.setdefault("requirements", {})

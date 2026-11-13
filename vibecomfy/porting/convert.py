@@ -789,26 +789,16 @@ def _ready_requirements(workflow: VibeWorkflow) -> dict[str, Any]:
     # Resolve each live picker against an explicit source declaration first,
     # then the model registry. Refuse a ready manifest if any picker lacks an
     # explicit structured declaration or registry entry.
-    from vibecomfy.model_assets import resolve_referenced_assets, validate_authored_asset_declarations
+    from vibecomfy.model_assets import referenced_model_requirements, validate_authored_asset_declarations
     from vibecomfy.model_assets import _referenced_model_values
     from vibecomfy.model_assets import reconcile_model_requirements
-
-    resolved, unresolved = resolve_referenced_assets(workflow)
-    if unresolved:
-        labels = ", ".join(
-            f"{item.get('class_type', 'model')} {item.get('node_id', '?')}.{item.get('field', '?')}={item.get('value')!r}"
-            for item in unresolved
-        )
-        raise ValueError(f"cannot emit ready requirements for unresolved model references: {labels}")
 
     # Keep authored fields such as target_path, hf_revision and gated. The
     # resolver annotates references for diagnostics; those annotations are not
     # part of the ready manifest.
-    internal = {"node_id", "class_type", "field", "value", "reference_type", "downloadable", "unresolved"}
     inferred_models: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
-    for asset in resolved:
-        record = {key: value for key, value in asset.items() if key not in internal}
+    for record in referenced_model_requirements(workflow, require_resolved=True):
         for key in ("name", "subdir", "url", "sha256", "size_bytes"):
             record.setdefault(key, None)
         if not isinstance(record["name"], str) or not record["name"] or not isinstance(record["subdir"], str) or not record["subdir"]:
@@ -818,23 +808,13 @@ def _ready_requirements(workflow: VibeWorkflow) -> dict[str, Any]:
             inferred_models.append(record)
             seen.add(identity)
 
-    # Preserve explicit graphless declarations, but only when they already
-    # carry structured destinations. On a live graph, a legacy bare filename
-    # may be upgraded only by one exact resolved source/registry record.
+    # Requirements are records at their producer. Emission never upgrades a
+    # picker label or guesses its destination.
     references = _referenced_model_values(workflow)
-    inferred_by_name: dict[str, list[dict[str, Any]]] = {}
-    for item in inferred_models:
-        inferred_by_name.setdefault(str(item["name"]), []).append(item)
     declared: list[dict[str, Any]] = []
     for item in list(workflow.requirements.models or []):
         if not isinstance(item, Mapping):
-            if isinstance(item, str) and references:
-                candidates = inferred_by_name.get(item, [])
-                if len(candidates) == 1:
-                    declared.append(dict(candidates[0]))
-                    continue
-                raise ValueError(f"cannot resolve bare ready model requirement by exact name: {item!r}")
-            raise ValueError("ready model requirements must be structured asset records")
+            raise ValueError(f"ready model requirements must be structured asset records: {item!r}")
         for key in ("name", "subdir"):
             if key not in item:
                 raise ValueError(f"ready model requirement is missing {key!r}")

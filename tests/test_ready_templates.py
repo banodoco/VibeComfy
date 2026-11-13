@@ -22,6 +22,7 @@ from vibecomfy.registry.ready_template import (
     finalise_model_assets,
 )
 from vibecomfy.registry.static_contract import compare_public_contracts, extract_ready_template_contract
+from vibecomfy.resources import template_index
 from vibecomfy.runtime.session import SessionConfig, _model_assets_from_workflow
 from vibecomfy.testing.canonical import canonical_equal
 from vibecomfy.workflow import (
@@ -31,6 +32,20 @@ from vibecomfy.workflow import (
     WorkflowSource,
     _public_input_matches_target,
 )
+
+
+@pytest.mark.preflight
+@pytest.mark.parametrize("template_id", [
+    row["id"] for row in template_index()["templates"] if row.get("indexed") is True
+])
+def test_ready_template_model_manifest(template_id: str) -> None:
+    """Exercise the ready-manifest build used by fetch-stage bundle emission."""
+    from vibecomfy.porting.convert import _ready_requirements
+
+    workflow = ready_registry.workflow_from_ready(template_id)
+    manifest = _ready_requirements(workflow)
+    assert all(isinstance(record, Mapping) for record in workflow.requirements.models)
+    assert all(isinstance(record, Mapping) for record in manifest["models"])
 
 
 @pytest.mark.preflight

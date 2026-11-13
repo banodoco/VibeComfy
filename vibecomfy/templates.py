@@ -8,7 +8,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from functools import lru_cache
 import inspect
-from pathlib import Path, PurePosixPath, PureWindowsPath
+from pathlib import Path
 from typing import Any, Mapping
 from urllib.parse import urlsplit
 
@@ -1305,21 +1305,13 @@ def _safe_model_relative_path(value: Any, *, field: str) -> bool:
     inexpensive lexical boundary in the authoring type prevents an unresolved
     placeholder from representing an absolute path or traversal.
     """
-    if not isinstance(value, str) or not value or "\x00" in value:
+    from vibecomfy.fetch import _relative_asset_path
+
+    try:
+        _relative_asset_path(value, field=field)
+    except ValueError:
         return False
-    posix = PurePosixPath(value)
-    windows = PureWindowsPath(value)
-    return not (
-        posix.is_absolute()
-        or windows.is_absolute()
-        or bool(windows.drive)
-        or bool(windows.root)
-        or ".." in posix.parts
-        or ".." in windows.parts
-        or "\\" in value
-        or value.endswith(("/", "\\"))
-        or value.rstrip("/").rsplit("/", 1)[-1] == "."
-    )
+    return True
 
 
 class ReadyMetadata:
@@ -1682,32 +1674,14 @@ def _finalize_impl(
         # picker values remain ordinary editable constructor inputs.  Refresh
         # only the model field from the rebuilt IR so editing a loader cannot
         # silently leave a stale model declaration behind.
-        from vibecomfy.model_assets import _referenced_model_values
+        from vibecomfy.model_assets import referenced_model_requirements
 
         existing_models = requirements.get("models")
-        current_models = [
-            str(item["value"])
-            for item in _referenced_model_values(wf)
-            if isinstance(item, Mapping) and item.get("value")
-        ]
+        current_models = referenced_model_requirements(wf)
         if current_models and isinstance(existing_models, (list, tuple)) and existing_models:
             requirements = dict(requirements)
-            requirements["models"] = reconcile_model_requirements(
-                existing_models,
-                current_models,
-            )
+            requirements["models"] = reconcile_model_requirements(existing_models, current_models)
     derived_model_assets = metadata.get("model_assets", [])
-    if external_custody is not None and isinstance(requirements, Mapping):
-        current_names = {
-            str(item["value"])
-            for item in _referenced_model_values(wf)
-            if isinstance(item, Mapping) and item.get("value")
-        }
-        derived_model_assets = [
-            item for item in derived_model_assets
-            if isinstance(item, Mapping)
-            and str(item.get("name", item.get("filename", ""))) in current_names
-        ]
     # A canonical companion already carries the complete model witness,
     # refreshed above from the current picker values. Partial download metadata
     # must not erase filename-only requirements of an attached target.
