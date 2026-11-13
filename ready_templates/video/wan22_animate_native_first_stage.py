@@ -30,12 +30,12 @@ VAE_NAME = 'wan_2.1_vae.safetensors'
 
 MODELS = {
     'diffusion_model': ModelAsset(url='https://huggingface.co/Kijai/WanVideo_comfy_fp8_scaled/resolve/main/Wan22Animate/Wan2_2-Animate-14B_fp8_e4m3fn_scaled_KJ.safetensors', sha256='2936b31473a967e7a429a6646bba60e7862d0938e178b58b2a140f391dd5b8e6', hf_revision='5571ff9d81a631ee97946a703e94911d63214c44', size_bytes=18401760586, subdir='diffusion_models'),
-    'checkpoint': ModelAsset(url='https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Lightx2v/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors', subdir='checkpoints'),
+    'checkpoint': ModelAsset(url='https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Lightx2v/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors', subdir='loras'),
     'lora': ModelAsset(url='https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/LoRAs/Wan22_relight/WanAnimate_relight_lora_fp16.safetensors', sha256='fc646c74c73f4b251f5fd9bc440ef21b03b27305f499966c68b2b3aa31498561', hf_revision='87badb1f794c15daf51db60838a433ca08bb218f', size_bytes=1436672440, subdir='loras'),
-    'checkpoint_2': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/clip_vision/clip_vision_h.safetensors', hf_revision='main', subdir='checkpoints'),
+    'checkpoint_2': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/clip_vision/clip_vision_h.safetensors', hf_revision='main', subdir='clip_vision'),
     'checkpoint_3': ModelAsset(url='https://huggingface.co/Kijai/sam2-safetensors/resolve/main/sam2_hiera_base_plus.safetensors', subdir='checkpoints'),
-    'checkpoint_4': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors', hf_revision='main', subdir='checkpoints'),
-    'checkpoint_5': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors', subdir='checkpoints'),
+    'checkpoint_4': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors', hf_revision='main', subdir='text_encoders'),
+    'checkpoint_5': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors', subdir='vae'),
     'checkpoint_6': ModelAsset(url='https://huggingface.co/hr16/yolox-onnx/resolve/main/yolox_l.onnx', subdir='checkpoints'),
     'checkpoint_7': ModelAsset(url='https://huggingface.co/hr16/DWPose-TorchScript-BatchSize5/resolve/main/dw-ll_ucoco_384_bs5.torchscript.pt', hf_revision='main', subdir='checkpoints'),
 }

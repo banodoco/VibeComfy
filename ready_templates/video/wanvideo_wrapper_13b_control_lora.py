@@ -24,7 +24,9 @@ PUBLIC_INPUT_METADATA = {
 READY_METADATA = ReadyMetadata.build(
     capability='video',
     inputs=PUBLIC_INPUT_METADATA,
-    requirements={'models': [{'name': 'umt5-xxl-enc-bf16.safetensors',
+    requirements={'models': [
+        {'name': 'WanVideo/wan2.1_t2v_1.3B_fp16.safetensors', 'subdir': 'diffusion_models', 'url': 'https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/diffusion_models/wan2.1_t2v_1.3B_fp16.safetensors', 'sha256': None, 'size_bytes': None},
+        {'name': 'umt5-xxl-enc-bf16.safetensors',
              'subdir': 'text_encoders',
              'url': 'https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/umt5-xxl-enc-bf16.safetensors',
              'sha256': None,

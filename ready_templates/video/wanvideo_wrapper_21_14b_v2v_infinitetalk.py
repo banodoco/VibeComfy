@@ -31,7 +31,9 @@ PUBLIC_INPUT_METADATA = {
 READY_METADATA = ReadyMetadata.build(
     capability='video',
     inputs=PUBLIC_INPUT_METADATA,
-    requirements={'models': [{'name': 'clip_vision_h.safetensors',
+    requirements={'models': [
+        {'name': 'WanVideo/Lightx2v/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors', 'subdir': 'loras', 'url': 'https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Lightx2v/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors', 'sha256': None, 'size_bytes': None},
+        {'name': 'clip_vision_h.safetensors',
              'subdir': 'clip_vision',
              'url': 'https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/clip_vision/clip_vision_h.safetensors',
              'sha256': None,

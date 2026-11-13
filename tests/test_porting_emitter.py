@@ -178,7 +178,8 @@ def test_canonical_emitter_restricted_round_trip_is_the_same_ir(
     )
     workflow._manual_input_names.add("amount")
     workflow.requirements = WorkflowRequirements(
-        models=["model.safetensors"], custom_nodes=["MysteryPack"],
+        models=[{"name": "model.safetensors", "subdir": "checkpoints", "url": None}],
+        custom_nodes=["MysteryPack"],
         missing_models=["missing.safetensors"], missing_nodes=["MysterySink"],
         unsupported=["unsupported feature"],
     )
@@ -870,7 +871,24 @@ def test_model_block_uses_role_based_keys_for_model_constants() -> None:
     assert "'obscure_file_name': ModelAsset(" not in text
 
 
-def test_model_constant_names_dedupe_path_prefixed_basenames() -> None:
+@pytest.mark.parametrize("values", [
+    ("model.pth", "nested/model.pth"),
+    ("nested/model.pth", "nested/MODEL.pth"),
+    ("taeltx2_3.safetensors", r"vae_approx\taeltx2_3.safetensors"),
+])
+def test_model_picker_spellings_survive_bundle_emission(values, tmp_path):
+    workflow = VibeWorkflow("picker-spellings", WorkflowSource("picker-spellings"))
+    for index, value in enumerate(values, 1):
+        node_id = str(index)
+        workflow.nodes[node_id] = VibeNode(
+            node_id, "VAELoader", inputs={"vae_name": value}, uid=f"vae{index}",
+        )
+
+    rebuilt = _bundle_roundtrip(workflow, tmp_path)
+    assert rebuilt.compile("api") == workflow.compile("api")
+
+
+def test_model_constant_names_dedupe_only_identical_picker_values() -> None:
     workflow = VibeWorkflow("sample", WorkflowSource("sample"))
     workflow.nodes["1"] = VibeNode(
         "1",
@@ -900,9 +918,11 @@ def test_model_constant_names_dedupe_path_prefixed_basenames() -> None:
 
     assert "CKPT_PROJECTION_NAME" not in text
     assert text.count("CLIP_PROJECTION_NAME =") == 1
-    assert "CLIP_PROJECTION_NAME = 'VIDEO\\\\LTX\\\\LTX-2\\\\ltx-2.3_text_projection_bf16.safetensors'" in text
+    assert "CLIP_PROJECTION_NAME = 'ltx-2.3_text_projection_bf16.safetensors'" in text
+    assert "CLIP_PROJECTION_NAME_2 = 'VIDEO\\\\LTX\\\\LTX-2\\\\ltx-2.3_text_projection_bf16.safetensors'" in text
     assert text.count("VAE_TAESD_NAME =") == 1
-    assert "VAE_TAESD_NAME = 'vae_approx\\\\taeltx2_3.safetensors'" in text
+    assert "VAE_TAESD_NAME = 'taeltx2_3.safetensors'" in text
+    assert "VAE_TAESD_NAME_2 = 'vae_approx\\\\taeltx2_3.safetensors'" in text
     assert "VAE_NAME = 'taeltx2_3.safetensors'" not in text
     assert "TEXT_ENCODER_NAME = 'gemma_3_12B_it_fp4_mixed.safetensors'" not in text
     assert "LTXV_PATH_NAME = 'ltx-2-19b-distilled.safetensors'" not in text

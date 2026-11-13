@@ -22,6 +22,7 @@ from vibecomfy.registry.ready_template import (
     finalise_model_assets,
 )
 from vibecomfy.registry.static_contract import compare_public_contracts, extract_ready_template_contract
+from vibecomfy.resources import template_index
 from vibecomfy.runtime.session import SessionConfig, _model_assets_from_workflow
 from vibecomfy.testing.canonical import canonical_equal
 from vibecomfy.workflow import (
@@ -31,6 +32,20 @@ from vibecomfy.workflow import (
     WorkflowSource,
     _public_input_matches_target,
 )
+
+
+@pytest.mark.preflight
+@pytest.mark.parametrize("template_id", [
+    row["id"] for row in template_index()["templates"] if row.get("indexed") is True
+])
+def test_ready_template_model_manifest(template_id: str) -> None:
+    """Exercise the ready-manifest build used by fetch-stage bundle emission."""
+    from vibecomfy.porting.convert import _ready_requirements
+
+    workflow = ready_registry.workflow_from_ready(template_id)
+    manifest = _ready_requirements(workflow)
+    assert all(isinstance(record, Mapping) for record in workflow.requirements.models)
+    assert all(isinstance(record, Mapping) for record in manifest["models"])
 
 
 @pytest.mark.preflight
@@ -1283,7 +1298,6 @@ def test_ready_template_requirements_accept_structured_model_assets() -> None:
         source_path="scratch.py",
         requirements={
             "models": [
-                "legacy.safetensors",
                 {
                     "name": "z-model.safetensors",
                     "url": "https://example.test/z-model.safetensors",
@@ -1305,23 +1319,45 @@ def test_ready_template_requirements_accept_structured_model_assets() -> None:
     )
 
     assert workflow.requirements.models == [
-        "a-model.safetensors",
-        "legacy.safetensors",
-        "z-model.safetensors",
+        {
+            "name": "a-model.safetensors", "subdir": "vae",
+            "url": "https://example.test/a-model.safetensors",
+            "sha256": None, "size_bytes": None,
+        },
+        {
+            "name": "z-model.safetensors", "subdir": "checkpoints",
+            "url": "https://example.test/z-model.safetensors",
+            "sha256": None, "size_bytes": None,
+        },
     ]
-    assert all(isinstance(model, str) for model in workflow.requirements.models)
+    assert all(isinstance(model, Mapping) for model in workflow.requirements.models)
     assert workflow.metadata["model_assets"] == [
         {
             "name": "z-model.safetensors",
             "url": "https://example.test/z-model.safetensors",
             "subdir": "checkpoints",
+            "sha256": None,
+            "size_bytes": None,
         },
         {
             "name": "a-model.safetensors",
             "url": "https://example.test/a-model.safetensors",
             "subdir": "vae",
+            "sha256": None,
+            "size_bytes": None,
         },
     ]
+
+
+@pytest.mark.parametrize("value", ["legacy.safetensors", "nested/legacy.safetensors"])
+def test_ready_template_policy_refuses_bare_model_requirements(value: str) -> None:
+    workflow = VibeWorkflow("bare-model", WorkflowSource("bare-model"))
+    workflow.add_node("CheckpointLoaderSimple", widget_0=value)
+    with pytest.raises(ValueError, match="structured asset records") as error:
+        apply_ready_template_policy(
+            workflow, {}, source_path="scratch.py", requirements={"models": [value]},
+        )
+    assert repr(value) in str(error.value)
 
 
 def test_ready_template_uses_real_python_before_comfy_compile() -> None:

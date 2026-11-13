@@ -32,7 +32,10 @@ PUBLIC_INPUT_METADATA = {
 READY_METADATA = ReadyMetadata.build(
     capability='video',
     inputs=PUBLIC_INPUT_METADATA,
-    requirements={'models': [{'name': 'clip_vision_h.safetensors',
+    requirements={'models': [
+        {'name': 'WanVideo/WanMove/Wan21-WanMove_fp8_scaled_e4m3fn_KJ.safetensors', 'subdir': 'diffusion_models', 'url': 'https://huggingface.co/Kijai/WanVideo_comfy_fp8_scaled/resolve/8c74bbe162aca6592ff24046754a0dd0774cd511/WanMove/Wan21-WanMove_fp8_scaled_e4m3fn_KJ.safetensors', 'hf_revision': '8c74bbe162aca6592ff24046754a0dd0774cd511', 'sha256': '88aa449ce87dae29f3e6c1ec1c6107ba1a2d5057e6547ac1720d75c71eac32e9', 'size_bytes': None},
+        {'name': 'WanVideo/Lightx2v/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors', 'subdir': 'loras', 'url': 'https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Lightx2v/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors', 'sha256': None, 'size_bytes': None},
+        {'name': 'clip_vision_h.safetensors',
              'subdir': 'clip_vision',
              'url': 'https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/clip_vision/clip_vision_h.safetensors',
              'sha256': None,

@@ -1679,18 +1679,13 @@ def _canonicalize_for_v2_pair(
     # the staged rebuild so the independent first-build check compares like
     # with like while retaining duplicate picker occurrences and explicit
     # empty requirements.
-    from vibecomfy.model_assets import _referenced_model_values
+    from vibecomfy.model_assets import referenced_model_requirements
 
     if expected_workflow.requirements.models:
-        expected_models = [
-            str(item["value"])
-            for item in _referenced_model_values(expected_workflow)
-            if isinstance(item, Mapping) and item.get("value")
-        ]
+        expected_models = referenced_model_requirements(expected_workflow)
         if expected_models:
             expected_workflow.requirements.models = reconcile_model_requirements(
-                expected_workflow.requirements.models,
-                expected_models,
+                expected_workflow.requirements.models, expected_models,
             )
     expected_semantic_digest = expected_workflow.semantic_digest()
     from vibecomfy.porting.emit import emit_scratchpad_python

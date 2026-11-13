@@ -23,6 +23,17 @@ def _wf(wf_id: str = "test-cvw") -> VibeWorkflow:
     return VibeWorkflow(wf_id, WorkflowSource(wf_id))
 
 
+@pytest.mark.parametrize("value", ["missing.pth", "missing/nested/model.pth"])
+def test_ready_manifest_refuses_undeclared_picker_path(value, monkeypatch):
+    monkeypatch.setattr("vibecomfy.registry.models_loader.load_registry", lambda: ())
+    workflow = _wf("missing-model")
+    workflow.nodes["1"] = VibeNode("1", "VAELoader", inputs={"vae_name": value})
+    workflow.requirements.models = [value]
+    with pytest.raises(ValueError, match="unresolved model references") as error:
+        convert_module._ready_requirements(workflow)
+    assert repr(value) in str(error.value)
+
+
 def _regular_node(
     node_id: str,
     class_type: str = "KSampler",
@@ -164,7 +175,8 @@ def test_ready_requirements_preserves_authored_duplicates_and_adds_new_names_onc
     assert convert_module._ready_requirements(wf)["models"] == [shared, shared, new]
 
 
-def test_ready_requirements_migrates_live_bare_names_to_exact_resolved_records() -> None:
+@pytest.mark.parametrize("value", ["known.safetensors", "checkpoints/known.safetensors"])
+def test_ready_requirements_refuses_live_bare_names_even_with_declared_asset(value) -> None:
     wf = _wf("migrate-live-bare-models")
     wf.nodes["1"] = _regular_node("1", "CheckpointLoaderSimple")
     wf.nodes["1"].inputs["ckpt_name"] = "known.safetensors"
@@ -173,9 +185,11 @@ def test_ready_requirements_migrates_live_bare_names_to_exact_resolved_records()
         "sha256": "c" * 64, "size_bytes": 30,
     }
     wf.metadata["model_assets"] = [asset]
-    wf.requirements.models = ["known.safetensors", "known.safetensors"]
+    wf.requirements.models = [value, value]
 
-    assert convert_module._ready_requirements(wf)["models"] == [asset, asset]
+    with pytest.raises(ValueError, match="structured asset records") as error:
+        convert_module._ready_requirements(wf)
+    assert repr(value) in str(error.value)
 
 
 def test_ready_requirements_refuses_graphless_bare_names() -> None:
@@ -221,6 +235,40 @@ def test_ready_requirements_refuses_unstructured_graphless_model_assets(record, 
 
     with pytest.raises(ValueError, match=message):
         convert_module._ready_requirements(wf)
+
+
+def test_scratchpad_requirements_resolve_nested_picker_to_declared_destination() -> None:
+    workflow = _wf("nested-draft-model")
+    workflow.nodes["1"] = _regular_node("1", "CheckpointLoaderSimple")
+    workflow.nodes["1"].inputs["ckpt_name"] = "nested/model.safetensors"
+    asset = {
+        "name": "model.safetensors", "subdir": "checkpoints/nested",
+        "url": "https://example.test/model", "sha256": None, "size_bytes": None,
+    }
+    workflow.metadata["model_assets"] = [asset]
+    workflow.requirements.models = [asset]
+
+    assert convert_module._scratchpad_model_requirements(workflow) == [asset]
+
+
+def test_template_finalization_produces_records_from_graph_model_labels() -> None:
+    workflow = _wf("graph-model-labels")
+    workflow.nodes["1"] = _regular_node("1", "CheckpointLoaderSimple")
+    workflow.nodes["1"].inputs["ckpt_name"] = "nested/model.safetensors"
+    asset = {
+        "name": "model.safetensors", "subdir": "checkpoints/nested",
+        "url": "https://example.test/model", "sha256": None, "size_bytes": None,
+    }
+    metadata = {
+        "model_assets": [asset],
+        "requirements": {"models": ["nested/model.safetensors"]},
+    }
+    workflow.metadata.update(metadata)
+
+    workflow.finalize({}, metadata=metadata, outputs=[])
+
+    assert workflow.requirements.models == [asset]
+    assert convert_module._ready_requirements(workflow)["models"] == [asset]
 
 
 def test_scratchpad_pair_uses_picker_model_requirements_for_v2_rebuild(
