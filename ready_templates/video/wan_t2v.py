@@ -32,9 +32,9 @@ READY_METADATA = ReadyMetadata.build(
     capability='video',
     inputs=PUBLIC_INPUT_METADATA,
     requirements={'models': [
-        {'name': 'umt5_xxl_fp8_e4m3fn_scaled.safetensors', 'subdir': 'text_encoders', 'url': 'https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors', 'sha256': None, 'size_bytes': None},
-        {'name': 'wan2.1_t2v_1.3B_fp16.safetensors', 'subdir': 'diffusion_models', 'url': 'https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/diffusion_models/wan2.1_t2v_1.3B_fp16.safetensors', 'sha256': None, 'size_bytes': None},
-        {'name': 'wan_2.1_vae.safetensors', 'subdir': 'vae', 'url': 'https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors', 'sha256': None, 'size_bytes': None},
+        {'name': 'umt5_xxl_fp8_e4m3fn_scaled.safetensors', 'subdir': 'text_encoders', 'url': 'https://huggingface.co/Comfy-Org/Wan-2.1/resolve/123acf1cc74bccbb9bfff8ac1ee72edc08c2341d/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors', 'sha256': 'c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68', 'size_bytes': 6735906897, 'hf_revision': '123acf1cc74bccbb9bfff8ac1ee72edc08c2341d'},
+        {'name': 'wan2.1_t2v_1.3B_fp16.safetensors', 'subdir': 'diffusion_models', 'url': 'https://huggingface.co/Comfy-Org/Wan-2.1/resolve/123acf1cc74bccbb9bfff8ac1ee72edc08c2341d/split_files/diffusion_models/wan2.1_t2v_1.3B_fp16.safetensors', 'sha256': 'be531024cd9018cb5b48c40cfbb6a6191645b1c792eb8bf4f8c1c6e10f924dc5', 'size_bytes': 2838303560, 'hf_revision': '123acf1cc74bccbb9bfff8ac1ee72edc08c2341d'},
+        {'name': 'wan_2.1_vae.safetensors', 'subdir': 'vae', 'url': 'https://huggingface.co/Comfy-Org/Wan-2.1/resolve/123acf1cc74bccbb9bfff8ac1ee72edc08c2341d/split_files/vae/wan_2.1_vae.safetensors', 'sha256': '2fc39d31359a4b0a64f55876d8ff7fa8d780956ae2cb13463b0223e15148976b', 'size_bytes': 253815318, 'hf_revision': '123acf1cc74bccbb9bfff8ac1ee72edc08c2341d'},
     ]},
     provenance={'source_path': 'ready_templates/sources/official/video/wan_t2v.json', 'source_id': 'video/wan_t2v', 'upstream_source_id': 'wan_t2v', 'source_type': 'api', 'source_workflow_path': 'ready_templates/sources/official/video/wan_t2v.json', 'output_mode': 'ready_template', 'ready_id': 'video/wan_t2v'},
 )

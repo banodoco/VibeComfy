@@ -25,12 +25,12 @@ VAE_NAME = 'wanvideo/Wan2_1_VAE_bf16.safetensors'
 
 
 MODELS = {
-    'checkpoint': ModelAsset(url='https://huggingface.co/Kijai/WanVideo_comfy_fp8_scaled/resolve/main/I2V/Wan2_2-I2V-A14B-HIGH_fp8_e4m3fn_scaled_KJ.safetensors', subdir='checkpoints'),
-    'checkpoint_2': ModelAsset(url='https://huggingface.co/Kijai/WanVideo_comfy_fp8_scaled/resolve/main/I2V/Wan2_2-I2V-A14B-LOW_fp8_e4m3fn_scaled_KJ.safetensors', subdir='checkpoints'),
-    'checkpoint_3': ModelAsset(url='https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Wan2_1_VAE_bf16.safetensors', subdir='checkpoints'),
-    'checkpoint_4': ModelAsset(url='https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/umt5-xxl-enc-bf16.safetensors', subdir='checkpoints'),
-    'checkpoint_5': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp16.safetensors', subdir='checkpoints'),
-    'checkpoint_6': ModelAsset(url='https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Lightx2v/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors', subdir='checkpoints'),
+    'checkpoint': ModelAsset(url='https://huggingface.co/Kijai/WanVideo_comfy_fp8_scaled/resolve/033a4e487f60220b3d6e469599a6aebc46e13cee/I2V/Wan2_2-I2V-A14B-HIGH_fp8_e4m3fn_scaled_KJ.safetensors', subdir='checkpoints', sha256='b3a6e732feb5fd5fa35f5e3ef612fa1f0a77dc66601fbf999d4f84a01e7120a6', hf_revision='033a4e487f60220b3d6e469599a6aebc46e13cee', size_bytes=15002999858),
+    'checkpoint_2': ModelAsset(url='https://huggingface.co/Kijai/WanVideo_comfy_fp8_scaled/resolve/033a4e487f60220b3d6e469599a6aebc46e13cee/I2V/Wan2_2-I2V-A14B-LOW_fp8_e4m3fn_scaled_KJ.safetensors', subdir='checkpoints', sha256='3338c9e672ad9e406a28b38231d6c9d94bf63ab73c3940b91428321993491bb8', hf_revision='033a4e487f60220b3d6e469599a6aebc46e13cee', size_bytes=15002999858),
+    'checkpoint_3': ModelAsset(url='https://huggingface.co/Kijai/WanVideo_comfy/resolve/8260d429d19fd7a72304cad059160b95d843913f/Wan2_1_VAE_bf16.safetensors', subdir='checkpoints', sha256='1ab9a32cc2c740f6e39d80d367ce5dcc28db8c71b79b28670546b8973e9d75f9', hf_revision='8260d429d19fd7a72304cad059160b95d843913f', size_bytes=253806278),
+    'checkpoint_4': ModelAsset(url='https://huggingface.co/Kijai/WanVideo_comfy/resolve/8260d429d19fd7a72304cad059160b95d843913f/umt5-xxl-enc-bf16.safetensors', subdir='checkpoints', sha256='4fa971faf306cad919033d5bbe192e571dc08452f800cbf2ec3c73977c01b2cc', hf_revision='8260d429d19fd7a72304cad059160b95d843913f', size_bytes=11361845464),
+    'checkpoint_5': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan-2.1/resolve/123acf1cc74bccbb9bfff8ac1ee72edc08c2341d/split_files/text_encoders/umt5_xxl_fp16.safetensors', subdir='checkpoints', sha256='7b8850f1961e1cf8a77cca4c964a358d303f490833c6c087d0cff4b2f99db2af', hf_revision='123acf1cc74bccbb9bfff8ac1ee72edc08c2341d', size_bytes=11366399385),
+    'checkpoint_6': ModelAsset(url='https://huggingface.co/Kijai/WanVideo_comfy/resolve/8260d429d19fd7a72304cad059160b95d843913f/Lightx2v/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors', subdir='checkpoints', sha256='85c4a61c30e0497aa44b91d93a893b624708461a56fe5485183b28fa07e2dfb3', hf_revision='8260d429d19fd7a72304cad059160b95d843913f', size_bytes=738005744),
 }
 
 

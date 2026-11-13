@@ -11,9 +11,9 @@ VAE_NAME = 'ae.safetensors'
 DEFAULT_PROMPT = 'A compact red cube on a clean white tabletop, product-photo lighting.'
 DEFAULT_SEED = 0
 MODELS = {
-    'diffusion_model': ModelAsset(url='https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/diffusion_models/z_image_turbo_bf16.safetensors', subdir='diffusion_models'),
-    'text_encoder': ModelAsset(url='https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b.safetensors', subdir='text_encoders'),
-    'vae': ModelAsset(url='https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/vae/ae.safetensors', subdir='vae'),
+    'diffusion_model': ModelAsset(url='https://huggingface.co/Comfy-Org/Z-Image-Turbo/resolve/6fc90a3b1b653e935a0d175e260736de25b84df5/split_files/diffusion_models/z_image_turbo_bf16.safetensors', subdir='diffusion_models', sha256='2407613050b809ffdff18a4ac99af83ea6b95443ecebdf80e064a79c825574a6', hf_revision='6fc90a3b1b653e935a0d175e260736de25b84df5', size_bytes=12309866400),
+    'text_encoder': ModelAsset(url='https://huggingface.co/Comfy-Org/Z-Image-Turbo/resolve/6fc90a3b1b653e935a0d175e260736de25b84df5/split_files/text_encoders/qwen_3_4b.safetensors', subdir='text_encoders', sha256='6c671498573ac2f7a5501502ccce8d2b08ea6ca2f661c458e708f36b36edfc5a', hf_revision='6fc90a3b1b653e935a0d175e260736de25b84df5', size_bytes=8044982048),
+    'vae': ModelAsset(url='https://huggingface.co/Comfy-Org/Z-Image-Turbo/resolve/6fc90a3b1b653e935a0d175e260736de25b84df5/split_files/vae/ae.safetensors', subdir='vae', sha256='afc8e28272cd15db3919bacdb6918ce9c1ed22e96cb12c4d5ed0fba823529e38', hf_revision='6fc90a3b1b653e935a0d175e260736de25b84df5', size_bytes=335304388),
 }
 PUBLIC_INPUT_METADATA = {
     'diffusion_model': InputSpec(node='1', field='unet_name', default=UNET_NAME, type='CHOICE'),

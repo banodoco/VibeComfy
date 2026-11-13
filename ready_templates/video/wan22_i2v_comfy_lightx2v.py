@@ -22,12 +22,12 @@ VAE_NAME = 'wan_2.1_vae.safetensors'
 
 
 MODELS = {
-    'diffusion_model': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors', subdir='diffusion_models'),
-    'diffusion_model_2': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors', subdir='diffusion_models'),
-    'lora': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors', subdir='loras'),
-    'lora_2': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors', subdir='loras'),
-    'text_encoder': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors', subdir='text_encoders'),
-    'vae': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors', subdir='vae'),
+    'diffusion_model': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors', subdir='diffusion_models', sha256='6122e79d55e0f235698d11d657f3b196c5273c830da00b2b013c5a048d5e6a42', hf_revision='ee6f4a40737a995bf5818954cfce6d59443b0f04', size_bytes=14294742832),
+    'diffusion_model_2': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors', subdir='diffusion_models', sha256='5471a457b6ac404202a5fbe6c11595a3d5641fc766b00f38763f72303fffc21e', hf_revision='ee6f4a40737a995bf5818954cfce6d59443b0f04', size_bytes=14294742832),
+    'lora': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors', subdir='loras', sha256='d176c808d6fc461999b68e321efcb7501b20b8c3797523ed0df14f7d1deff11e', hf_revision='ee6f4a40737a995bf5818954cfce6d59443b0f04', size_bytes=1226977424),
+    'lora_2': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors', subdir='loras', sha256='024f21de095bc8fad9809ded3e9e49a2e170dcf27075da8145ba7d60d8aab7f9', hf_revision='ee6f4a40737a995bf5818954cfce6d59443b0f04', size_bytes=1226977424),
+    'text_encoder': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan-2.1/resolve/123acf1cc74bccbb9bfff8ac1ee72edc08c2341d/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors', subdir='text_encoders', sha256='c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68', hf_revision='123acf1cc74bccbb9bfff8ac1ee72edc08c2341d', size_bytes=6735906897),
+    'vae': ModelAsset(url='https://huggingface.co/Comfy-Org/Wan-2.2/resolve/ee6f4a40737a995bf5818954cfce6d59443b0f04/split_files/vae/wan_2.1_vae.safetensors', subdir='vae', sha256='2fc39d31359a4b0a64f55876d8ff7fa8d780956ae2cb13463b0223e15148976b', hf_revision='ee6f4a40737a995bf5818954cfce6d59443b0f04', size_bytes=253815318),
 }
 
 
