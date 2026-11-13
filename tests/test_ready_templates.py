@@ -993,6 +993,19 @@ def test_wan_animate_template_declares_pose_preprocess_pack_and_models() -> None
     )
 
 
+def test_ace_step_music_model_records_are_pinned() -> None:
+    import re
+
+    workflow = workflow_from_template_fixture("audio/ace_step_1_5_t2a_song")
+    models = workflow.requirements.models
+    assert len(models) == 4
+    for model in models:
+        assert isinstance(model, dict)
+        assert re.search(r"/resolve/[0-9a-f]{40}/", model["url"])
+        assert re.fullmatch(r"[0-9a-f]{64}", model["sha256"])
+        assert isinstance(model["size_bytes"], int) and model["size_bytes"] > 0
+
+
 def test_native_wan_animate_template_declares_frame_count_binding() -> None:
     workflow = workflow_from_template_fixture("video/wan22_animate_native_first_stage")
 
