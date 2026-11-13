@@ -307,6 +307,15 @@ def test_authored_target_path_misuse_or_registry_collision_is_refused(
         canonical_name=registry_picker, sha256='2' * 64, size_bytes=len(content), min_size=1,
         targets=(ModelTarget('comfy_core', f'diffusion_models/{registry_picker}'),),
     )]
+    if representation == 'nested_subdir':
+        # Both pickers now correctly bind the same authored nested asset.
+        # Declare the competing source in the IR to test a real destination
+        # collision; preparation must not derive declarations from a registry.
+        workflow.metadata['model_assets'].append({
+            'name': registry_picker, 'subdir': 'diffusion_models',
+            'url': registry[0].source.url, 'sha256': registry[0].sha256,
+            'size_bytes': registry[0].size_bytes,
+        })
     monkeypatch.setattr('vibecomfy.registry.models_loader.load_registry', lambda: registry)
     info = _target_info(workflow)
     info['UNETLoader']['input']['required']['unet_name'] = [[authored_picker, registry_picker]]
@@ -315,8 +324,6 @@ def test_authored_target_path_misuse_or_registry_collision_is_refused(
     expected = ModelAssetError if consumer == 'runtime' else WorkflowBundleError
     if representation == 'target_path':
         rejection = 'target_path is only for files inside a custom-node pack'
-    elif consumer == 'runtime':
-        rejection = 'unresolved workflow model assets: UNETLoader 90.unet_name=.*UNETLoader 91.unet_name='
     else:
         rejection = 'ambiguous.*model asset'
     with pytest.raises(expected, match=rejection):

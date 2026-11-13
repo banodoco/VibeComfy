@@ -1285,7 +1285,6 @@ def test_ready_template_requirements_accept_structured_model_assets() -> None:
         source_path="scratch.py",
         requirements={
             "models": [
-                "legacy.safetensors",
                 {
                     "name": "z-model.safetensors",
                     "url": "https://example.test/z-model.safetensors",
@@ -1307,23 +1306,45 @@ def test_ready_template_requirements_accept_structured_model_assets() -> None:
     )
 
     assert workflow.requirements.models == [
-        "a-model.safetensors",
-        "legacy.safetensors",
-        "z-model.safetensors",
+        {
+            "name": "a-model.safetensors", "subdir": "vae",
+            "url": "https://example.test/a-model.safetensors",
+            "sha256": None, "size_bytes": None,
+        },
+        {
+            "name": "z-model.safetensors", "subdir": "checkpoints",
+            "url": "https://example.test/z-model.safetensors",
+            "sha256": None, "size_bytes": None,
+        },
     ]
-    assert all(isinstance(model, str) for model in workflow.requirements.models)
+    assert all(isinstance(model, Mapping) for model in workflow.requirements.models)
     assert workflow.metadata["model_assets"] == [
         {
             "name": "z-model.safetensors",
             "url": "https://example.test/z-model.safetensors",
             "subdir": "checkpoints",
+            "sha256": None,
+            "size_bytes": None,
         },
         {
             "name": "a-model.safetensors",
             "url": "https://example.test/a-model.safetensors",
             "subdir": "vae",
+            "sha256": None,
+            "size_bytes": None,
         },
     ]
+
+
+@pytest.mark.parametrize("value", ["legacy.safetensors", "nested/legacy.safetensors"])
+def test_ready_template_policy_refuses_bare_model_requirements(value: str) -> None:
+    workflow = VibeWorkflow("bare-model", WorkflowSource("bare-model"))
+    workflow.add_node("CheckpointLoaderSimple", widget_0=value)
+    with pytest.raises(ValueError, match="structured asset records") as error:
+        apply_ready_template_policy(
+            workflow, {}, source_path="scratch.py", requirements={"models": [value]},
+        )
+    assert repr(value) in str(error.value)
 
 
 def test_ready_template_uses_real_python_before_comfy_compile() -> None:
