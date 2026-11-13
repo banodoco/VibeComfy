@@ -892,7 +892,7 @@ def class_input_types(class_type: str) -> dict[str, str]:
     if entry is None:
         return {}
     return {
-        name: ("ENUM" if spec.type == "CHOICE" else spec.type or "")
+        name: _normalize_input_type(spec)
         for name, spec in read_object_info_inputs(entry).items() if not spec.hidden
     }
 
@@ -1022,14 +1022,11 @@ def _iter_input_specs(entry: dict[str, Any]) -> list[tuple[str, Any]]:
     return [(name, spec.raw) for name, spec in read_object_info_inputs(entry).items() if not spec.hidden]
 
 
-def _normalize_input_type(value: Any) -> str:
-    if isinstance(value, str):
-        return value
-    if isinstance(value, list):
+def _normalize_input_type(spec: Any) -> str:
+    """Retain the cache's historical enum spelling after shared parsing."""
+    if spec.legacy_combo:
         return "ENUM"
-    if value is None:
-        return ""
-    return str(value)
+    return spec.type or ""
 
 
 def reset_cache() -> None:

@@ -508,7 +508,7 @@ def _inputs_from_object_info(info: dict[str, Any]) -> dict[str, InputFieldSpec]:
     return {
         name: InputFieldSpec(
             name=name,
-            type="COMBO" if spec.type == "CHOICE" else spec.type or "UNKNOWN",
+            type=spec.type or "UNKNOWN",
             required=spec.required,
             default=spec.default,
             has_default=spec.has_default,

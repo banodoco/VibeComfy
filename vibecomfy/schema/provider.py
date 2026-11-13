@@ -1977,6 +1977,10 @@ def _dynamic_combo_field_names(option_inputs: Any, prefix: str) -> list[str]:
 def _parse_input_spec(raw: Any, *, required: bool, name: str | None = None) -> InputSpec:
     declaration = read_object_info_input(raw, required=required)
     typ = declaration.type
+    if declaration.legacy_combo:
+        # Keep the established stored schema spelling; the raw reader uses
+        # the wire type COMBO for both generations.
+        typ = "CHOICE"
     attrs = declaration.metadata
     choices = declaration.choices
 

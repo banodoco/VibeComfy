@@ -18,6 +18,7 @@ class ObjectInfoInput:
     raw: Any
     required: bool = False
     hidden: bool = False
+    legacy_combo: bool = False
 
     @property
     def default(self) -> Any:
@@ -41,6 +42,7 @@ def read_object_info_input(
     typ = None
     metadata: Mapping[str, Any] = {}
     choices = None
+    legacy_combo = False
     if isinstance(raw, Mapping):
         typ = raw.get("type")
         metadata = raw
@@ -53,7 +55,8 @@ def read_object_info_input(
             metadata = raw[1]
         if isinstance(typ, (list, tuple)):
             choices = typ
-            typ = "CHOICE"
+            typ = "COMBO"
+            legacy_combo = True
         elif typ == "COMBO":
             choices = metadata.get("options")
     elif isinstance(raw, str):
@@ -65,6 +68,7 @@ def read_object_info_input(
         raw=raw,
         required=required,
         hidden=hidden,
+        legacy_combo=legacy_combo,
     )
 
 
