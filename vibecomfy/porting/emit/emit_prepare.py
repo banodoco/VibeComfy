@@ -104,6 +104,17 @@ def _prepare_workflow_for_emit(
             node.class_type not in UI_ONLY_CLASS_TYPES
         )
     }
+    # A public scalar on a resolver helper must stay writable after saving.
+    # Folding it during source emission would discard the descriptor and bake
+    # its current value into every consumer. Runtime compilation still lowers
+    # the shared helper after the caller's overrides have been applied.
+    if any(
+        str(port.node_id) in authored_nodes
+        and authored_nodes[str(port.node_id)].class_type in RESOLVABLE_HELPER_CLASS_TYPES
+        for port in workflow.inputs.values()
+    ):
+        project_execution_edges = False
+        keep_virtual_wires = True
     from vibecomfy.workflow import mode_to_litegraph  # noqa: PLC0415
 
     # Execution-edge projection intentionally disconnects muted/bypassed nodes,

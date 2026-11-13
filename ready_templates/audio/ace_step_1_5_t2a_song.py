@@ -6,15 +6,18 @@ from __future__ import annotations
 
 from vibecomfy.templates import InputSpec, ModelAsset, OutputSpec, ReadyMetadata, new_workflow, ref
 from vibecomfy.workflow import VibeWorkflow
-from vibecomfy.nodes.core import ConditioningZeroOut, DualCLIPLoader, EmptyAceStep1_5LatentAudio, KSampler, ModelSamplingAuraFlow, SaveAudioMP3, TextEncodeAceStepAudio1_5, UNETLoader, VAEDecodeAudio, VAELoader
+from vibecomfy.nodes.core import ConditioningZeroOut, DualCLIPLoader, EmptyAceStep1_5LatentAudio, KSampler, ModelSamplingAuraFlow, PrimitiveFloat, PrimitiveInt, SaveAudioMP3, TextEncodeAceStepAudio1_5, UNETLoader, VAEDecodeAudio, VAELoader
 
 
 CLIP_NAME = 'qwen_0.6b_ace15.safetensors'
 CLIP_NAME_2 = 'qwen_4b_ace15.safetensors'
-DEFAULT_SEED = 561594583201063
 GUIDE_STRENGTH = 1
 UNET_NAME = 'acestep_v1.5_turbo.safetensors'
 VAE_NAME = 'ace_1.5_vae.safetensors'
+DEFAULT_PROMPT = 'synthwave, techno, synthpop, futuristic, electro, with liquid drum & bass drive.\nRestless, confident, dreamy mood at 128 BPM.\nAnalog bass, pulsating arps, percussive synth stabs, gated drums.\nQuick build,  then explosive drum burst, then clean fade.\nBreathy, rhythmic female vocals, minimal emotion, metallic echo.'
+DEFAULT_LYRICS = 'Verse\nNeon rain on my screen,\nDreams compile in silver sheen.\nNo weight, just motion,\nI’m plugged into emotion.\n\nChorus\nComfy Cloud — breathing light,\nCode and color, spark and wire.\nDrift through data, feel alive,\nIn your circuits, I arrive.'
+DEFAULT_DURATION = 30.0
+DEFAULT_SEED = 561594583201063
 
 
 MODELS = {
@@ -26,9 +29,10 @@ MODELS = {
 
 
 PUBLIC_INPUT_METADATA = {
-    'model': InputSpec(node=ref('unetloader'), field='unet_name', default=None, infer_type=False),
-    'seed': InputSpec(node=ref('ksampler'), field='seed', default=DEFAULT_SEED, type='INT', infer_type=False),
-    'steps': InputSpec(node=ref('ksampler'), field='steps', default=None, infer_type=False),
+    'prompt': InputSpec(node=ref('textencodeacestepaudio1_5'), field='tags', default=DEFAULT_PROMPT, type='STRING', infer_type=False),
+    'lyrics': InputSpec(node=ref('textencodeacestepaudio1_5'), field='lyrics', default=DEFAULT_LYRICS, type='STRING', infer_type=False),
+    'duration': InputSpec(node=ref('primitivefloat'), field='value', default=DEFAULT_DURATION, type='FLOAT', infer_type=False),
+    'seed': InputSpec(node=ref('primitiveint'), field='value', default=DEFAULT_SEED, type='INT', infer_type=False),
 }
 
 
@@ -38,16 +42,16 @@ READY_METADATA = ReadyMetadata.build(
     inputs=PUBLIC_INPUT_METADATA,
     models=MODELS,
     requirements={'custom_nodes': ['EmptyAceStep1', 'TextEncodeAceStepAudio1']},
+    provenance={'operation': 'authored'},
     operation='authored',
-    provenance={'operation': 'authored', 'source_workflow': 'ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json', 'source_id': 'audio/ace_step_1_5_t2a_song'},
-    source_path='ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json',
     source_id='audio/ace_step_1_5_t2a_song',
+    source_path='ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json',
     upstream_source_id='ace_step_1_5_t2a_song',
     source_type='api',
     source_workflow_path='ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json',
     output_mode='ready_template',
     ready_id='audio/ace_step_1_5_t2a_song',
-    source_bundle={'format_version': 2, 'generation_id': '491b751abcc454c6ef70906515c2157c9515ef88c7c8e1c8c045ec35916ef4a4', 'custody_digest': 'bca2c0af3a2a387caa11438c48512228315508c20b736bb089109f0b71d2bc2f'},
+    source_bundle={'format_version': 2, 'generation_id': '1d986c1500fb8eb04799a0b9227beee5056a90516bc8575b5a520877f8690eff', 'custody_digest': '52ad872436e34b9e09d0e43c33514ffb7acce7fcbb1850b0c26f2d9c79d51fb1'},
 )
 
 def build() -> VibeWorkflow:
@@ -72,12 +76,12 @@ def build() -> VibeWorkflow:
             _uid='106',
         )
 
-        emptyacestep1_5latentaudio = EmptyAceStep1_5LatentAudio(
-            _native_ports={'native_input_names': ['seconds', 'batch_size'], 'native_output_names': ['LATENT'], 'native_input_types': ['FLOAT', 'INT'], 'native_output_types': ['LATENT'], 'native_input_optional': [False, False], 'native_input_asset_kinds': None, 'native_output_slots': None},
-            batch_size=1,
-            seconds=2.0,
-            _id='122',
-            _uid='122',
+        # Inputs
+        primitivefloat = PrimitiveFloat(
+            _native_ports={'native_input_names': ['value'], 'native_output_names': ['FLOAT'], 'native_input_types': ['FLOAT'], 'native_output_types': ['FLOAT'], 'native_input_optional': [False], 'native_input_asset_kinds': None, 'native_output_slots': None},
+            value=DEFAULT_DURATION,
+            _id='110',
+            _uid='110',
         )
 
         unetloader = UNETLoader(
@@ -88,6 +92,13 @@ def build() -> VibeWorkflow:
             _uid='125',
         )
 
+        primitiveint = PrimitiveInt(
+            _native_ports={'native_input_names': ['value'], 'native_output_names': ['INT'], 'native_input_types': ['INT'], 'native_output_types': ['INT'], 'native_input_optional': [False], 'native_input_asset_kinds': None, 'native_output_slots': None},
+            value=DEFAULT_SEED,
+            _id='126',
+            _uid='126',
+        )
+
         modelsamplingauraflow = ModelSamplingAuraFlow(
             _native_ports={'native_input_names': ['shift', 'model'], 'native_output_names': ['MODEL'], 'native_input_types': ['FLOAT', 'MODEL'], 'native_output_types': ['MODEL'], 'native_input_optional': [False, False], 'native_input_asset_kinds': None, 'native_output_slots': None},
             shift=3,
@@ -96,12 +107,18 @@ def build() -> VibeWorkflow:
             _uid='78',
         )
 
+        emptyacestep1_5latentaudio = EmptyAceStep1_5LatentAudio(
+            _native_ports={'native_input_names': ['seconds', 'batch_size'], 'native_output_names': ['LATENT'], 'native_input_types': ['FLOAT', 'INT'], 'native_output_types': ['LATENT'], 'native_input_optional': [False, False], 'native_input_asset_kinds': None, 'native_output_slots': None},
+            batch_size=1,
+            seconds=primitivefloat.out('FLOAT'),
+            _id='122',
+            _uid='122',
+        )
+
         textencodeacestepaudio1_5 = TextEncodeAceStepAudio1_5(
             _native_ports={'native_input_names': ['tags', 'lyrics', 'seed', 'bpm', 'duration', 'timesignature', 'language', 'keyscale', 'generate_audio_codes', 'cfg_scale', 'temperature', 'top_p', 'top_k', 'min_p', 'clip'], 'native_output_names': ['CONDITIONING'], 'native_input_types': ['STRING', 'STRING', 'INT', 'INT', 'FLOAT', 'COMBO', 'COMBO', 'COMBO', 'BOOLEAN', 'FLOAT', 'FLOAT', 'FLOAT', 'INT', 'FLOAT', 'CLIP'], 'native_output_types': ['CONDITIONING'], 'native_input_optional': [False, False, False, False, False, False, False, False, False, False, False, False, False, False, False], 'native_input_asset_kinds': None, 'native_output_slots': None},
-            tags='synthwave, techno, synthpop, futuristic, electro, with liquid drum & bass drive.\nRestless, confident, dreamy mood at 128 BPM.\nAnalog bass, pulsating arps, percussive synth stabs, gated drums.\nQuick build,  then explosive drum burst, then clean fade.\nBreathy, rhythmic female vocals, minimal emotion, metallic echo.',
-            lyrics='Verse\nNeon rain on my screen,\nDreams compile in silver sheen.\nNo weight, just motion,\nI’m plugged into emotion.\n\nChorus\nComfy Cloud — breathing light,\nCode and color, spark and wire.\nDrift through data, feel alive,\nIn your circuits, I arrive.',
-            seed=DEFAULT_SEED,
-            duration=2.0,
+            tags=DEFAULT_PROMPT,
+            lyrics=DEFAULT_LYRICS,
             bpm=120,
             timesignature='4',
             language='en',
@@ -112,6 +129,8 @@ def build() -> VibeWorkflow:
             top_p=0.9,
             top_k=0,
             min_p=0,
+            seed=primitiveint.out('INT'),
+            duration=primitivefloat.out('FLOAT'),
             clip=dualcliploader.out('CLIP'),
             _id='124',
             _uid='124',
@@ -127,12 +146,12 @@ def build() -> VibeWorkflow:
         # Sampling
         ksampler = KSampler(
             _native_ports={'native_input_names': ['seed', 'steps', 'cfg', 'sampler_name', 'scheduler', 'denoise', 'latent_image', 'model', 'negative', 'positive'], 'native_output_names': ['LATENT'], 'native_input_types': ['INT', 'INT', 'FLOAT', 'CHOICE', 'CHOICE', 'FLOAT', 'LATENT', 'MODEL', 'CONDITIONING', 'CONDITIONING'], 'native_output_types': ['LATENT'], 'native_input_optional': [False, False, False, False, False, False, False, False, False, False], 'native_input_asset_kinds': None, 'native_output_slots': None},
-            seed=DEFAULT_SEED,
-            steps=1,
+            steps=8,
             cfg=GUIDE_STRENGTH,
             sampler_name='euler',
             scheduler='simple',
             denoise=1,
+            seed=primitiveint.out('INT'),
             latent_image=emptyacestep1_5latentaudio.out('LATENT'),
             model=modelsamplingauraflow.out('MODEL'),
             negative=conditioningzeroout.out('CONDITIONING'),
@@ -152,11 +171,11 @@ def build() -> VibeWorkflow:
         # Outputs
         saveaudiomp3 = SaveAudioMP3(
             _native_ports={'native_input_names': ['filename_prefix', 'quality', 'extra_pnginfo', 'prompt', 'audio'], 'native_output_names': None, 'native_input_types': ['STRING', 'COMBO', 'EXTRA_PNGINFO', 'PROMPT', 'AUDIO'], 'native_output_types': None, 'native_input_optional': [False, False, True, True, False], 'native_input_asset_kinds': None, 'native_output_slots': None},
-            filename_prefix='audio/vibecomfy_ace_step_smoke',
+            filename_prefix='audio/ace_step_song',
             quality='V0',
             audio=vaedecodeaudio.out('AUDIO'),
             _id='59',
             _uid='59',
         )
 
-        return wf.finalize(PUBLIC_INPUT_METADATA, outputs=[OutputSpec(node=saveaudiomp3, output_type='SaveAudioMP3', name='audio', artifact_kind='audio', mime_type='audio/mpeg', filename_prefix='audio/vibecomfy_ace_step_smoke', expected_cardinality='one')])
+        return wf.finalize(PUBLIC_INPUT_METADATA, outputs=[OutputSpec(node=saveaudiomp3, output_type='SaveAudioMP3', name='audio', artifact_kind='audio', mime_type='audio/mpeg', filename_prefix='audio/ace_step_song', expected_cardinality='one')])

@@ -100,8 +100,16 @@ def check_ready_template_offline_schemas_by_identity(
     locks_by_name = {str(name): pack for pack in locks for name in (pack.name, pack.slug) if name}
     schemas = {}
     errors = []
-    for node_id, api_node in workflow.compile("api").items():
-        class_type = str(api_node["class_type"])
+    classes = {node_id: str(node["class_type"]) for node_id, node in workflow.compile("api").items()}
+    # Public scalar helpers are folded out of the runtime graph. Validate their
+    # offline schemas too: they remain writable parts of the authored contract.
+    from vibecomfy._compile._helpers import RESOLVABLE_HELPER_CLASS_TYPES
+
+    for public in workflow.inputs.values():
+        target = workflow.nodes.get(str(public.node_id))
+        if target is not None and target.class_type in RESOLVABLE_HELPER_CLASS_TYPES:
+            classes[str(public.node_id)] = target.class_type
+    for node_id, class_type in classes.items():
         cached = get_class(class_type) or {}
         slug = cached.get("pack_slug") or cached.get("pack")
         locked = locks_by_class.get(class_type) or locks_by_name.get(str(slug))

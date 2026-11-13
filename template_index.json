@@ -19,16 +19,52 @@
       "model_count": 4,
       "public_inputs": [
         {
-          "name": "model",
+          "name": "prompt",
           "target": {
-            "node_id": "125",
-            "field": "unet_name"
+            "node_id": "124",
+            "field": "tags"
           },
-          "node_id": "125",
-          "field": "unet_name",
-          "value": null,
-          "type": null,
-          "default": null,
+          "node_id": "124",
+          "field": "tags",
+          "value": "synthwave, techno, synthpop, futuristic, electro, with liquid drum & bass drive.\nRestless, confident, dreamy mood at 128 BPM.\nAnalog bass, pulsating arps, percussive synth stabs, gated drums.\nQuick build,  then explosive drum burst, then clean fade.\nBreathy, rhythmic female vocals, minimal emotion, metallic echo.",
+          "type": "STRING",
+          "default": "synthwave, techno, synthpop, futuristic, electro, with liquid drum & bass drive.\nRestless, confident, dreamy mood at 128 BPM.\nAnalog bass, pulsating arps, percussive synth stabs, gated drums.\nQuick build,  then explosive drum burst, then clean fade.\nBreathy, rhythmic female vocals, minimal emotion, metallic echo.",
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "lyrics",
+          "target": {
+            "node_id": "124",
+            "field": "lyrics"
+          },
+          "node_id": "124",
+          "field": "lyrics",
+          "value": "Verse\nNeon rain on my screen,\nDreams compile in silver sheen.\nNo weight, just motion,\nI\u2019m plugged into emotion.\n\nChorus\nComfy Cloud \u2014 breathing light,\nCode and color, spark and wire.\nDrift through data, feel alive,\nIn your circuits, I arrive.",
+          "type": "STRING",
+          "default": "Verse\nNeon rain on my screen,\nDreams compile in silver sheen.\nNo weight, just motion,\nI\u2019m plugged into emotion.\n\nChorus\nComfy Cloud \u2014 breathing light,\nCode and color, spark and wire.\nDrift through data, feel alive,\nIn your circuits, I arrive.",
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "duration",
+          "target": {
+            "node_id": "110",
+            "field": "value"
+          },
+          "node_id": "110",
+          "field": "value",
+          "value": 30.0,
+          "type": "FLOAT",
+          "default": 30.0,
           "required": false,
           "range": null,
           "aliases": [],
@@ -39,32 +75,14 @@
         {
           "name": "seed",
           "target": {
-            "node_id": "3",
-            "field": "seed"
+            "node_id": "126",
+            "field": "value"
           },
-          "node_id": "3",
-          "field": "seed",
+          "node_id": "126",
+          "field": "value",
           "value": 561594583201063,
           "type": "INT",
           "default": 561594583201063,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "InputSpec"
-        },
-        {
-          "name": "steps",
-          "target": {
-            "node_id": "3",
-            "field": "steps"
-          },
-          "node_id": "3",
-          "field": "steps",
-          "value": null,
-          "type": null,
-          "default": null,
           "required": false,
           "range": null,
           "aliases": [],
@@ -80,7 +98,7 @@
           "output_type": "SaveAudioMP3",
           "artifact_kind": "audio",
           "mime_type": "audio/mpeg",
-          "filename_prefix": "audio/vibecomfy_ace_step_smoke",
+          "filename_prefix": "audio/ace_step_song",
           "expected_cardinality": "one",
           "status": "static",
           "source": "OutputSpec"
@@ -94,7 +112,7 @@
           "output_type": "SaveAudioMP3",
           "artifact_kind": "audio",
           "mime_type": "audio/mpeg",
-          "filename_prefix": "audio/vibecomfy_ace_step_smoke",
+          "filename_prefix": "audio/ace_step_song",
           "expected_cardinality": "one",
           "status": "static",
           "source": "OutputSpec"
@@ -1533,24 +1551,6 @@
           "media_semantics": "image",
           "status": "static",
           "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "1",
-            "field": "unet_name"
-          },
-          "node_id": "1",
-          "field": "unet_name",
-          "value": "qwen_image_2.1_turbo_int8_convrot.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
         }
       ],
       "public_outputs": [
@@ -2447,24 +2447,6 @@
           "media_semantics": null,
           "status": "static",
           "source": "InputSpec"
-        },
-        {
-          "name": "model",
-          "target": {
-            "node_id": "1",
-            "field": "unet_name"
-          },
-          "node_id": "1",
-          "field": "unet_name",
-          "value": "qwen_image_2.1_turbo_int8_convrot.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
         }
       ],
       "public_outputs": [

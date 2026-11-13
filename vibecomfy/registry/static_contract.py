@@ -149,14 +149,18 @@ def extract_ready_template_contract(
             descriptor = _extract_output_call(node, call_name, diagnostics)
             if descriptor is not None:
                 public_outputs.append(descriptor)
-    public_inputs.extend(
-        _infer_common_input_contracts(
-            tree,
-            public_inputs,
-            assignments,
-            wrapper_class_types=wrappers,
+    # A v2 canonical rebuild clears inferred inputs before registering its
+    # explicit descriptors. Mirror that authority in the discovery index.
+    source_bundle = metadata.get("source_bundle")
+    if not (isinstance(source_bundle, dict) and source_bundle.get("format_version") == 2):
+        public_inputs.extend(
+            _infer_common_input_contracts(
+                tree,
+                public_inputs,
+                assignments,
+                wrapper_class_types=wrappers,
+            )
         )
-    )
 
     # The runtime declaration may be authored in READY_REQUIREMENTS or in the
     # nested ReadyMetadata requirements block.  Both are declarations, so

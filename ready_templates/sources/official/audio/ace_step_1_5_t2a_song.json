@@ -197,7 +197,7 @@
         "secondTabWidth": 65
       },
       "widgets_values": [
-        2,
+        30.0,
         1
       ]
     },
@@ -330,7 +330,7 @@
       "widgets_values": [
         561594583201063,
         "fixed",
-        1,
+        8,
         1,
         "euler",
         "simple",
@@ -580,7 +580,7 @@
         "Verse\nNeon rain on my screen,\nDreams compile in silver sheen.\nNo weight, just motion,\nI\u2019m plugged into emotion.\n\nChorus\nComfy Cloud \u2014 breathing light,\nCode and color, spark and wire.\nDrift through data, feel alive,\nIn your circuits, I arrive.",
         561594583201063,
         "fixed",
-        2,
+        30.0,
         120,
         "4",
         "en",
@@ -747,7 +747,7 @@
         "secondTabWidth": 65
       },
       "widgets_values": [
-        2
+        30.0
       ]
     },
     {
@@ -778,7 +778,7 @@
         "ver": "0.3.34"
       },
       "widgets_values": [
-        "audio/vibecomfy_ace_step_smoke",
+        "audio/ace_step_song",
         "V0"
       ]
     }
