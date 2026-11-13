@@ -147,6 +147,9 @@ def test_windows_saved_workflow_imports_and_compiles_with_target_spelling(tmp_pa
     assert bundle.workflow.compile('api')['3']['inputs']['vae_name'] == EXACT_VAE
     record = bundle.compile(schema_provider=target)
     assert record.api_projection['3']['inputs']['vae_name'] == advertised
+    from vibecomfy.runtime.execution import authorized_queue_payload
+
+    assert authorized_queue_payload(record, bundle)['3']['inputs']['vae_name'] == advertised
     assert source.read_text(encoding='utf-8') == saved
 
 
@@ -163,7 +166,25 @@ def test_target_picker_binding_uses_exact_advertised_spelling(source, choices, e
     before = workflow.semantic_digest()
     record = load_bundle(workflow).compile(schema_provider=target)
     assert record.api_projection['3']['inputs']['vae_name'] == expected
+    record.assert_matches(load_bundle(workflow), api_projection=record.api_projection, ui_projection=record.ui_projection)
     assert workflow.semantic_digest() == before
+
+
+def test_queue_record_still_refuses_a_different_model_prefix():
+    from vibecomfy.runtime.execution import authorized_queue_payload
+    from vibecomfy.testing.canonical import canonical_digest
+    from vibecomfy.workflow_bundle import ApprovedProjectionRecord
+
+    workflow = _workflow_with_vae(EXACT_VAE)
+    data = target_info(workflow)
+    data['VAELoader']['input']['required']['vae_name'] = [[EXACT_VAE]]
+    bundle = load_bundle(workflow)
+    approved = bundle.compile(schema_provider=provider(data, model_availability='target'))
+    forged = approved.to_dict()
+    forged['api_projection']['3']['inputs']['vae_name'] = 'other/ae.safetensors'
+    forged['api_digest'] = canonical_digest(forged['api_projection'])
+    with pytest.raises(WorkflowBundleError, match='does not match current bundle'):
+        authorized_queue_payload(ApprovedProjectionRecord.from_dict(forged), bundle)
 
 
 def test_target_picker_binding_does_not_match_only_a_basename():

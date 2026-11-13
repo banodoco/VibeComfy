@@ -2030,6 +2030,30 @@ class ApprovedProjectionRecord:
             raise WorkflowBundleError(
                 f"approved projection could not recompile current bundle: {type(exc).__name__}: {exc}"
             ) from exc
+        # The approved target spelling may differ from saved widget spelling
+        # only by separators. Rebind those same-file model references through
+        # the one mapping before comparing the entire freshly compiled graph.
+        # All other literals, model prefixes, edges and nodes remain exact.
+        from vibecomfy.model_assets import _subdir_for_model_reference, model_picker_reference
+
+        for node_id, node in fresh_api.items():
+            approved = self.api_projection.get(node_id)
+            if not isinstance(approved, Mapping) or approved.get("class_type") != node.get("class_type"):
+                continue
+            approved_inputs = approved.get("inputs", {})
+            if not isinstance(approved_inputs, Mapping):
+                continue
+            for field, value in node.get("inputs", {}).items():
+                submitted = approved_inputs.get(field)
+                if (value != submitted and isinstance(value, str) and isinstance(submitted, str)
+                        and _subdir_for_model_reference(node["class_type"], field) is not None):
+                    try:
+                        picker = model_picker_reference(value, allow_backslash=True)
+                        spelling = picker.advertised_value([submitted])
+                    except ValueError:
+                        continue
+                    if spelling is not None:
+                        node["inputs"][field] = spelling
         if canonical_json(_thaw_json(self.api_projection)) != canonical_json(fresh_api):
             raise WorkflowBundleError(
                 "approved projection API projection does not match current bundle"
