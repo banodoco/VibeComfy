@@ -1,9 +1,9 @@
 {
   "runpod-lifecycle": {
     "artifact": "vendor/wheels/runpod_lifecycle-0.3.1.dev0-py3-none-any.whl",
-    "revision": "a67f2fe0f6fa497de152163e7d832e357191bf92",
+    "revision": "7f0b025e9391baac9f5c2fb7393617ea6fef0704",
     "version": "0.3.1.dev0",
-    "tree": "ee4d2b06625cde0173563f8be6d2ef9833c70832",
-    "wheel": "18fbb7c9dd9e5c1e17e7ea083b4d122a863f1781a60069497643cb3091dcf20a"
+    "tree": "949a038b5f3fbcf6b5f7dbbd810e08d5652b59c2",
+    "wheel": "7a77b4c7bcd8ebd1040bc3d993c1b48407ee4b3368f65e3af675f7bc3b40a03e"
   }
 }
