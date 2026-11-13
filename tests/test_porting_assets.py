@@ -122,6 +122,8 @@ def test_legacy_raw_workflow_extractor_still_returns_only_url_bearing_assets() -
             "name": "url_asset.safetensors",
             "url": "https://example.test/url_asset.safetensors",
             "subdir": "diffusion_models",
+            "sha256": None,
+            "size_bytes": None,
         }
     ]
     assert [
