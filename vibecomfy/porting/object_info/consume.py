@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from vibecomfy.porting.object_info.index import split_index
 
+from vibecomfy.object_info_inputs import read_object_info_input, read_object_info_inputs
 from vibecomfy.socket_types import canonical_socket_type
 from vibecomfy.porting.object_info.identity import normalize_cache_identity
 
@@ -775,11 +776,7 @@ def reconciled_object_info_widget_order(entry: dict[str, Any]) -> list[str | Non
 
 
 def _input_spec_has_control_after_generate(spec: list[Any] | None) -> bool:
-    if not spec:
-        return False
-    if len(spec) > 1 and isinstance(spec[1], dict):
-        return "control_after_generate" in spec[1]
-    return False
+    return "control_after_generate" in read_object_info_input(spec).metadata
 
 
 def object_info_widget_value_order(class_type: str) -> list[str]:
@@ -826,10 +823,10 @@ def compact_literal_widget_order(entry: dict[str, Any]) -> list[str]:
 def _input_spec_is_widget_value(spec: list[Any]) -> bool:
     if not spec:
         return False
-    head = spec[0]
-    if isinstance(head, list):
+    declaration = read_object_info_input(spec)
+    if declaration.choices is not None:
         return True
-    input_type = canonical_socket_type(_normalize_input_type(head))
+    input_type = canonical_socket_type(declaration.type)
     if input_type in _LITERAL_WIDGET_TYPES:
         return True
     if input_type in _WIDGET_LIKE_TYPES:
@@ -883,10 +880,9 @@ def class_defaults(class_type: str) -> dict[str, Any]:
     if entry is None:
         return {}
     defaults: dict[str, Any] = {}
-    for name, spec in _iter_input_specs(entry):
-        metadata = spec[1] if len(spec) > 1 and isinstance(spec[1], dict) else {}
-        if "default" in metadata:
-            defaults[name] = metadata["default"]
+    for name, declaration in read_object_info_inputs(entry).items():
+        if declaration.has_default:
+            defaults[name] = declaration.default
     return defaults
 
 
@@ -896,8 +892,8 @@ def class_input_types(class_type: str) -> dict[str, str]:
     if entry is None:
         return {}
     return {
-        name: _normalize_input_type(spec[0] if spec else None)
-        for name, spec in _iter_input_specs(entry)
+        name: ("ENUM" if spec.type == "CHOICE" else spec.type or "")
+        for name, spec in read_object_info_inputs(entry).items()
     }
 
 
@@ -1022,25 +1018,8 @@ def list_classes() -> list[str]:
     return sorted(_CURATED_OUTPUTS)
 
 
-def _iter_input_specs(entry: dict[str, Any]) -> list[tuple[str, list[Any]]]:
-    inputs = entry.get("inputs")
-    if not isinstance(inputs, dict):
-        return []
-    ordered = entry.get("input_order_all")
-    names: list[str] = [str(name) for name in ordered] if isinstance(ordered, list) else []
-    by_name: dict[str, list[Any]] = {}
-    for section in ("required", "optional"):
-        values = inputs.get(section)
-        if not isinstance(values, dict):
-            continue
-        for name, spec in values.items():
-            if isinstance(spec, list):
-                by_name[str(name)] = spec
-            elif isinstance(spec, str):
-                by_name[str(name)] = [spec]
-    if not names:
-        names = sorted(by_name)
-    return [(name, by_name[name]) for name in names if name in by_name]
+def _iter_input_specs(entry: dict[str, Any]) -> list[tuple[str, Any]]:
+    return [(name, spec.raw) for name, spec in read_object_info_inputs(entry).items()]
 
 
 def _normalize_input_type(value: Any) -> str:

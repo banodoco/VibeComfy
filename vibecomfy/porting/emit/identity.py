@@ -4,6 +4,7 @@ import contextlib
 import contextvars
 from typing import Any, Mapping
 
+from vibecomfy.object_info_inputs import read_object_info_inputs
 from vibecomfy.porting.object_info import ObjectInfoIdentity, class_defaults, resolve_class_entry
 from vibecomfy.porting.emit.signatures import EmissionDiagnostic
 
@@ -133,22 +134,10 @@ def _node_local_class_defaults(node: Any) -> dict[str, Any]:
         _record_lookup_warning(node, class_type, result.warning)
         entry = result.entry
         if entry is not None:
-            defaults: dict[str, Any] = {}
-            inputs = entry.get("inputs") or {}
-            if isinstance(inputs, Mapping):
-                for section in ("required", "optional"):
-                    group = inputs.get(section)
-                    if not isinstance(group, Mapping):
-                        continue
-                    for name, spec in group.items():
-                        if (
-                            isinstance(spec, (list, tuple))
-                            and len(spec) > 1
-                            and isinstance(spec[1], Mapping)
-                            and "default" in spec[1]
-                        ):
-                            defaults[str(name)] = spec[1]["default"]
-            return defaults
+            return {
+                name: spec.default for name, spec in read_object_info_inputs(entry).items()
+                if spec.has_default
+            }
     return dict(class_defaults(class_type))
 
 def _node_local_output_names(node: Any) -> list[str]:

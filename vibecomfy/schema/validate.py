@@ -242,7 +242,14 @@ def validate_against_schema(
     return validate_api_against_schema(api_dict, provider)
 
 
-def validate_api_against_schema(api_dict: dict[str, Any], provider: SchemaProvider) -> list[ValidationIssue]:
+def validate_api_against_schema(
+    api_dict: dict[str, Any], provider: SchemaProvider, *, require_explicit_required: bool = False,
+) -> list[ValidationIssue]:
+    """Validate a graph; executable approval requires even defaulted inputs.
+
+    Defaults describe frontend widgets. ComfyUI's /prompt validation still
+    requires their values in the submitted API graph.
+    """
     if schema_registry_empty(provider):
         return []
 
@@ -285,7 +292,7 @@ def validate_api_against_schema(api_dict: dict[str, Any], provider: SchemaProvid
             if (
                 getattr(spec, "required", False)
                 and name not in provided_inputs
-                and getattr(spec, "default", None) is None
+                and (require_explicit_required or getattr(spec, "default", None) is None)
                 and not _dynamic_controller_satisfied(name, provided_inputs, raw_schema_inputs)
             ):
                 issues.append(

@@ -351,8 +351,7 @@ def expand_dynamic_combo_names(
                 out.append(full)
                 value = values[position] if position < len(values) else None
                 position += 1
-                attrs = sub_raw[1] if isinstance(sub_raw, (list, tuple)) and len(sub_raw) > 1 else {}
-                if isinstance(attrs, Mapping) and attrs.get("control_after_generate"):
+                if spec.control_after_generate:
                     out.append(f"{prefix}control_after_generate")
                     position += 1
                 if spec.type == DYNAMIC_COMBO_TYPE:

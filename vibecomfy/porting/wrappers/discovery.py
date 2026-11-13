@@ -48,6 +48,7 @@ from pathlib import Path
 from typing import Any, Literal, Sequence
 
 from vibecomfy.node_packs import get_known_node_packs, read_lockfile
+from vibecomfy.object_info_inputs import read_object_info_inputs
 
 
 logger = logging.getLogger(__name__)
@@ -504,40 +505,18 @@ def _specs_from_object_info(
 
 
 def _inputs_from_object_info(info: dict[str, Any]) -> dict[str, InputFieldSpec]:
-    out: dict[str, InputFieldSpec] = {}
-    section_blob = info.get("inputs")
-    if not isinstance(section_blob, dict):
-        return out
-    for section_name in ("required", "optional"):
-        section = section_blob.get(section_name)
-        if not isinstance(section, dict):
-            continue
-        required = section_name == "required"
-        for name, value in section.items():
-            if not isinstance(value, list) or not value:
-                continue
-            type_value = value[0]
-            widget_meta: dict[str, Any] = {}
-            options: tuple[str, ...] | None = None
-            if len(value) >= 2 and isinstance(value[1], dict):
-                widget_meta = dict(value[1])
-            if isinstance(type_value, str):
-                type_name = type_value
-            elif isinstance(type_value, list):
-                type_name = "COMBO"
-                options = tuple(str(item) for item in type_value)
-            else:
-                type_name = "UNKNOWN"
-            out[name] = InputFieldSpec(
-                name=name,
-                type=type_name,
-                required=required,
-                default=widget_meta.get("default"),
-                has_default="default" in widget_meta,
-                options=options,
-                widget_metadata=widget_meta,
-            )
-    return out
+    return {
+        name: InputFieldSpec(
+            name=name,
+            type="COMBO" if spec.type == "CHOICE" else spec.type or "UNKNOWN",
+            required=spec.required,
+            default=spec.default,
+            has_default=spec.has_default,
+            options=tuple(str(item) for item in spec.choices) if spec.choices is not None else None,
+            widget_metadata=dict(spec.metadata),
+        )
+        for name, spec in read_object_info_inputs(info).items()
+    }
 
 
 # ---------------------------------------------------------------------------

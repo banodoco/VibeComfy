@@ -9,6 +9,8 @@ def _format_response_body(body: str, *, max_chars: int = 20000) -> str:
     body = body.strip()
     if len(body) <= max_chars:
         return body
+    if max_chars < 2080:
+        return body[:max_chars - 3] + "..."
     head_chars = 2000
     tail_chars = max_chars - head_chars - 80
     return (
@@ -18,11 +20,11 @@ def _format_response_body(body: str, *, max_chars: int = 20000) -> str:
     )
 
 
-def _raise_for_status_with_body(response: httpx.Response) -> None:
+def _raise_for_status_with_body(response: httpx.Response, *, max_chars: int = 20000) -> None:
     try:
         response.raise_for_status()
     except httpx.HTTPStatusError as exc:
-        body = _format_response_body(response.text)
+        body = _format_response_body(response.text, max_chars=max_chars)
         if body:
             raise RuntimeError(f"{exc}; response body: {body}") from exc
         raise
@@ -43,7 +45,7 @@ class ComfyClient:
     async def _post_prompt(self, prompt: dict[str, Any]) -> dict[str, Any]:
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(f"{self.server_url}/prompt", json={"prompt": prompt})
-            _raise_for_status_with_body(response)
+            _raise_for_status_with_body(response, max_chars=600)
             return response.json()
 
     async def free(self, *, unload_models: bool = True, free_memory: bool = True) -> dict[str, Any]:

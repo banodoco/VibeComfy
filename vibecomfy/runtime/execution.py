@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from typing import Any, Mapping, Protocol
+from urllib.error import HTTPError
 
 from vibecomfy.errors import WorkflowQueueError
 from vibecomfy.workflow_bundle import (
@@ -13,6 +14,18 @@ from vibecomfy.workflow_bundle import (
 )
 
 from .client import ComfyClient
+
+
+def _queue_failure_reason(exc: Exception) -> str:
+    # Embedded Comfy clients may use urllib rather than our httpx client.
+    # HTTPError.__str__ omits the server's actionable node_errors body.
+    if isinstance(exc, HTTPError):
+        from .client import _format_response_body
+
+        body = _format_response_body(exc.read().decode("utf-8", errors="replace"), max_chars=600)
+        if body:
+            return f"{exc}; response body: {body}"
+    return str(exc)
 
 
 class EmbeddedQueue(Protocol):
@@ -253,7 +266,7 @@ async def queue_embedded_prompt(
         raise
     except Exception as exc:
         raise WorkflowQueueError(
-            f"Workflow queue failed: {exc}",
+            f"Workflow queue failed: {_queue_failure_reason(exc)}",
             next_action="Check the embedded ComfyUI logs and verify the workflow can be queued by the active runtime.",
         ) from exc
     _raise_on_queue_node_errors(queued)
@@ -282,7 +295,7 @@ async def queue_server_prompt(
         raise
     except Exception as exc:
         raise WorkflowQueueError(
-            f"Workflow queue failed: {exc}",
+            f"Workflow queue failed: {_queue_failure_reason(exc)}",
             next_action="Check server health, the ComfyUI logs, and whether the workflow payload is accepted by this runtime.",
         ) from exc
     _raise_on_queue_node_errors(queued)

@@ -2110,6 +2110,16 @@ def _rebind_current_bundle(bundle: "WorkflowBundle") -> "WorkflowBundle":
     return live_current
 
 
+def _picker_refusal(provider: Any, class_type: str, field: str, value: str) -> str:
+    advertised = json.dumps(provider.advertised_input_spec(class_type, field), ensure_ascii=False)
+    if len(advertised) > 200:
+        advertised = advertised[:197] + "..."
+    return (
+        "model picker value is not advertised by the selected target: "
+        f"{class_type}.{field}={value!r}; advertised: {advertised}"
+    )
+
+
 def _approval_preconditions(
     workflow: VibeWorkflow,
     schema_provider: Any,
@@ -2529,8 +2539,7 @@ def _approval_preconditions(
                     # unadvertised Windows spelling.
                     picker.require_local()
                     raise WorkflowBundleError(
-                        f"model picker value is not advertised by the selected target: "
-                        f"{reference['class_type']}.{reference['field']}={value!r}"
+                        _picker_refusal(schema_provider, reference["class_type"], reference["field"], value)
                     )
                 target_destinations.add((picker.subdir, picker.name))
                 # Bare requirements need a graph picker witness, rather than
@@ -2802,8 +2811,7 @@ class WorkflowBundle:
                                         else schema_provider.target_model_value(class_type, field, value))
                         if target_value is None:
                             raise WorkflowBundleError(
-                                f"model picker value is not advertised by the selected target: "
-                                f"{class_type}.{field}={value!r}"
+                                _picker_refusal(schema_provider, class_type, field, value)
                             )
                         node["inputs"][field] = target_value
         try:
@@ -2813,7 +2821,9 @@ class WorkflowBundle:
             )
 
             schema_issues = [
-                *validate_api_against_schema(api_projection, schema_provider),
+                *validate_api_against_schema(
+                    api_projection, schema_provider, require_explicit_required=True
+                ),
                 *validate_api_link_shapes(api_projection, schema_provider),
             ]
         except Exception as exc:
@@ -2822,7 +2832,8 @@ class WorkflowBundle:
             ) from exc
         errors = [issue for issue in schema_issues if getattr(issue, "severity", "error") == "error"]
         if errors:
-            raise WorkflowBundleError(str(errors[0].message))
+            missing = [issue for issue in errors if issue.code == "missing_required_input"]
+            raise WorkflowBundleError("; ".join(str(issue.message) for issue in missing) if missing else str(errors[0].message))
         ui_projection = self.materialize_ui(schema_provider=schema_provider)
         return ApprovedProjectionRecord(
             revision_id=self.revision_id,

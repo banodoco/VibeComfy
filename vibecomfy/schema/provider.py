@@ -14,6 +14,9 @@ if TYPE_CHECKING:
     from vibecomfy.model_assets import ModelPickerReference
 
 from vibecomfy.comfy_command import has_comfyui_runtime
+from vibecomfy.object_info_inputs import (
+    object_info_input_order, read_object_info_input, read_object_info_inputs,
+)
 from vibecomfy.runtime.client import ComfyClient
 from vibecomfy.runtime.server import comfy_server
 from vibecomfy.porting.object_info.generation import active_cache_root, cache_file_witness
@@ -1633,17 +1636,15 @@ class TargetSchemaProvider(RuntimeSchemaProvider):
         reference = (value if isinstance(value, ModelPickerReference)
                      else model_picker_reference(value, allow_backslash=True))
         info = self.object_info().get(class_type)
-        inputs = info.get("input") if isinstance(info, Mapping) else None
-        if not isinstance(inputs, Mapping):
-            return None
-        choices = []
-        for section in ("required", "optional"):
-            fields = inputs.get(section)
-            spec = fields.get(field) if isinstance(fields, Mapping) else None
-            if isinstance(spec, (list, tuple)) and spec:
-                if isinstance(spec[0], (list, tuple)):
-                    choices.extend(spec[0])
-        return reference.advertised_value(choices)
+        fields = read_object_info_inputs(info) if isinstance(info, Mapping) else {}
+        spec = fields.get(field)
+        return reference.advertised_value(spec.choices or []) if spec is not None else None
+
+    def advertised_input_spec(self, class_type: str, field: str) -> Any:
+        """Return the exact target declaration for refusal diagnostics."""
+        info = self.object_info().get(class_type)
+        spec = read_object_info_inputs(info).get(field) if isinstance(info, Mapping) else None
+        return spec.raw if spec is not None else None
 
     def object_info(self) -> dict[str, Any]:
         if self._object_info is None:
@@ -1760,17 +1761,10 @@ def _default_object_info_index_root() -> Path:
 
 
 def _schema_from_object_info(class_type: str, info: dict[str, Any]) -> NodeSchema:
-    parsed_inputs: dict[str, InputSpec] = {}
-    input_groups = info.get("input")
-    if not isinstance(input_groups, dict):
-        input_groups = info.get("inputs", {})
-    if isinstance(input_groups, dict):
-        for group_name, group in input_groups.items():
-            required = group_name == "required"
-            if isinstance(group, dict):
-                for name, spec in group.items():
-                    parsed_inputs[str(name)] = _parse_input_spec(spec, required=required, name=str(name))
-    inputs = _order_object_info_inputs(parsed_inputs, info)
+    inputs = {
+        name: _parse_input_spec(spec.raw, required=spec.required, name=name)
+        for name, spec in read_object_info_inputs(info).items()
+    }
     outputs = _parse_outputs(info)
     pack = _first_string(info, "pack", "package", "category")
     # ``object_info_widget_order`` is emitted by the normalized object-info
@@ -1891,23 +1885,7 @@ def _order_object_info_inputs(inputs: dict[str, InputSpec], info: dict[str, Any]
 
 
 def _object_info_input_order(info: dict[str, Any]) -> list[str]:
-    widget_order = info.get("object_info_widget_order")
-    if isinstance(widget_order, list):
-        return [str(name) for name in widget_order if isinstance(name, str) and name]
-
-    input_order_all = info.get("input_order_all")
-    if isinstance(input_order_all, list):
-        return [str(name) for name in input_order_all if isinstance(name, str) and name]
-
-    input_order = info.get("input_order")
-    if isinstance(input_order, dict):
-        names: list[str] = []
-        for group in ("required", "optional", "hidden"):
-            values = input_order.get(group)
-            if isinstance(values, list):
-                names.extend(str(name) for name in values if isinstance(name, str) and name)
-        return names
-    return []
+    return object_info_input_order(info)
 
 
 def _cache_fingerprint_for_path(path: Path) -> str | None:
@@ -1987,8 +1965,9 @@ def _dynamic_combo_field_names(option_inputs: Any, prefix: str) -> list[str]:
         for sub_name, sub_raw in rows.items():
             full = f"{prefix}{sub_name}"
             names.append(full)
-            sub_attrs = sub_raw[1] if isinstance(sub_raw, (list, tuple)) and len(sub_raw) > 1 else {}
-            if isinstance(sub_raw, (list, tuple)) and sub_raw and sub_raw[0] == DYNAMIC_COMBO_TYPE and isinstance(sub_attrs, Mapping):
+            declaration = read_object_info_input(sub_raw)
+            sub_attrs = declaration.metadata
+            if declaration.type == DYNAMIC_COMBO_TYPE:
                 for option in sub_attrs.get("options") or []:
                     if isinstance(option, Mapping):
                         names.extend(_dynamic_combo_field_names(option.get("inputs"), f"{full}."))
@@ -1996,23 +1975,10 @@ def _dynamic_combo_field_names(option_inputs: Any, prefix: str) -> list[str]:
 
 
 def _parse_input_spec(raw: Any, *, required: bool, name: str | None = None) -> InputSpec:
-    typ: Any = None
-    attrs: dict[str, Any] = {}
-    choices: list[Any] | None = None
-    if isinstance(raw, (list, tuple)) and raw:
-        typ = raw[0]
-        if isinstance(typ, list):
-            choices = list(typ)
-            typ = "CHOICE"
-        if len(raw) > 1 and isinstance(raw[1], dict):
-            attrs = raw[1]
-    elif isinstance(raw, dict):
-        typ = raw.get("type")
-        attrs = raw
-        if isinstance(raw.get("choices"), list):
-            choices = list(raw["choices"])
-    elif isinstance(raw, str):
-        typ = raw
+    declaration = read_object_info_input(raw, required=required)
+    typ = declaration.type
+    attrs = declaration.metadata
+    choices = declaration.choices
 
     # Object-info is an external, weakly typed boundary.  Keep only bounds
     # whose JSON value already has the schema contract's numeric type.  In

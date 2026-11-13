@@ -19,6 +19,24 @@
       "model_count": 4,
       "public_inputs": [
         {
+          "name": "model",
+          "target": {
+            "node_id": "125",
+            "field": "unet_name"
+          },
+          "node_id": "125",
+          "field": "unet_name",
+          "value": null,
+          "type": null,
+          "default": null,
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
           "name": "seed",
           "target": {
             "node_id": "3",
@@ -37,24 +55,6 @@
           "source": "InputSpec"
         },
         {
-          "name": "model",
-          "target": {
-            "node_id": "125",
-            "field": "unet_name"
-          },
-          "node_id": "125",
-          "field": "unet_name",
-          "value": "acestep_v1.5_turbo.safetensors",
-          "type": null,
-          "default": null,
-          "required": false,
-          "range": null,
-          "aliases": [],
-          "media_semantics": null,
-          "status": "static",
-          "source": "finalize_metadata"
-        },
-        {
           "name": "steps",
           "target": {
             "node_id": "3",
@@ -62,7 +62,7 @@
           },
           "node_id": "3",
           "field": "steps",
-          "value": 1,
+          "value": null,
           "type": null,
           "default": null,
           "required": false,
@@ -70,43 +70,37 @@
           "aliases": [],
           "media_semantics": null,
           "status": "static",
-          "source": "finalize_metadata"
+          "source": "InputSpec"
         }
       ],
       "public_outputs": [
         {
-          "name": "audio",
           "node_id": "59",
+          "name": "audio",
           "output_type": "SaveAudioMP3",
           "artifact_kind": "audio",
           "mime_type": "audio/mpeg",
           "filename_prefix": "audio/vibecomfy_ace_step_smoke",
           "expected_cardinality": "one",
           "status": "static",
-          "source": "finalize"
+          "source": "OutputSpec"
         }
       ],
       "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
       "artifact_expectations": [
         {
-          "name": "audio",
           "node_id": "59",
+          "name": "audio",
           "output_type": "SaveAudioMP3",
           "artifact_kind": "audio",
           "mime_type": "audio/mpeg",
           "filename_prefix": "audio/vibecomfy_ace_step_smoke",
           "expected_cardinality": "one",
           "status": "static",
-          "source": "finalize"
+          "source": "OutputSpec"
         }
       ],
-      "static_diagnostics": [
-        {
-          "code": "static_dynamic_value",
-          "severity": "warning",
-          "message": "finalize has dynamic 'output_node'"
-        }
-      ],
+      "static_diagnostics": [],
       "public_input_status": "declared",
       "public_output_status": "declared",
       "custom_node_count": 2,

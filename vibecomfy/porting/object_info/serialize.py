@@ -35,6 +35,7 @@ try:
 except ImportError:  # pragma: no cover - POSIX has fcntl instead.
     msvcrt = None  # type: ignore[assignment]
 
+from vibecomfy.object_info_inputs import read_object_info_input
 from vibecomfy.node_packs import compute_schema_hash
 from vibecomfy.porting.object_info.consume import (
     CACHE_DIR,
@@ -177,10 +178,11 @@ def _make_cache_entry(
             widget_order.append(name)  # best-effort
             continue
 
-        comfy_type = type_info[0] if isinstance(type_info, list) and type_info else None
+        declaration = read_object_info_input(type_info)
+        comfy_type = declaration.type
         # comfy_type can be a string (e.g. "MODEL", "INT") or a list of strings (enum values).
         # If it's a list, it's widget-like (an enum dropdown).
-        if isinstance(comfy_type, list):
+        if declaration.choices is not None:
             widget_order.append(name)
         elif isinstance(comfy_type, str) and comfy_type not in _WIDGET_LIKE_TYPES:
             widget_order.append(name)

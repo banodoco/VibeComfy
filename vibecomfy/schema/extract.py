@@ -40,6 +40,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from vibecomfy.porting.object_info.pinned_venv import CommandRunner, provision_comfyui_venv
+from vibecomfy.object_info_inputs import read_object_info_input
 
 # Type strings that denote a slot-bound (link) input rather than a widget, used
 # when deriving the object_info widget ordering.
@@ -105,8 +106,9 @@ def widget_order(inputs: dict[str, dict[str, Any]], ordered: list[str]) -> list[
             if name in inputs.get(section, {}):
                 spec = inputs[section][name]
                 break
-        comfy_type = spec[0] if isinstance(spec, list) and spec else None
-        if isinstance(comfy_type, list):
+        declaration = read_object_info_input(spec)
+        comfy_type = declaration.type
+        if declaration.choices is not None:
             out.append(name)
         elif isinstance(comfy_type, str) and comfy_type not in LINK_ONLY_TYPES:
             out.append(name)
@@ -675,12 +677,13 @@ def _sanitize_observed_inputs(raw_inputs: Any) -> Any:
                 fixed_group[name] = spec
                 continue
             head = spec[0]
-            if isinstance(head, list):
+            choices = read_object_info_input(spec).choices
+            if choices is not None:
                 # A combo is faithfully captured only when EVERY option is a
                 # plain string; anything else (boolean pairs, folder_paths
                 # lists, dummy artifacts) becomes the established unresolved
                 # marker instead of a fabricated option list.
-                if head and all(isinstance(c, str) and not _is_artifact(c) for c in head):
+                if choices and all(isinstance(c, str) and not _is_artifact(c) for c in choices):
                     fixed_group[name] = [head] + [_clean_meta(item) for item in spec[1:]]
                 else:
                     fixed_group[name] = ["COMBO", {"unresolved_choices": True}]
