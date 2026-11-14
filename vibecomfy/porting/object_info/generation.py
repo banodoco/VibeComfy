@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 import stat
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,13 @@ RESERVED_FILES = frozenset({CURRENT_FILE, MANIFEST_FILE, "index.json", "provenan
 # validation witness and use cheap stat checks on subsequent lookups; any file
 # replacement or metadata change falls back to the full content validation.
 _VALIDATED_GENERATIONS: dict[Path, tuple[tuple[str, int, int, int, int, int, int], ...]] = {}
+
+# Retain only the latest stat/witness pair per absolute path. ctime catches
+# same-size rewrites whose mtime is restored; dev and mode preserve identity
+# across filesystem replacements and changes to non-regular files.
+_FileWitness = tuple[int, int, int, int, int, str | None]
+_WITNESS_MEMO: dict[Path, tuple[tuple[int, ...], _FileWitness]] = {}
+_WITNESS_LOCK = threading.Lock()
 
 
 def _stat_fingerprint(path: Path) -> tuple[str, int, int, int, int, int, int]:
@@ -89,25 +97,39 @@ def cache_file_witness(path: str | Path) -> tuple[int, int, int, int, int, str |
     while preserving inode metadata. Hashing regular-file bytes makes the
     reader witness robust to that replacement. Symlinks and other non-regular
     files remain metadata-only and are rejected by the existing path guards.
+    Reuse a witness while the path's stat signature, including ctime, is stable.
     """
-    try:
-        file_stat = Path(path).lstat()
-    except FileNotFoundError:
-        return None
-    content_sha256: str | None = None
-    if stat.S_ISREG(file_stat.st_mode):
+    path = Path(path).absolute()
+    with _WITNESS_LOCK:
         try:
-            content_sha256 = hashlib.sha256(Path(path).read_bytes()).hexdigest()
-        except OSError:
-            content_sha256 = None
-    return (
-        file_stat.st_dev,
-        file_stat.st_ino,
-        file_stat.st_size,
-        file_stat.st_mtime_ns,
-        file_stat.st_mode,
-        content_sha256,
-    )
+            file_stat = path.lstat()
+        except FileNotFoundError:
+            _WITNESS_MEMO.pop(path, None)
+            return None
+        signature = (
+            file_stat.st_dev, file_stat.st_ino, file_stat.st_size,
+            file_stat.st_mtime_ns, file_stat.st_ctime_ns, file_stat.st_mode,
+        )
+        cached = _WITNESS_MEMO.get(path)
+        if cached is not None and cached[0] == signature:
+            return cached[1]
+        _WITNESS_MEMO.pop(path, None)
+        content_sha256: str | None = None
+        if stat.S_ISREG(file_stat.st_mode):
+            try:
+                content_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+            except OSError:
+                # Retry transient read failures on the next lookup.
+                return (
+                    file_stat.st_dev, file_stat.st_ino, file_stat.st_size,
+                    file_stat.st_mtime_ns, file_stat.st_mode, None,
+                )
+        witness = (
+            file_stat.st_dev, file_stat.st_ino, file_stat.st_size,
+            file_stat.st_mtime_ns, file_stat.st_mode, content_sha256,
+        )
+        _WITNESS_MEMO[path] = (signature, witness)
+        return witness
 
 
 def active_cache_root(cache_root: str | Path) -> Path:
