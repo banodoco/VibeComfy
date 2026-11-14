@@ -276,7 +276,7 @@ def test_download_writes_tmp_then_renames(monkeypatch: pytest.MonkeyPatch, tmp_p
     assert not (tmp_path / "checkpoints" / "model.safetensors.tmp").exists()
     assert requested["method"] == "GET"
     assert requested["url"] == "https://example.test/model.safetensors"
-    assert requested["follow_redirects"] is True
+    assert requested["follow_redirects"] is False
 
 
 def test_url_only_model_records_effective_bytes_and_reuses_receipt(
@@ -690,7 +690,7 @@ def test_download_uses_hf_token_header_and_omits_empty_header(monkeypatch: pytes
     monkeypatch.delenv("HF_TOKEN", raising=False)
     fetch.download({**ENTRY, "name": "without-token.safetensors"})
     monkeypatch.setenv("HF_TOKEN", "secret-token")
-    fetch.download({**ENTRY, "name": "with-token.safetensors"})
+    fetch.download({**ENTRY, "name": "with-token.safetensors", "url": "https://huggingface.co/model.safetensors"})
 
     assert seen_headers == [{}, {"Authorization": "Bearer secret-token"}]
 

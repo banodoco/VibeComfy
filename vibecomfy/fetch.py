@@ -14,6 +14,7 @@ import os
 import stat
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass
 from collections.abc import Mapping
 from pathlib import Path, PurePosixPath, PureWindowsPath
@@ -484,6 +485,42 @@ def _write_verification_receipt(path: Path, receipt: dict[str, Any]) -> None:
         return
 
 
+def _hf_credential_host(url: str) -> bool:
+    """Allow credentials only over HTTPS to Hugging Face's DNS namespaces."""
+    parsed = urlsplit(url)
+    host = (parsed.hostname or "").lower()
+    return parsed.scheme == "https" and (
+        host in {"huggingface.co", "hf.co"}
+        or host.endswith((".huggingface.co", ".hf.co"))
+    )
+
+
+@contextmanager
+def _download_stream(url: str, *, client: Any, timeout: httpx.Timeout):
+    """Rebuild credentials on each hop instead of trusting client redirects."""
+    stream = client.stream if client is not None else httpx.stream
+    for redirect_count in range(21):
+        headers: dict[str, str] = {}
+        if _hf_credential_host(url):
+            token = os.environ.get("HF_TOKEN")
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+        with stream("GET", url, follow_redirects=False, headers=headers, timeout=timeout) as response:
+            # The Agent's resuming wrapper exposes the underlying response
+            # rather than forwarding its redirect headers.
+            raw_response = getattr(response, "_response", response)
+            location = httpx.Headers(getattr(raw_response, "headers", {})).get("location")
+            if response.status_code not in {301, 302, 303, 307, 308} or not location:
+                yield response
+                return
+            if redirect_count == 20:
+                raise httpx.TooManyRedirects(
+                    "Exceeded maximum allowed redirects.", request=httpx.Request("GET", url)
+                )
+            response_url = str(getattr(response, "url", None) or url)
+            url = str(httpx.URL(response_url).join(location))
+
+
 def download(
     entry: Mapping[str, Any],
     *,
@@ -580,16 +617,8 @@ def download(
                 print(f"skipped {name} (cached sha256)")
             return path
     url = fetch_url
-    headers: dict[str, str] = {}
-    token = os.environ.get("HF_TOKEN")
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
     timeout = httpx.Timeout(60, read=None)
-    stream_context = (
-        client.stream("GET", url, follow_redirects=True, headers=headers, timeout=timeout)
-        if client is not None
-        else httpx.stream("GET", url, follow_redirects=True, headers=headers, timeout=timeout)
-    )
+    stream_context = _download_stream(url, client=client, timeout=timeout)
 
     _assert_destination_stable(authorized_root, path, field=destination_field)
     path.parent.mkdir(parents=True, exist_ok=True)
