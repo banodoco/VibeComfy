@@ -32,6 +32,8 @@ MODELS = {
 
 
 PUBLIC_INPUT_METADATA = {
+    'diffusion_model': InputSpec(node=ref('hunyuanfoleymodelloader'), field='foley_checkpoint_name', default=FOLEY_CHECKPOINT_NAME, type='COMBO', required=False, infer_type=False),
+    'vae': InputSpec(node=ref('loaddachunyuanvae'), field='vae_name', default=VAE_NAME, type='COMBO', required=False, infer_type=False),
     'seed': InputSpec(node=ref('hunyuanfoleysampler'), field='seed', default=DEFAULT_SEED, type='INT', infer_type=False),
     'video_ref': InputSpec(node=ref('loadvideo'), field='file', default=DEFAULT_VIDEO_REF, type='COMBO', required=True, media_semantics='video', infer_type=False),
     'prompt': InputSpec(node=ref('hunyuanfoleysampler'), field='prompt', default=DEFAULT_PROMPT, type='STRING', required=True, infer_type=False),
@@ -54,7 +56,7 @@ READY_METADATA = ReadyMetadata.build(
     execution_ready=True,
     ready_id='audio/hunyuan_video_foley',
     provenance={'source_path': 'ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/hunyuan_video_foley.json', 'source_id': 'audio/hunyuan_video_foley', 'source_type': 'api', 'source_provenance': {'records': [], 'requirements': [], 'warnings': [], 'conflicts': [], 'version_pins': [], 'required_pack_slugs': [], 'aux_only': [], 'unprovenanced': [], 'core_slug_non_core': [], 'low_confidence': False}, 'source_hash': '720916735c73726206dfa21fa235791c1cfd37330e74cc65ed2111a588e28747', 'output_mode': 'ready_template', 'artifact_class': 'execution_ready_candidate', 'execution_ready': True, 'ready_id': 'audio/hunyuan_video_foley', 'source_workflow': 'ready_templates/sources/custom_nodes/hunyuan_foley/bobrandomnumber/hunyuan_video_foley.json'},
-    source_bundle={'format_version': 2, 'generation_id': '80579d4e12cd4940da833decbc9ea7ea680301a568b54cc9ae9eff059f3a00f2', 'custody_digest': '6b5baad47cfe9143159b1ed2b0e2f36864dd34c67a91391c56f20b1b2cf11c61'},
+    source_bundle={'format_version': 2, 'generation_id': '41b95c88ef870a05138e2a8e2a6d2aaf8549e2bd35821b50391758b148cc32bc', 'custody_digest': '6b5baad47cfe9143159b1ed2b0e2f36864dd34c67a91391c56f20b1b2cf11c61'},
 )
 
 def build() -> VibeWorkflow:

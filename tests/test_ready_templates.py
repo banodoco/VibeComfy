@@ -212,7 +212,9 @@ def test_generated_foley_roundtrip_keeps_public_media_assets_and_node_pin(tmp_pa
                                        'LoadDACHunyuanVAE', 'DACHunyuanVAEDecode'}
     indexed = next(row for row in json.loads((root / 'template_index.json').read_text())['templates']
                    if row['id'] == identifier)
-    assert {row['name'] for row in indexed['public_inputs']} == {'prompt', 'video_ref', 'seed'}
+    assert {row['name'] for row in indexed['public_inputs']} == {
+        'prompt', 'video_ref', 'seed', 'diffusion_model', 'vae',
+    }
     assert indexed['model_count'] == 10
     video = next(row for row in indexed['public_inputs'] if row['name'] == 'video_ref')
     assert video['node_id'] == '23' and video['field'] == 'file'

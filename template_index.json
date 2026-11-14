@@ -341,6 +341,42 @@
       "model_count": 10,
       "public_inputs": [
         {
+          "name": "diffusion_model",
+          "target": {
+            "node_id": "11",
+            "field": "foley_checkpoint_name"
+          },
+          "node_id": "11",
+          "field": "foley_checkpoint_name",
+          "value": "hunyuanvideo_foley_xl.pth",
+          "type": "COMBO",
+          "default": "hunyuanvideo_foley_xl.pth",
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
+          "name": "vae",
+          "target": {
+            "node_id": "12",
+            "field": "vae_name"
+          },
+          "node_id": "12",
+          "field": "vae_name",
+          "value": "hunyuan_foley/vae_128d_48k.pth",
+          "type": "COMBO",
+          "default": "hunyuan_foley/vae_128d_48k.pth",
+          "required": false,
+          "range": null,
+          "aliases": [],
+          "media_semantics": null,
+          "status": "static",
+          "source": "InputSpec"
+        },
+        {
           "name": "seed",
           "target": {
             "node_id": "22",
