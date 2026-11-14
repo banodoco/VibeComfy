@@ -53,7 +53,8 @@ PUBLIC_INPUT_METADATA = {
     'seed': InputSpec(node='3', field='noise_seed', default=DEFAULT_SEED),
     'model': InputSpec(node='7', field='ckpt_name', default=AUDIO_VAE_NAME),
     'prompt': InputSpec(node='20', field='text', default=DEFAULT_PROMPT),
-    'image': InputSpec(node='5', field='image', default='example.png', aliases=('input_image',)),
+    'start_image': InputSpec(node='5', field='image', default='', type='IMAGE', required=True, aliases=('image', 'input_image'), media_semantics='image', materialize_aliases=False),
+    'end_image': InputSpec(node='6', field='image', default='', type='IMAGE', required=True, media_semantics='image'),
 }
 
 READY_METADATA = ReadyMetadata.build(
