@@ -31,7 +31,7 @@ VIDEO_VAE_NAME = 'LTX23_video_vae_bf16_KJ.safetensors'
 MODELS = {
     # The registry resolves this historical fp8 alias to the Comfy-Org fp4
     # text encoder artifact used by current LTX templates.
-    'text_encoder': ModelAsset(filename=CLIP_NAME, url='https://huggingface.co/Comfy-Org/ltx-2/resolve/main/split_files/text_encoders/gemma_3_12B_it_fp4_mixed.safetensors', subdir='text_encoders'),
+    'text_encoder': ModelAsset(filename=CLIP_NAME, url='https://huggingface.co/Comfy-Org/ltx-2/resolve/ccde4ba417d7900669fd56dd292a883cee11ff37/split_files/text_encoders/gemma_3_12B_it_fp4_mixed.safetensors', subdir='text_encoders', sha256='aaca463d11e6d8d2a4bdb0d6299214c15ef78a3f73e0ef8113d5a9d0219b3f6d', size_bytes=9447702218, hf_revision='ccde4ba417d7900669fd56dd292a883cee11ff37'),
     'text_projection': ModelAsset(url='https://huggingface.co/Kijai/LTX2.3_comfy/resolve/main/text_encoders/ltx-2.3_text_projection_bf16.safetensors', subdir='text_encoders'),
     'video_vae': ModelAsset(filename=VIDEO_VAE_NAME, url='https://huggingface.co/Kijai/LTX2.3_comfy/resolve/main/vae/LTX23_video_vae_bf16.safetensors', subdir='vae'),
     'audio_vae': ModelAsset(filename='LTX23_audio_vae_bf16_KJ.safetensors', url='https://huggingface.co/Kijai/LTX2.3_comfy/resolve/main/vae/LTX23_audio_vae_bf16.safetensors', subdir='checkpoints'),

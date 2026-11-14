@@ -30,10 +30,10 @@ TEXT_ENCODER_NAME = 'comfy_gemma_3_12B_it.safetensors'
 
 
 MODELS = {
-    'checkpoint': ModelAsset(filename='ltx-2.3-22b-dev.safetensors', url='https://huggingface.co/Lightricks/LTX-2.3-fp8/resolve/main/ltx-2.3-22b-dev-fp8.safetensors', subdir='checkpoints'),
-    'lora': ModelAsset(filename='ltxv/ltx2/ltx-2.3-22b-distilled-lora-384-1.1.safetensors', url='https://huggingface.co/Lightricks/LTX-2.3/resolve/main/ltx-2.3-22b-distilled-lora-384-1.1.safetensors', subdir='loras'),
-    'checkpoint_2': ModelAsset(url='https://huggingface.co/Lightricks/LTX-2.3-fp8/resolve/main/ltx-2.3-22b-dev-fp8.safetensors', subdir='checkpoints'),
-    'text_encoder': ModelAsset(filename='comfy_gemma_3_12B_it.safetensors', url='https://huggingface.co/Comfy-Org/ltx-2/resolve/main/split_files/text_encoders/gemma_3_12B_it_fp4_mixed.safetensors', subdir='text_encoders'),
+    'checkpoint': ModelAsset(filename='ltx-2.3-22b-dev.safetensors', url='https://huggingface.co/Lightricks/LTX-2.3-fp8/resolve/91eda216f820e5ecb3d17dc9fe3b7cdaf56b587d/ltx-2.3-22b-dev-fp8.safetensors', sha256='28606c5b5a06ce56f896d4dfcb20f212739e07a68fbe48e53638188449d26450', hf_revision='91eda216f820e5ecb3d17dc9fe3b7cdaf56b587d', size_bytes=29145431166, subdir='checkpoints'),
+    'lora': ModelAsset(filename='ltxv/ltx2/ltx-2.3-22b-distilled-lora-384-1.1.safetensors', url='https://huggingface.co/Lightricks/LTX-2.3/resolve/c1521179de480464f366a98a9d9b2acc4cc097b9/ltx-2.3-22b-distilled-lora-384-1.1.safetensors', sha256='f5d4953f3386197a4b4f5abdb17616ff256171e8075c111d6e7d2dfa6e823b3a', hf_revision='c1521179de480464f366a98a9d9b2acc4cc097b9', size_bytes=7605507256, subdir='loras'),
+    'checkpoint_2': ModelAsset(url='https://huggingface.co/Lightricks/LTX-2.3-fp8/resolve/91eda216f820e5ecb3d17dc9fe3b7cdaf56b587d/ltx-2.3-22b-dev-fp8.safetensors', sha256='28606c5b5a06ce56f896d4dfcb20f212739e07a68fbe48e53638188449d26450', hf_revision='91eda216f820e5ecb3d17dc9fe3b7cdaf56b587d', size_bytes=29145431166, subdir='checkpoints'),
+    'text_encoder': ModelAsset(filename='comfy_gemma_3_12B_it.safetensors', url='https://huggingface.co/Comfy-Org/ltx-2/resolve/ccde4ba417d7900669fd56dd292a883cee11ff37/split_files/text_encoders/gemma_3_12B_it_fp4_mixed.safetensors', sha256='aaca463d11e6d8d2a4bdb0d6299214c15ef78a3f73e0ef8113d5a9d0219b3f6d', hf_revision='ccde4ba417d7900669fd56dd292a883cee11ff37', size_bytes=9447702218, subdir='text_encoders'),
 }
 
 
@@ -69,7 +69,7 @@ READY_METADATA = ReadyMetadata.build(
     entrypoint='patch',
     layer='vibecomfy/patches/resolution.py:resolution:384x256x9',
     patch_applications=[{'name': 'resolution:384x256x9', 'layer': 'patch', 'called': True, 'topology_changed': False, 'nodes_added': [], 'introduced_edges': [], 'rewritten_edges': [], 'value_changed': True}],
-    source_bundle={'format_version': 2, 'generation_id': 'efe75c6ed20ff390ce32511824c7099437292fca57cdef6c8eaaedb8e0233cf2', 'custody_digest': '6b0014bd72b1b09faf55e43c16ad36663c1dc9af27516e62cb13ebe2f1171ed6'},
+    source_bundle={'format_version': 2, 'generation_id': '565b422dd73bd11a119f995535d78b660d95a46244e8f4d7bf8ccb0b61e87da0', 'custody_digest': '6b0014bd72b1b09faf55e43c16ad36663c1dc9af27516e62cb13ebe2f1171ed6'},
 )
 
 def build() -> VibeWorkflow:
