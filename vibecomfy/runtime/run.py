@@ -19,6 +19,7 @@ from .attempt import build_attempt_bundle, write_attempt_json
 from .run_context import RunContext
 from .run_logs import declare_log
 from .client import ComfyClient
+from .transport import ComfyTransport
 from .dependencies import RuntimeDependencyError
 from .execution import queue_server_prompt
 from .drift import enforce_strict_drift
@@ -696,6 +697,9 @@ async def run(
             logger.log(logging.WARNING if _schema_warn_only(resolved_config) else logging.ERROR, "vibecomfy schema gate: %s", msg)
             warned["emitted"] = True
 
+        transport = None
+        attempt = None
+        owner = None
         try:
             attempt_bundle["dependency_report"] = dependency_report
             write_attempt_json(run_dir, attempt_bundle)
@@ -744,11 +748,14 @@ async def run(
                     workflow, lockfile_path=resolved_config.extra.get("lockfile")
                 )
             phase = "queue"
+            transport = ComfyTransport(active_url) if server_client is None else None
+            owner = transport if transport is not None else server_client
+            attempt = owner.attempt() if isinstance(owner, ComfyTransport) else owner
             try:
                 queued = (
                     await queue_server_prompt(
                         record, bundle,
-                        client=server_client if server_client is not None else ComfyClient(active_url),
+                        client=attempt,
                     )
                 ).queued
             except asyncio.TimeoutError:
@@ -771,8 +778,7 @@ async def run(
             queue_acceptance = {"status": "accepted", "prompt_id": prompt_id}
             phase = "history"
             history_kwargs = {"config": resolved_config}
-            if server_client is not None:
-                history_kwargs["client"] = server_client
+            history_kwargs["client"] = attempt
             history = await _wait_for_server_history(active_url, prompt_id, **history_kwargs)
             attempt_bundle["comfy_history_observation"] = _history_observation(history, prompt_id)
             write_attempt_json(run_dir, attempt_bundle)
@@ -1044,6 +1050,11 @@ async def run(
                 original_error=exc, queue_acceptance=queue_acceptance, phase=phase, exc=exc,
             )
             raise
+        finally:
+            if isinstance(owner, ComfyTransport):
+                attempt.release()
+            if transport is not None:
+                await transport.close()
 
 
 def run_sync(
