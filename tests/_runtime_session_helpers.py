@@ -19,6 +19,8 @@ import pytest
 
 import vibecomfy.runtime.session as session_module
 import vibecomfy.runtime.client as client_module
+import vibecomfy.runtime.transport as transport_module
+from urllib.parse import parse_qs, urlsplit
 from vibecomfy.schema import InputSpec, NodeSchema
 from vibecomfy.workflow import VibeNode, VibeWorkflow, WorkflowSource
 from vibecomfy.workflow_bundle import load_bundle
@@ -279,6 +281,41 @@ def fake_server(monkeypatch: pytest.MonkeyPatch):
         "messages": [],
     }
     spawned: list[tuple[tuple[str, ...], FakeProcess]] = []
+    sockets = {}
+
+    class FakeSocket:
+        def __init__(self):
+            self.messages = asyncio.Queue()
+            self.messages.put_nowait(json.dumps({"type": "status", "data": {}}))
+        async def recv(self):
+            return await self.messages.get()
+        def __aiter__(self):
+            return self
+        async def __anext__(self):
+            message = await self.messages.get()
+            if message is None:
+                raise StopAsyncIteration
+            return message
+        async def close(self):
+            self.messages.put_nowait(None)
+
+    async def connect(url):
+        socket = FakeSocket()
+        sockets[parse_qs(urlsplit(url).query)["clientId"][0]] = socket
+        return socket
+
+    original_post = FakeAsyncClient.post
+    async def post_with_event(self, url, json=None):
+        response = await original_post(self, url, json=json)
+        if url.endswith("/prompt") and json and json.get("client_id") in sockets:
+            prompt_id = response.json().get("prompt_id")
+            if prompt_id:
+                sockets[json["client_id"]].messages.put_nowait(
+                    __import__("json").dumps({"type": "executing", "data": {"prompt_id": prompt_id, "node": None}})
+                )
+        return response
+    monkeypatch.setattr(transport_module.websockets, "connect", connect)
+    monkeypatch.setattr(FakeAsyncClient, "post", post_with_event)
 
     async def fake_create_subprocess_exec(*argv, **kwargs):
         process = FakeProcess()

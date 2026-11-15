@@ -56,6 +56,7 @@ from .attempt import build_attempt_bundle, build_shared_fields, write_attempt_js
 from .run_context import RunContext
 from .run_logs import declare_log
 from .client import ComfyClient
+from .transport import ComfyTransport
 from .drift import enforce_strict_drift
 from .execution import (
     authorized_queue_payload,
@@ -2141,6 +2142,7 @@ class ServerSession:
         self._schema_provider: Any | None = None
         self._schema_warning_emitted = False
         self._inflight_run: asyncio.Task[Any] | None = None
+        self._transport: ComfyTransport | None = None
 
     def _on_schema_unavailable(self, msg: str) -> None:
         if self._schema_warning_emitted and "schema validation skipped for class types" not in msg:
@@ -2309,6 +2311,7 @@ class ServerSession:
         queue_acceptance = {"status": "not_attempted", "prompt_id": None}
         phase = "preflight"
         watchdog = None
+        attempt = None
         stop_reason: str | None = None
         try:
             if ensure_models:
@@ -2420,11 +2423,14 @@ class ServerSession:
                 enforce_strict_drift(workflow, lockfile_path=self.config.extra.get("lockfile"))
             phase = "queue"
             phase_start = time.monotonic()
+            if self._transport is None:
+                self._transport = ComfyTransport(self.url)
+            attempt = self._transport.attempt()
             try:
                 queued_execution = await queue_server_prompt(
                     record,
                     bundle,
-                    client=ComfyClient(self.url),
+                    client=attempt,
                 )
                 queued = queued_execution.queued
             except asyncio.TimeoutError:
@@ -2449,7 +2455,7 @@ class ServerSession:
             timings["queue_prompt_sec"] = round(time.monotonic() - phase_start, 3)
             phase = "history"
             phase_start = time.monotonic()
-            history = await _wait_for_server_history(self.url, prompt_id, config=self.config)
+            history = await _wait_for_server_history(self.url, prompt_id, config=self.config, client=attempt)
             attempt_bundle["comfy_history_observation"] = _history_observation(history, prompt_id)
             write_attempt_json(run_dir, attempt_bundle)
             output_verification = _validate_declared_output_contract(workflow, history, prompt_id)
@@ -2554,6 +2560,8 @@ class ServerSession:
             )
             raise
         finally:
+            if attempt is not None:
+                attempt.release()
             if watchdog is not None:
                 await _finalize_watchdog(
                     watchdog, run_dir=run_dir, reason=stop_reason or "exception",
@@ -2584,6 +2592,9 @@ class ServerSession:
 
     async def stop(self, wait_for_inflight: bool = True) -> None:
         await _resolve_inflight_before_stop(self, wait_for_inflight)
+        if self._transport is not None:
+            await self._transport.close()
+            self._transport = None
         process = self.process
         if process is not None and process.returncode is None:
             await _stop_managed_process(process)
@@ -4206,6 +4217,15 @@ async def _wait_for_server_history(
     )
     deadline = time.monotonic() + timeout_sec
     client = client if client is not None else ComfyClient(server_url)
+    history_ready = getattr(client, "history_ready", None)
+    ready_event = False
+    if callable(history_ready):
+        try:
+            ready_event = await asyncio.wait_for(history_ready(prompt_id), timeout=max(0, deadline - time.monotonic()))
+        except asyncio.TimeoutError as exc:
+            raise TimeoutError(
+                f"Comfy prompt {_bounded_terminal_value(prompt_id)} did not complete within {timeout_sec:.3g}s"
+            ) from exc
     while True:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
@@ -4225,6 +4245,8 @@ async def _wait_for_server_history(
                 f"history response must be an object, got {type(history).__name__}",
             )
         if prompt_id not in history:
+            if ready_event and not history:
+                raise _malformed_terminal_result(prompt_id, "history-ready event had no history entry")
             if history:
                 raise _malformed_terminal_result(
                     prompt_id,
@@ -4244,6 +4266,8 @@ async def _wait_for_server_history(
             _decode_terminal_result(entry, prompt_id=prompt_id, status_required=True)
         status_str = _terminal_field(status, "status_str")
         if isinstance(status_str, str) and status_str in {"pending", "queued", "running"}:
+            if ready_event:
+                raise _malformed_terminal_result(prompt_id, "history-ready event had a non-terminal status")
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 break
