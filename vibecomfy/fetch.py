@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import hashlib
 import os
+import re
 import stat
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
@@ -238,6 +239,13 @@ def verify(
     body was streamed and a fresh receipt was attempted.
     """
     resolved = path or local_path(entry, root=root)
+    source = None
+    if entry.get("url") and (entry.get("subdir") or entry.get("target_path")) and entry.get("gated") is not True:
+        source = _recorded_source_receipt(entry, root=root)
+        if source is not None and source["path"] != str(resolved.resolve(strict=False)):
+            source = None
+        if source is not None:
+            entry = _merge_integrity(entry, recorded_model_identity(entry, root=root) or {})
     expected_size = entry.get("size_bytes")
     if isinstance(expected_size, int) and resolved.stat().st_size != expected_size:
         raise RuntimeError(
@@ -268,17 +276,21 @@ def verify(
         after = _model_stat_fingerprint(resolved)
         if after != fingerprint:
             raise RuntimeError(f"model changed while hashing {entry['name']}; retry verification")
-        _write_verification_receipt(
-            receipt_path,
-            {
+        if source is not None:
+            _write_source_receipt(receipt_path, path=resolved,
+                requested_url=source["requested_url"], requested_revision=source.get("hf_revision"),
+                fetch_url=source.get("fetch_url", source["effective_url"]), effective_url=source["effective_url"],
+                fingerprint=fingerprint, observed_sha256=actual_sha,
+                resolved_revision=source.get("resolved_revision"))
+        else:
+            _write_verification_receipt(receipt_path, {
                 "schema_version": 1,
                 "path": str(resolved.resolve(strict=False)),
                 "expected_sha256": expected_sha,
                 "expected_size_bytes": expected_size,
                 "stat": fingerprint,
                 "actual_sha256": actual_sha.lower(),
-            },
-        )
+            })
     return False
 
 
@@ -323,6 +335,7 @@ def _write_source_receipt(
     effective_url: str,
     fingerprint: dict[str, int],
     observed_sha256: str,
+    resolved_revision: str | None = None,
 ) -> None:
     """Persist URL, effective redirect, bytes identity, and stat evidence."""
     _write_verification_receipt(
@@ -333,6 +346,7 @@ def _write_source_receipt(
             "path": str(path.resolve(strict=False)),
             "requested_url": requested_url,
             "fetch_url": fetch_url,
+            **({"resolved_revision": resolved_revision} if resolved_revision else {}),
             **(
                 {"hf_revision": requested_revision}
                 if requested_revision is not None
@@ -360,6 +374,7 @@ def _refresh_source_receipt(
     fetch_url: str,
     effective_url: str,
     fingerprint: dict[str, int],
+    resolved_revision: str | None = None,
 ) -> None:
     """Reattach URL fields after the legacy verification writer runs."""
     try:
@@ -377,6 +392,7 @@ def _refresh_source_receipt(
             effective_url=effective_url,
             fingerprint=fingerprint,
             observed_sha256=observed,
+            resolved_revision=resolved_revision,
         )
 
 
@@ -390,11 +406,13 @@ def read_resolution_receipt(
         receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
     except (OSError, ValueError, TypeError):
         return None
+    if not isinstance(receipt, dict):
+        return None
     requested_url = _strip_download_true(str(entry.get("url", "")))
     requested_revision = entry.get("hf_revision") or entry.get("revision")
     if not isinstance(requested_revision, str) or not requested_revision:
         requested_revision = None
-    fetch_url = _effective_fetch_url(requested_url, requested_revision)
+    fetch_url = _effective_fetch_url(requested_url, receipt.get("resolved_revision") or requested_revision)
     if not path.is_file() or not _source_receipt_matches(
         receipt_path,
         path=path,
@@ -496,29 +514,173 @@ def _hf_credential_host(url: str) -> bool:
 
 
 @contextmanager
-def _download_stream(url: str, *, client: Any, timeout: httpx.Timeout):
+def _download_stream(url: str, *, client: Any, timeout: httpx.Timeout,
+                     method: str = "GET", authenticated: bool = True, on_response: Any = None):
     """Rebuild credentials on each hop instead of trusting client redirects."""
     stream = client.stream if client is not None else httpx.stream
     for redirect_count in range(21):
         headers: dict[str, str] = {}
-        if _hf_credential_host(url):
+        if authenticated and _hf_credential_host(url):
             token = os.environ.get("HF_TOKEN")
             if token:
                 headers["Authorization"] = f"Bearer {token}"
-        with stream("GET", url, follow_redirects=False, headers=headers, timeout=timeout) as response:
+        with stream(method, url, follow_redirects=False, headers=headers, timeout=timeout) as response:
             # The Agent's resuming wrapper exposes the underlying response
             # rather than forwarding its redirect headers.
             raw_response = getattr(response, "_response", response)
+            if on_response is not None:
+                on_response(url, raw_response)
             location = httpx.Headers(getattr(raw_response, "headers", {})).get("location")
             if response.status_code not in {301, 302, 303, 307, 308} or not location:
                 yield response
                 return
             if redirect_count == 20:
                 raise httpx.TooManyRedirects(
-                    "Exceeded maximum allowed redirects.", request=httpx.Request("GET", url)
+                    "Exceeded maximum allowed redirects.", request=httpx.Request(method, url)
                 )
             response_url = str(getattr(response, "url", None) or url)
             url = str(httpx.URL(response_url).join(location))
+
+
+def _integrity_fields(entry: Mapping[str, Any]) -> dict[str, Any]:
+    """Normalize optional declarations, rejecting malformed integrity facts."""
+    result = dict(entry)
+    sha = result.get("sha256")
+    if sha is not None:
+        if not isinstance(sha, str) or re.fullmatch(r"(?:sha256:)?[0-9a-fA-F]{64}", sha) is None:
+            raise ValueError("model sha256 must contain 64 hexadecimal digits")
+        result["sha256"] = sha.removeprefix("sha256:").lower()
+    size = result.get("size_bytes")
+    if size is not None and (type(size) is not int or size < 0):
+        raise ValueError("model size_bytes must be a non-negative integer")
+    revision = result.get("resolved_revision")
+    if revision is not None and (not isinstance(revision, str) or re.fullmatch(r"[0-9a-f]{40}", revision) is None):
+        raise ValueError("resolved model revision must be a full commit sha")
+    return result
+
+
+def _merge_integrity(entry: Mapping[str, Any], facts: Mapping[str, Any]) -> dict[str, Any]:
+    result = _integrity_fields(entry)
+    for key in ("sha256", "size_bytes", "resolved_revision"):
+        value = facts.get(key)
+        if value is None:
+            continue
+        if result.get(key) is not None and result[key] != value:
+            raise RuntimeError(f"model {key} disagrees with resolved identity for {entry['name']}")
+        result[key] = value
+    return _integrity_fields(result)
+
+
+def _recorded_source_receipt(
+    entry: Mapping[str, Any], *, root: Path | AssetRoots | None = None
+) -> dict[str, Any] | None:
+    """Read a source-bound identity even when its downloaded file is absent.
+
+    Stat validity controls reuse of verification work, not the expected digest
+    of a later download. Never silently learn new bytes for the same source.
+    """
+    path = local_path(entry, root=root)
+    try:
+        receipt = json.loads(_verification_receipt_path(path, root=root).read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return None
+    revision = entry.get("hf_revision") or entry.get("revision") or None
+    if (not isinstance(receipt, dict) or receipt.get("schema_version") != 1
+            or receipt.get("kind") != "model_url_resolution"
+            or receipt.get("path") != str(path.resolve(strict=False))
+            or receipt.get("requested_url") != _strip_download_true(str(entry.get("url", "")))
+            or receipt.get("hf_revision") != revision):
+        return None
+    sha, size = receipt.get("observed_sha256"), receipt.get("size_bytes")
+    if (not isinstance(sha, str) or re.fullmatch(r"[0-9a-f]{64}", sha) is None
+            or type(size) is not int or size < 0):
+        return None
+    return receipt
+
+
+def recorded_model_identity(
+    entry: Mapping[str, Any], *, root: Path | AssetRoots | None = None
+) -> dict[str, Any] | None:
+    """Return the durable expected bytes identity, independently of file stat."""
+    receipt = _recorded_source_receipt(entry, root=root)
+    if receipt is None:
+        return None
+    facts = {"sha256": receipt["observed_sha256"], "size_bytes": receipt["size_bytes"]}
+    resolved = receipt.get("resolved_revision")
+    if isinstance(resolved, str) and re.fullmatch(r"[0-9a-f]{40}", resolved):
+        facts["resolved_revision"] = resolved
+    return facts
+
+
+def _lookup_hf_metadata(url: str, *, client: Any = None) -> dict[str, Any]:
+    facts: dict[str, Any] = {}
+
+    def collect(hop_url, response):
+        # A redirect destination may provide content, but cannot assert HF's
+        # repository revision or published LFS identity.
+        if not _hf_credential_host(hop_url):
+            return
+        headers = httpx.Headers(getattr(response, "headers", {}))
+        sha = headers.get("x-linked-etag", "").strip('"')
+        if re.fullmatch(r"[0-9a-fA-F]{64}", sha):
+            facts.setdefault("sha256", sha.lower())
+        size = headers.get("x-linked-size")
+        if size is None and 200 <= response.status_code < 300:
+            size = headers.get("content-length")
+        if isinstance(size, str) and size.isdecimal():
+            facts.setdefault("size_bytes", int(size))
+        revision = headers.get("x-repo-commit", "")
+        if re.fullmatch(r"[0-9a-f]{40}", revision):
+            facts.setdefault("resolved_revision", revision)
+
+    try:
+        with _download_stream(url, client=client, timeout=httpx.Timeout(15),
+                method="HEAD", authenticated=False, on_response=collect) as response:
+            _raise_for_status(response.status_code, url)
+    except (httpx.HTTPError, OSError, RuntimeError):
+        # No published identity is still a byte-hashed download, never an
+        # exemption from an authored or previously recorded checksum.
+        return {}
+    return facts
+
+
+def plan_downloads(entries: list[dict], *, root: Path | AssetRoots | None = None,
+                   client: Any = None, lookup: bool = True) -> list[dict]:
+    """Resolve missing model facts before storage budgeting or any GET."""
+    planned = []
+    for raw in entries:
+        entry = _integrity_fields(raw)
+        local_path(entry, root=root)  # Authorize every destination before HEAD.
+        recorded = recorded_model_identity(entry, root=root)
+        if recorded is not None:
+            entry = _merge_integrity(entry, recorded)
+        elif lookup:
+            url = _strip_download_true(str(entry.get("url") or ""))
+            revision = entry.get("hf_revision") or entry.get("revision")
+            if revision:
+                url = _effective_fetch_url(url, revision)
+            if _hf_credential_host(url):
+                entry = _merge_integrity(entry, _lookup_hf_metadata(url, client=client))
+        planned.append(entry)
+    return planned
+
+
+def apply_download_plan(entries: list[dict], planned: list[dict]) -> list[dict]:
+    """Bind a host's prior plan to the same canonical workflow declarations."""
+    if len(entries) != len(planned):
+        raise ValueError("model download plan differs from workflow declarations")
+    result = []
+    for entry, resolved in zip(entries, planned):
+        if (any(entry.get(key) != resolved.get(key) for key in ("name", "subdir"))
+                or _strip_download_true(str(entry.get("url") or ""))
+                    != _strip_download_true(str(resolved.get("url") or ""))
+                or (entry.get("hf_revision") or entry.get("revision"))
+                    != (resolved.get("hf_revision") or resolved.get("revision"))):
+            raise ValueError("model download plan differs from workflow declarations")
+        # Only integrity facts transfer. Placement and all other authored
+        # metadata remain owned by the canonical workflow entry.
+        result.append(_merge_integrity(entry, resolved))
+    return result
 
 
 def download(
@@ -530,13 +692,20 @@ def download(
     root: Path | AssetRoots | None = None,
     quiet: bool = False,
 ) -> Path:
+    entry = _integrity_fields(entry)
+    recorded = recorded_model_identity(entry, root=root)
+    if recorded is not None:
+        entry = _merge_integrity(entry, recorded)
+    if entry.get("sha256"):
+        entry["gated"] = False
     authorized_root, path, destination_field = _destination_for_entry(entry, root=root)
     name = str(entry["name"])
     requested_url = _strip_download_true(str(entry.get("url", "")))
     requested_revision = entry.get("hf_revision") or entry.get("revision")
     if not isinstance(requested_revision, str) or not requested_revision:
         requested_revision = None
-    fetch_url = _effective_fetch_url(requested_url, requested_revision)
+    resolved_revision = entry.get("resolved_revision")
+    fetch_url = _effective_fetch_url(requested_url, resolved_revision or requested_revision)
     receipt_path = _verification_receipt_path(path, root=root)
     if path.is_file() and path.stat().st_size > 0 and not force:
         fingerprint = _model_stat_fingerprint(path)
@@ -567,6 +736,7 @@ def download(
                         else requested_url
                     ),
                     fingerprint=_model_stat_fingerprint(path),
+                    resolved_revision=resolved_revision,
                 )
             if not quiet:
                 print(f"skipped {name}" + (" (cached sha256)" if cached else " (cached URL resolution)"))
@@ -612,6 +782,7 @@ def download(
                     else fetch_url
                 ),
                 fingerprint=_model_stat_fingerprint(path),
+                resolved_revision=resolved_revision,
             )
             if not quiet:
                 print(f"skipped {name} (cached sha256)")
@@ -651,7 +822,8 @@ def download(
     fingerprint = _model_stat_fingerprint(path)
     if fingerprint["size"] != size_bytes:
         raise RuntimeError(f"downloaded size changed while publishing {name}")
-    verify(entry, path, root=root, force=True)
+    # Verification of downloaded bytes is mandatory, including gated assets.
+    verify({**entry, "gated": False}, path, root=root, force=True)
     _write_source_receipt(
         receipt_path,
         path=path,
@@ -661,6 +833,7 @@ def download(
         effective_url=effective_url,
         fingerprint=fingerprint,
         observed_sha256=digest.hexdigest(),
+        resolved_revision=resolved_revision,
     )
     return path
 
@@ -709,11 +882,14 @@ def download_many(
     root: Path | AssetRoots | None = None,
     max_workers: int = 2,
     quiet: bool = False,
+    planned: bool = False,
 ) -> list[Path]:
     if isinstance(max_workers, bool) or not isinstance(max_workers, int) or max_workers < 1:
         raise ValueError("max_workers must be a positive integer")
 
     def download_one(entry: dict) -> tuple[dict, Path, bool]:
+        if not planned:
+            entry = plan_downloads([entry], root=root)[0]
         name = str(entry.get("name", "<unknown>"))
         was_present = is_present(entry, root=root) and not force
         path = download(
@@ -773,6 +949,9 @@ __all__ = [
     "is_present",
     "local_path",
     "models_root",
+    "plan_downloads",
+    "apply_download_plan",
+    "recorded_model_identity",
     "read_resolution_receipt",
     "verify",
 ]

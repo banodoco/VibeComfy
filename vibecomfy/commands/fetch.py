@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 
 import vibecomfy.fetch as fetch_assets
 from vibecomfy.commands._model_entries import model_entries_for_workflow
@@ -21,7 +22,12 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
                 print(f"would fetch {entry['name']} -> {path}")
         return 0
     try:
-        fetch_assets.download_many(entries, force=args.force)
+        model_plan = getattr(args, "model_plan", None)
+        if model_plan is not None:
+            entries = fetch_assets.apply_download_plan(entries, json.loads(model_plan))
+            fetch_assets.download_many(entries, force=args.force, planned=True)
+        else:
+            fetch_assets.download_many(entries, force=args.force)
     except RuntimeError as exc:
         print(exc)
         return 1
@@ -33,6 +39,7 @@ def register(subparsers) -> None:
     fetch.add_argument("workflow")
     fetch.add_argument("--force", action="store_true")
     fetch.add_argument("--dry-run", action="store_true")
+    fetch.add_argument("--model-plan", help=argparse.SUPPRESS)
     fetch.set_defaults(func=_cmd_fetch)
 
 
