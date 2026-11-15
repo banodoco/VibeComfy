@@ -270,3 +270,184 @@ def test_terminal_event_waits_for_history_ready(monkeypatch, terminal, status, o
         attempt.release()
         await t.close()
     asyncio.run(case())
+
+
+def test_injected_factories_cover_reconnect_and_reconciliation(monkeypatch):
+    async def case():
+        sockets, contexts, posts, gets = [], [], [], []
+        class Client:
+            async def post(self, url, json):
+                posts.append(json)
+                return Response({'prompt_id': f'p{len(posts)}'})
+            async def get(self, url):
+                gets.append(url)
+                return Response({'p1': {'status': {'status_str': 'success', 'completed': True, 'messages': []}, 'outputs': {}}})
+        class Context:
+            def __init__(self):
+                self.closed = False
+                contexts.append(self)
+            async def __aenter__(self): return Client()
+            async def __aexit__(self, *args): self.closed = True
+        async def connect(url):
+            assert 'clientId=' in url
+            sockets.append(Socket())
+            return sockets[-1]
+        monkeypatch.setattr(module.httpx, 'AsyncClient', lambda **kwargs: pytest.fail('raw HTTP fallback'))
+        monkeypatch.setattr(module.websockets, 'connect', lambda url: pytest.fail('raw websocket fallback'))
+        transport = module.ComfyTransport('http://example', http_factory=Context, websocket_connect=connect)
+        first = transport.attempt()
+        await first._post_prompt({})
+        await sockets[0].close()
+        assert await first.history_ready('p1') is False
+        second = transport.attempt()
+        await second._post_prompt({})
+        assert len(contexts) == 2 and len(sockets) == 2
+        await _wait_for_server_history(transport.server_url, 'p1', config=SessionConfig(), client=first)
+        assert len(contexts) == 3 and len(gets) == 1 and len(posts) == 2
+        assert contexts[2].closed
+        first.release(); second.release()
+        await transport.close()
+        assert all(context.closed for context in contexts)
+    asyncio.run(case())
+
+
+def test_refused_websocket_has_no_post_or_fallback(monkeypatch):
+    async def case():
+        posts, closed = [], []
+        class Context:
+            async def __aenter__(self): return self
+            async def __aexit__(self, *args): closed.append(True)
+            async def post(self, *args, **kwargs): posts.append(True)
+        async def refuse(url): raise ValueError('redirect refused')
+        monkeypatch.setattr(module.websockets, 'connect', lambda url: pytest.fail('websocket fallback'))
+        transport = module.ComfyTransport('http://example', http_factory=Context, websocket_connect=refuse)
+        attempt = transport.attempt()
+        with pytest.raises(ValueError, match='redirect refused'):
+            await attempt._post_prompt({})
+        assert not posts and closed == [True]
+        with pytest.raises(RuntimeError, match='only one'):
+            await attempt._post_prompt({})
+        await transport.close()
+    asyncio.run(case())
+
+
+def test_events_are_coalesced_prompt_scoped_and_nonblocking(monkeypatch):
+    async def case():
+        socket = Socket()
+        async def connect(url): return socket
+        class HTTP:
+            count = 0
+            def __init__(self, **kwargs): pass
+            async def __aenter__(self): return self
+            async def __aexit__(self, *args): pass
+            async def post(self, url, json):
+                HTTP.count += 1
+                return Response({'prompt_id': f'p{HTTP.count}'})
+        monkeypatch.setattr(module.websockets, 'connect', connect)
+        monkeypatch.setattr(module.httpx, 'AsyncClient', HTTP)
+        t = module.ComfyTransport('http://example')
+        a, b = t.attempt(), t.attempt()
+        await a._post_prompt({}); await b._post_prompt({})
+        for value in range(1000):
+            socket.event('p1', 'progress', value=value)
+        socket.event('unowned', 'progress', value='private')
+        socket.event('p2', 'progress', value=22)
+        socket.messages.put_nowait(b'preview-without-prompt')
+        socket.event('p1', node=None)
+        assert await asyncio.wait_for(a.history_ready('p1'), timeout=1) is True
+        assert (await a.next_event())['data']['value'] == 999
+        assert (await b.next_event())['data']['value'] == 22
+        assert t.unattributed_preview == b'preview-without-prompt'
+        pending = asyncio.create_task(b.next_event())
+        await asyncio.sleep(0)
+        assert not pending.done()
+        b.release()
+        assert await pending is None and await b.next_event() is None
+        a.release()
+        await t.close()
+    asyncio.run(case())
+
+
+@pytest.mark.parametrize('fail_prompt,fail_cleanup', [(False, False), (True, False), (True, True)])
+def test_injected_attempt_cleanup_preserves_owner_and_primary_error(monkeypatch, tmp_path, fail_prompt, fail_cleanup):
+    import importlib
+    from contextlib import asynccontextmanager
+    from tests._runtime_session_helpers import _approved, _workflow
+    from vibecomfy.errors import QueueError
+    runtime = importlib.import_module('vibecomfy.runtime.run')
+    url = 'http://127.0.0.1:8188'
+    calls = []
+    @asynccontextmanager
+    async def server(*, server_url, log_path, config):
+        yield url
+    class Client:
+        server_url = url
+        async def _post_prompt(self, prompt):
+            if fail_prompt: raise ValueError('primary failure')
+            return {'prompt_id': 'owned'}
+        async def history(self, prompt_id):
+            return {prompt_id: {'status': {'status_str': 'success', 'completed': True, 'messages': []}, 'outputs': {}}}
+        async def release_attempt(self):
+            calls.append('release')
+            if fail_cleanup: raise ValueError('cleanup failure')
+        async def close(self):
+            calls.append('close')
+    client = Client()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(runtime, 'comfy_server', server)
+    monkeypatch.setattr(runtime, '_build_schema_provider', lambda *_: None)
+    record, bundle = _approved(_workflow())
+    if fail_prompt:
+        with pytest.raises(QueueError, match='primary failure') as error:
+            asyncio.run(runtime.run(record, bundle, server_url=url, server_client=client))
+        if fail_cleanup:
+            assert any('cleanup failure' in note for note in error.value.__notes__)
+    else:
+        result = asyncio.run(runtime.run(record, bundle, server_url=url, server_client=client))
+        assert result.prompt_id == 'owned'
+    assert calls == ['release']
+
+
+def test_release_during_post_does_not_register_or_resubmit(monkeypatch):
+    async def case():
+        socket, started, reply = Socket(), asyncio.Event(), asyncio.Event()
+        async def connect(url): return socket
+        class HTTP:
+            def __init__(self, **kwargs): pass
+            async def __aenter__(self): return self
+            async def __aexit__(self, *args): pass
+            async def post(self, url, json):
+                started.set()
+                await reply.wait()
+                return Response({'prompt_id': 'accepted'})
+        monkeypatch.setattr(module.websockets, 'connect', connect)
+        monkeypatch.setattr(module.httpx, 'AsyncClient', HTTP)
+        t = module.ComfyTransport('http://example')
+        attempt = t.attempt()
+        posting = asyncio.create_task(attempt._post_prompt({}))
+        await started.wait()
+        event = asyncio.create_task(attempt.next_event())
+        await asyncio.sleep(0)
+        attempt.release()
+        assert await event is None
+        reply.set()
+        assert (await posting)['prompt_id'] == 'accepted'
+        assert not t._waiters and not t._event_queues
+        with pytest.raises(RuntimeError, match='released'):
+            await attempt._post_prompt({})
+        await t.close()
+    asyncio.run(case())
+
+
+def test_injected_attempt_released_on_early_validation_error():
+    import importlib
+    from vibecomfy.workflow_bundle import WorkflowBundleError
+    runtime = importlib.import_module('vibecomfy.runtime.run')
+    class Client:
+        server_url = 'http://127.0.0.1:1'
+        released = False
+        def release_attempt(self): self.released = True
+    client = Client()
+    with pytest.raises(WorkflowBundleError, match='selected server_url'):
+        asyncio.run(runtime.run(None, None, server_url='http://127.0.0.1:2', server_client=client))
+    assert client.released
