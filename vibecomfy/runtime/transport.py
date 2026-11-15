@@ -17,7 +17,8 @@ from .client import _raise_for_status_with_body
 class _HTTPGeneration:
     """A pool retired on websocket loss after its in-flight requests finish."""
 
-    def __init__(self, client: Any) -> None:
+    def __init__(self, context: Any, client: Any) -> None:
+        self.context = context
         self.client = client
         self.inflight = 0
         self.retired = False
@@ -34,7 +35,7 @@ class _HTTPGeneration:
 
     async def _close(self) -> None:
         try:
-            await self.client.__aexit__(None, None, None)
+            await self.context.__aexit__(None, None, None)
         finally:
             self.closed.set()
 
@@ -63,7 +64,17 @@ class ComfyTransport:
     not establish that a restarted listener is the same server incarnation.
     """
 
-    def __init__(self, server_url: str) -> None:
+    def __init__(self, server_url: str, *, http_factory: Any = None,
+                 websocket_connect: Any = None) -> None:
+        """Factories provide async HTTP contexts and websocket connections.
+
+        HTTP contexts yield clients with async post/get; responses implement
+        raise_for_status, json and (for errors) text. The websocket connector
+        receives the clientId URL. Callers enforce their own target/redirect
+        policy in both factories; defaults preserve standalone behavior.
+        """
+        self._http_factory = http_factory if http_factory is not None else lambda: httpx.AsyncClient(timeout=30)
+        self._websocket_connect = websocket_connect if websocket_connect is not None else lambda url: websockets.connect(url)
         self.server_url = server_url.rstrip('/')
         self.client_id: str | None = None
         self.generation = 0
@@ -74,23 +85,26 @@ class ComfyTransport:
         self._lock = asyncio.Lock()
         self._submit_lock = asyncio.Lock()
         self._waiters: dict[str, asyncio.Future[bool]] = {}
+        self._event_queues: dict[str, asyncio.Queue[Any]] = {}
         self._early: set[str] = set()
         self._posting = 0
         self.progress: dict[str, Any] = {}
+        self.unattributed_preview: bytes | None = None
 
     async def _connect(self) -> None:
         async with self._lock:
             if self._socket is not None:
                 return
-            client = await httpx.AsyncClient(timeout=30).__aenter__()
-            pool = _HTTPGeneration(client)
+            context = self._http_factory()
+            client = await context.__aenter__()
+            pool = _HTTPGeneration(context, client)
             client_id = uuid.uuid4().hex
             parts = urlsplit(self.server_url)
             url = urlunsplit(('wss' if parts.scheme == 'https' else 'ws', parts.netloc,
                               parts.path.rstrip('/') + '/ws', urlencode({'clientId': client_id}), ''))
             socket = None
             try:
-                socket = await websockets.connect(url)
+                socket = await self._websocket_connect(url)
                 first = json.loads(await asyncio.wait_for(socket.recv(), timeout=10))
                 if not isinstance(first, dict) or first.get('type') != 'status':
                     raise RuntimeError('Comfy websocket did not send its initial status')
@@ -111,6 +125,7 @@ class ComfyTransport:
             async for raw in socket:
                 if not isinstance(raw, str):
                     # Standard binary previews do not identify their prompt.
+                    self.unattributed_preview = raw
                     self.progress['_preview'] = raw
                     continue
                 try:
@@ -133,8 +148,12 @@ class ComfyTransport:
                         waiter.set_result(True)
                     elif self._posting and len(self._early) < 256:
                         self._early.add(prompt_id)
-                elif prompt_id in self._waiters:
+                elif prompt_id in self._event_queues:
                     self.progress[prompt_id] = event
+                    queue = self._event_queues[prompt_id]
+                    if queue.full():
+                        queue.get_nowait()
+                    queue.put_nowait(event)
         except Exception:
             pass
         finally:
@@ -170,8 +189,12 @@ class ComfyAttempt:
         self._waiter: asyncio.Future[bool] | None = None
         self._generation: int | None = None
         self._pool: _HTTPGeneration | None = None
+        self._events: asyncio.Queue[Any] = asyncio.Queue(maxsize=1)
+        self._released = False
 
     async def _post_prompt(self, prompt: dict[str, Any]) -> dict[str, Any]:
+        if self._released:
+            raise RuntimeError('attempt is released')
         if self._posted:
             raise RuntimeError('an attempt may submit only one prompt')
         self._posted = True
@@ -189,7 +212,7 @@ class ComfyAttempt:
                 result = response.json()
                 raw_prompt_id = result.get('prompt_id')
                 prompt_id = str(raw_prompt_id) if raw_prompt_id is not None else None
-                if prompt_id and prompt_id.strip():
+                if prompt_id and prompt_id.strip() and not self._released:
                     self._prompt_id = prompt_id
                     self._waiter = asyncio.get_running_loop().create_future()
                     if generation != t.generation:
@@ -198,6 +221,7 @@ class ComfyAttempt:
                         t._early.discard(prompt_id)
                         self._waiter.set_result(True)
                     t._waiters[prompt_id] = self._waiter
+                    t._event_queues[prompt_id] = self._events
                 return result
             finally:
                 t._posting -= 1
@@ -219,12 +243,33 @@ class ComfyAttempt:
         else:
             # Old-generation, known-ID reconciliation is independent of the
             # new live pool. The caller bounds each request by the job deadline.
-            async with httpx.AsyncClient(timeout=30) as client:
+            async with t._http_factory() as client:
                 response = await client.get(f'{self.server_url}/history/{prompt_id}')
         _raise_for_status_with_body(response)
         return response.json()
 
+    async def next_event(self) -> dict[str, Any] | None:
+        """Return the latest owned event, or None once this attempt is released.
+
+        A single consumer receives a single-slot queue; events are coalesced
+        and never block dispatch. Binary
+        previews have no prompt identity and are only on the transport's
+        ``unattributed_preview``; they are never delivered here.
+        """
+        if self._released:
+            return None
+        return await self._events.get()
+
     def release(self) -> None:
+        if self._released:
+            return
+        self._released = True
+        if self._waiter is not None and not self._waiter.done():
+            self._waiter.set_result(False)
         if self._prompt_id is not None:
             self.transport._waiters.pop(self._prompt_id, None)
+            self.transport._event_queues.pop(self._prompt_id, None)
             self.transport.progress.pop(self._prompt_id, None)
+        if self._events.full():
+            self._events.get_nowait()
+        self._events.put_nowait(None)

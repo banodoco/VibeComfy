@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 import json
+import inspect
+import sys
 import logging
 import os
 import threading
@@ -432,6 +434,51 @@ async def retry_delivery(
 
 
 async def run(
+    record: ApprovedProjectionRecord,
+    bundle: WorkflowBundle,
+    *,
+    server_url: str | None = None,
+    backend: str = "api",
+    config: SessionConfig | None = None,
+    ensure_models: bool = False,
+    shared_models_root: str | Path | None = None,
+    strict_drift: bool | None = None,
+    chain_id: str | None = None,
+    parent_run_id: str | None = None,
+    schema_provider: Any | None = None,
+    dependency_mode: str = "reuse",
+    runtime_target: Mapping[str, Any] | None = None,
+    dependency_report: Mapping[str, Any] | None = None,
+    run_context: RunContext | None = None,
+    server_client: Any | None = None,
+    artifact_client: Any | None = None,
+) -> RunResult:
+    # The injected object is an attempt; its owner stays with the caller.
+    try:
+        return await _run_impl(
+            record, bundle, server_url=server_url, backend=backend, config=config,
+            ensure_models=ensure_models, shared_models_root=shared_models_root,
+            strict_drift=strict_drift, chain_id=chain_id, parent_run_id=parent_run_id,
+            schema_provider=schema_provider, dependency_mode=dependency_mode,
+            runtime_target=runtime_target, dependency_report=dependency_report,
+            run_context=run_context, server_client=server_client, artifact_client=artifact_client,
+        )
+    finally:
+        if server_client is not None:
+            primary_error = sys.exc_info()[1]
+            try:
+                release = getattr(server_client, "release_attempt", None)
+                if callable(release):
+                    released = release()
+                    if inspect.isawaitable(released):
+                        await released
+            except Exception as exc:
+                if primary_error is None:
+                    raise
+                primary_error.add_note(f"attempt cleanup failed: {exc}")
+
+
+async def _run_impl(
     record: ApprovedProjectionRecord,
     bundle: WorkflowBundle,
     *,
