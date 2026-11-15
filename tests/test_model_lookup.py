@@ -193,3 +193,17 @@ def test_plan_preserves_canonical_placement_and_normalized_source_url():
     assert applied["target_path"] == authored["target_path"]
     assert applied["url"] == URL
     assert applied["sha256"] == SHA
+
+
+def test_download_requires_durable_learned_identity(tmp_path, source, monkeypatch):
+    original = fetch.os.replace
+
+    def replace(src, dst):
+        if str(dst).endswith('.json'):
+            raise PermissionError('fixture receipt store is unavailable')
+        return original(src, dst)
+
+    monkeypatch.setattr(fetch.os, 'replace', replace)
+    with pytest.raises(PermissionError, match='receipt store is unavailable'):
+        fetch.download(entry('https://example.test/model.bin'), root=tmp_path)
+    assert fetch.recorded_model_identity(entry('https://example.test/model.bin'), root=tmp_path) is None

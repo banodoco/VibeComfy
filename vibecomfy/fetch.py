@@ -336,6 +336,7 @@ def _write_source_receipt(
     fingerprint: dict[str, int],
     observed_sha256: str,
     resolved_revision: str | None = None,
+    required: bool = False,
 ) -> None:
     """Persist URL, effective redirect, bytes identity, and stat evidence."""
     _write_verification_receipt(
@@ -362,6 +363,7 @@ def _write_source_receipt(
             "size_bytes": fingerprint["size"],
             "stat": fingerprint,
         },
+        required=required,
     )
 
 
@@ -482,7 +484,7 @@ def _receipt_matches(
     )
 
 
-def _write_verification_receipt(path: Path, receipt: dict[str, Any]) -> None:
+def _write_verification_receipt(path: Path, receipt: dict[str, Any], *, required: bool = False) -> None:
     """Atomically publish a receipt; verification remains valid if caching fails."""
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -498,6 +500,8 @@ def _write_verification_receipt(path: Path, receipt: dict[str, Any]) -> None:
             Path(temporary).unlink(missing_ok=True)
             raise
     except OSError:
+        if required:
+            raise
         # A read-only/shared model mount must not turn a successful hash check
         # into a failed model ensure merely because its cache is unwritable.
         return
@@ -834,6 +838,7 @@ def download(
         fingerprint=fingerprint,
         observed_sha256=digest.hexdigest(),
         resolved_revision=resolved_revision,
+        required=True,
     )
     return path
 
