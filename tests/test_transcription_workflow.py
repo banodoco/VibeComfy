@@ -39,3 +39,25 @@ def test_transcription_preflight_with_declared_inventory(tmp_path):
     bad = {**inventory, 'sha256': '0' * 64}
     with pytest.raises(WorkflowBundleError):
         load_bundle(workflow).compile(schema_provider=provider([bad]), models_root=tmp_path)
+
+
+def test_transcription_draft_entry():
+    from vibecomfy.entries import draft_entry
+    entry = draft_entry(workflow_from_ready('audio/transcribe'), 'transcription')
+    assert entry['kind'] == 'audio'
+    assert entry['modes'] == ['transcribe']
+    assert entry['binds']['audio_ref'] == 'audio_ref'
+    assert not entry['needs']
+
+
+def test_output_history_descriptor_is_collected(tmp_path, monkeypatch):
+    import sys
+    from types import SimpleNamespace
+    from vibecomfy.runtime.session import _collect_output_entries
+    monkeypatch.setitem(sys.modules, 'folder_paths', SimpleNamespace(
+        get_output_directory=lambda: str(tmp_path),
+        get_save_image_path=lambda prefix, directory: (directory, prefix, 1, '', prefix)))
+    history = VibeComfySaveTranscript().save('', [], [], 'transcript')['ui']
+    entries = _collect_output_entries(history, output_directory=tmp_path)
+    assert len(entries) == 1
+    assert entries[0][1] == str(tmp_path / 'transcript_00001_.json')

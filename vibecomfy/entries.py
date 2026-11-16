@@ -13,7 +13,7 @@ _ENTRY_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _OUTPUT_KINDS = {
     "SaveImage": "image", "PreviewImage": "image", "SaveVideo": "video",
     "VHS_VideoCombine": "video", "SaveAudio": "audio", "SaveAudioMP3": "audio",
-    "PreviewAudio": "audio", "SaveAnimatedWEBP": "video", "SaveWEBM": "video",
+    "PreviewAudio": "audio", "VibeComfySaveTranscript": "audio", "SaveAnimatedWEBP": "video", "SaveWEBM": "video",
 }
 # Roles describe the loader, not an inferred catalog model. Target-side model
 # resolution remains the generation backend's responsibility.
@@ -54,7 +54,7 @@ def _validate(manifest: Any) -> dict[str, Any]:
     if manifest["kind"] not in {"image", "video", "audio"}:
         raise ValueError("invalid entry kind")
     modes = manifest["modes"]
-    allowed = {"image": {"t2i", "i2i", "edit", "inpaint", "outpaint", "upscale"}, "video": {"t2v", "i2v", "flf", "v2v", "video-edit"}, "audio": {"tts", "music", "sfx"}}
+    allowed = {"image": {"t2i", "i2i", "edit", "inpaint", "outpaint", "upscale"}, "video": {"t2v", "i2v", "flf", "v2v", "video-edit"}, "audio": {"tts", "music", "sfx", "transcribe"}}
     if not isinstance(modes, list) or any(not isinstance(m, str) or m not in allowed[manifest["kind"]] for m in modes) or len(set(modes)) != len(modes):
         raise ValueError("invalid entry modes")
     if not isinstance(manifest["bundle"], str) or not manifest["bundle"].strip():
@@ -103,11 +103,12 @@ def draft_entry(workflow: Any, entry_id: str, *, bundle: str = "bundle", input_a
         binds.pop(name, None)
     has_image = "image" in (input_ambiguities or {}) or any(name in binds or any(name in i.aliases for i in workflow.inputs.values()) for name in ("image", "input_image"))
     has_video = "video" in (input_ambiguities or {}) or any(name in binds or any(name in i.aliases for i in workflow.inputs.values()) for name in ("video", "input_video"))
-    modes = [] if kind == "audio" else [{"image": "edit" if has_image else "t2i", "video": "v2v" if has_video else "i2v" if has_image else "t2v"}[kind]]
+    transcribe = any(node.class_type == "VibeComfySaveTranscript" for node in workflow.runtime_nodes().values())
+    modes = (["transcribe"] if transcribe else []) if kind == "audio" else [{"image": "edit" if has_image else "t2i", "video": "v2v" if has_video else "i2v" if has_image else "t2v"}[kind]]
     from vibecomfy.model_assets import _referenced_model_values
     needs = []
-    if kind == "audio":
-        needs.append({"role": None, "ambiguity": "audio mode is unknown; choose tts, music, or sfx"})
+    if kind == "audio" and not transcribe:
+        needs.append({"role": None, "ambiguity": "audio mode is unknown; choose tts, music, sfx, or transcribe"})
     needs.extend({"role": None, "ambiguity": f"multiple targets for {name}", "candidates": candidates} for name, candidates in (input_ambiguities or {}).items())
     for reference in _referenced_model_values(workflow):
         role = LOADER_ROLES.get(reference["class_type"])
