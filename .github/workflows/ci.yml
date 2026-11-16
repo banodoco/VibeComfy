@@ -1,6 +1,6 @@
 # Maintained CI suite.
 #
-# Runs on every push and on every pull_request.
+# Runs on pushes to main, release/*/main and megaplan/production-parity-templates, and on every pull_request.
 #
 # Steps:
 #   1. Checkout (fetch-depth: 2 so PR diffs see the merge base if needed).
@@ -19,8 +19,16 @@
 name: ci
 
 on:
-  push: {}
+  # Pushes run only on main, release mains and the megaplan branch that strict-ready.yml also lists.
+  push:
+    branches: [main, "release/*/main", "megaplan/production-parity-templates"]
+  # Pull requests run for every base branch.
   pull_request: {}
+
+# A newer run of the same pull request or branch supersedes an older one. main and release mains keep every commit's result.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !(startsWith(github.ref, 'refs/heads/release/') && endsWith(github.ref, '/main')) }}
 
 jobs:
   test:
@@ -39,7 +47,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv venv --seed
+          uv venv --python 3.11 --seed
           make PYTHON=.venv/bin/python install-ci
 
       - name: Enforce IR boundary
@@ -73,7 +81,7 @@ jobs:
 
       - name: Install VibeComfy and ComfyUI
         run: |
-          uv venv --seed
+          uv venv --python 3.11 --seed
           make PYTHON=.venv/bin/python install-ci
 
       - name: Install Chromium test runtime
@@ -91,3 +99,32 @@ jobs:
           node tests/e2e/run.mjs --no-seed -- \
             --config tests/e2e/playwright.config.mjs \
             tests/e2e/specs/extension_boot.spec.mjs
+
+  # A pull request into a release branch comes from a branch of that release and names what it belongs
+  # to: the plan (a plan branch does so by its name) or the astrid-dev issue. See the Release skill,
+  # "How a release runs".
+  landing-reference:
+    name: landing reference
+    if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'release/') && endsWith(github.base_ref, '/main') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: The pull request comes from a branch of this release and names its plan or issue
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          TITLE: ${{ github.event.pull_request.title }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          release="${BASE_REF#release/}"; release="${release%/main}"
+          if ! printf '%s' "$HEAD_REF" | grep -Eq "^release/${release}/[a-z0-9][a-z0-9-]*$" || [ "$HEAD_REF" = "$BASE_REF" ]; then
+            echo "::error::A pull request into ${BASE_REF} must come from a branch of that release: release/${release}/plan-<PP> or release/${release}/<topic>. This one comes from '${HEAD_REF}'."
+            exit 1
+          fi
+          if printf '%s' "$HEAD_REF" | grep -Eq "^release/${release}/plan-[0-9]+$"; then
+            echo "Plan branch: $HEAD_REF"; exit 0
+          fi
+          if printf '%s\n%s\n' "$TITLE" "$BODY" | grep -Eiq '(plan[ -]?[0-9]+|astrid-dev#[0-9]+|astrid-dev/issues/[0-9]+)'; then
+            echo "Reference found."; exit 0
+          fi
+          echo "::error::A pull request into a release branch must name the plan or the astrid-dev issue it belongs to, for example 'Plan 55' or 'banodoco/astrid-dev#721'."
+          exit 1
