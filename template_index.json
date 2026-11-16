@@ -3,7 +3,7 @@
   "generated_from": "repo-only ready template discovery",
   "include_rule": "find ready_templates -type f -name '*.py' ! -name '_*' | sort",
   "exclude_rule": "exclude __init__.py and files whose basename starts with '_' to match vibecomfy.registry.ready._template_paths",
-  "template_count": 52,
+  "template_count": 53,
   "templates": [
     {
       "id": "audio/ace_step_1_5_t2a_song",
@@ -934,6 +934,69 @@
         "status": "static_source_schema_only"
       },
       "source_workflow": "ready_templates/sources/custom_nodes/qwen_tts/1038lab/qwen3_tts_voice_design.json",
+      "source_sha256": null
+    },
+    {
+      "id": "audio/transcribe",
+      "path": "ready_templates/audio/transcribe.py",
+      "source_scope": "repo",
+      "indexed": true,
+      "capability": "audio",
+      "coverage_tier": "",
+      "custom_nodes": [],
+      "model_count": 0,
+      "public_inputs": [],
+      "public_outputs": [
+        {
+          "name": "transcript_json",
+          "node_id": "3",
+          "output_type": "VibeComfySaveTranscript",
+          "artifact_kind": "json",
+          "mime_type": "application/json",
+          "filename_prefix": "audio/transcript",
+          "expected_cardinality": "one",
+          "status": "static",
+          "source": "finalize"
+        }
+      ],
+      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+      "artifact_expectations": [
+        {
+          "name": "transcript_json",
+          "node_id": "3",
+          "output_type": "VibeComfySaveTranscript",
+          "artifact_kind": "json",
+          "mime_type": "application/json",
+          "filename_prefix": "audio/transcript",
+          "expected_cardinality": "one",
+          "status": "static",
+          "source": "finalize"
+        }
+      ],
+      "static_diagnostics": [
+        {
+          "code": "static_dynamic_value",
+          "severity": "warning",
+          "message": "finalize has dynamic 'output_node'"
+        }
+      ],
+      "public_input_status": "partial",
+      "public_output_status": "declared",
+      "custom_node_count": 0,
+      "strict_ready_diagnostic_counts": {},
+      "readiness_class": "ready",
+      "marker": "manual",
+      "app_active": false,
+      "blocked": false,
+      "reference": false,
+      "supplemental": false,
+      "vibecomfy_version": "2.8.0",
+      "comfy_core": {
+        "version": "0.43.0",
+        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "status": "static_source_schema_only"
+      },
+      "source_workflow": null,
       "source_sha256": null
     },
     {
