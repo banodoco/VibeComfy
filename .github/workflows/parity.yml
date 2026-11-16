@@ -16,6 +16,9 @@ jobs:
   canonical-parity:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # The runner's default Python moved to 3.14, where the pinned dependencies do not install.
+      UV_PYTHON: "3.11"
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
