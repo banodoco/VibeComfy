@@ -146,7 +146,7 @@ class ApplyWhisperNode:
             download_root = os.path.join(folder_paths.models_dir, WHISPER_MODEL_SUBDIR)
 
             logger.info(f"Creating Whisper ModelPatcher for {model} on device {load_device}")
-            
+
             model_wrapper = WhisperModelWrapper(model, download_root)
             patcher = WhisperPatcher(
                 model=model_wrapper,
@@ -171,7 +171,7 @@ class ApplyWhisperNode:
             if ApplyWhisperNode.languages_by_name is None:
                 ApplyWhisperNode.languages_by_name = {v.lower(): k for k, v in whisper.tokenizer.LANGUAGES.items()}
             transcribe_args['language'] = ApplyWhisperNode.languages_by_name[language.lower()]
-        
+
         result = whisper_model.transcribe(audio_save_path, word_timestamps=True, **transcribe_args)
 
         segments = result['segments']
