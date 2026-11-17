@@ -45,6 +45,7 @@ from vibecomfy.workflow import (
     canonical_ir_projection,
 )
 from vibecomfy.model_assets import reconcile_model_requirements
+from vibecomfy.presentation import capture_presentation_graph_records
 from vibecomfy.ui_constants import UI_ONLY_CLASS_TYPES
 
 
@@ -482,8 +483,6 @@ def _validate_v1_sidecar(
     # sidecar validation below still fail-closes on identities, nodes, links,
     # scopes, and native port rosters, so this does not bless a divergent graph.
     # Preserve the supplied digest unchanged as revision diagnostic evidence.
-    from vibecomfy.porting.emit.ui import capture_presentation_graph_records
-
     presentation = capture_presentation_graph_records(sidecar)
     nodes = presentation.nodes
     if not isinstance(nodes, Mapping):

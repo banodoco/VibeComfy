@@ -17,12 +17,12 @@ def _assert_lightweight_imports(code: str) -> None:
 import importlib.abc
 import sys
 
-forbidden = ("vibecomfy.comfy_nodes", "vibecomfy.nodes", "numpy", "torch",
-             "vibecomfy.porting.emit")
+forbidden_modules = ("vibecomfy.comfy_nodes", "vibecomfy.nodes", "numpy", "torch",
+                     "vibecomfy.porting.emit")
 attempts = []
 
 def is_forbidden(name):
-    return any(name == root or name.startswith(root + ".") for root in forbidden)
+    return any(name == root or name.startswith(root + ".") for root in forbidden_modules)
 
 class ImportRecorder(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
@@ -61,6 +61,17 @@ def test_emitter_reexports_the_same_ui_only_classes() -> None:
     assert UI_ONLY_CLASS_TYPES == frozenset({"Note", "MarkdownNote", "Label (rgthree)"})
 
 
+def test_emitter_reexports_the_same_presentation_records() -> None:
+    from vibecomfy.porting.emit.ui import (
+        PresentationGraphRecords as emitted_records,
+        capture_presentation_graph_records as emitted_capture,
+    )
+    from vibecomfy.presentation import PresentationGraphRecords, capture_presentation_graph_records
+
+    assert emitted_records is PresentationGraphRecords
+    assert emitted_capture is capture_presentation_graph_records
+
+
 @pytest.mark.parametrize("class_type", [None, "Note", "MarkdownNote", "Label (rgthree)"])
 def test_validating_annotations_does_not_load_node_library(class_type: str | None) -> None:
     _assert_lightweight_imports(
@@ -80,9 +91,10 @@ def test_validating_annotations_does_not_load_node_library(class_type: str | Non
     )
 
 
-def test_loading_python_bundle_does_not_load_node_library() -> None:
+@pytest.mark.parametrize("with_presentation", [False, True])
+def test_loading_python_bundle_does_not_load_node_library(with_presentation: bool) -> None:
     _assert_lightweight_imports(
-        """
+        "with_presentation = " + repr(with_presentation) + "\n" + textwrap.dedent("""
         import json
         import tempfile
         from pathlib import Path
@@ -114,6 +126,15 @@ def test_loading_python_bundle_does_not_load_node_library() -> None:
                     "nodes": {}, "links": [], "groups": [], "canvas": {}, "annotations": [],
                 },
             }
+            if with_presentation:
+                companion["presentation"]["nodes"] = {
+                    "note": {"class_type": "MarkdownNote", "id": 7},
+                }
+                companion["presentation"]["annotations"] = [{
+                    "annotation_id": "note", "scope_path": "",
+                    "owner": {"kind": "node", "uid": "note"},
+                    "class_type": "MarkdownNote", "title": "Note", "content": "preserve me",
+                }]
             source.with_suffix(".vibe.json").write_text(json.dumps(companion), encoding="utf-8")
 
             bundle = load_bundle(source, trust=Provenance.USER_CONFIRMED)
@@ -121,5 +142,47 @@ def test_loading_python_bundle_does_not_load_node_library() -> None:
             assert len(bundle.workflow.nodes) == 1
             assert bundle.workflow.nodes["1"].inputs["value"] == 7
             assert bundle.ui_sidecar == companion
-        """
+        """)
     )
+
+
+# Preserve the exact nonempty-v2 diagnostic reported in PR #174. The shared
+# harness additionally checks descendants and attempted imports.
+_NONEMPTY_V2_PRESENTATION_PROBE = r'''import sys
+from vibecomfy.testing.canonical import canonical_digest
+from vibecomfy.workflow import VibeWorkflow, WorkflowSource
+from vibecomfy.workflow_bundle import validate_sidecar
+
+workflow = VibeWorkflow("annotated-bundle", WorkflowSource("annotated-bundle"))
+workflow.add_node("Integer", uid="integer-node", value=7)
+custody = {"scopes": [{"scope_path": "", "nodes": [], "helpers": []}]}
+companion = {
+    "format_version": 2,
+    "bind": {
+        "workflow_identity": workflow.id,
+        "generation_id": "probe",
+        "custody_digest": canonical_digest(custody),
+    },
+    "custody": custody,
+    "presentation": {
+        "nodes": {"note": {"class_type": "MarkdownNote", "id": 7}},
+        "links": [], "groups": [], "canvas": {},
+        "annotations": [{
+            "annotation_id": "note", "scope_path": "",
+            "owner": {"kind": "node", "uid": "note"},
+            "class_type": "MarkdownNote", "title": "Note", "content": "preserve me",
+        }],
+    },
+}
+forbidden = {"vibecomfy.comfy_nodes", "numpy", "vibecomfy.porting.emit"}
+assert not forbidden & sys.modules.keys()
+normalized = validate_sidecar(companion, workflow)
+assert normalized["presentation"]["annotations"][0]["content"] == "preserve me"
+loaded = sorted(forbidden & sys.modules.keys())
+print(loaded)
+assert not loaded, loaded
+'''
+
+
+def test_nonempty_v2_presentation_does_not_load_node_library() -> None:
+    _assert_lightweight_imports(_NONEMPTY_V2_PRESENTATION_PROBE)
