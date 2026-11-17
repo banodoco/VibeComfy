@@ -20,6 +20,7 @@ BROAD_COVERAGE_FAIL_UNDER ?= 70
 PARITY_NETWORK ?= 0
 
 FAST_PYTEST := \
+	tests/test_workflow_bundle_imports.py \
 	tests/test_cli_loader.py \
 	tests/test_import_command.py \
 	tests/test_node_command.py \

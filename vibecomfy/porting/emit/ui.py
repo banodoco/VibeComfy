@@ -82,35 +82,11 @@ from vibecomfy.contracts.intent_nodes import (
 )
 from vibecomfy.errors import RuntimeConfigurationError, _safe_value_label
 from vibecomfy.identity.uid import mint_local_uid
+from vibecomfy.ingest.normalize import PresentationGraphRecords, capture_presentation_graph_records
 from vibecomfy.porting.endpoint_invariant import schema_input_sockets_for_unwired_node
 from vibecomfy.porting.widgets.compact_resolver import compact_widget_names_for_node
 from vibecomfy.porting.widgets.aliases import widget_names_for_class, widget_names_from_schema
 from vibecomfy.workflow import VibeEdge, VibeNode, _get_node_mode, _raise_embedded_api_links
-
-
-@dataclass(frozen=True, slots=True)
-class PresentationGraphRecords:
-    """Detached structural records crossing the LiteGraph presentation door."""
-
-    nodes: Any
-    links: Any
-    groups: Any
-    groups_present: bool
-
-
-def capture_presentation_graph_records(candidate: Mapping[str, Any]) -> PresentationGraphRecords:
-    """Detach the three graph-shaped presentation records from *candidate*.
-
-    This is deliberately a shape-neutral door.  The bundle boundary retains
-    its context-specific validation: UI envelopes require a node list while
-    strict sidecars require a UID-keyed node mapping.
-    """
-    return PresentationGraphRecords(
-        nodes=deepcopy(candidate.get("nodes")),
-        links=deepcopy(candidate.get("links")),
-        groups=deepcopy(candidate.get("groups")),
-        groups_present="groups" in candidate,
-    )
 
 
 def is_litegraph_candidate(candidate: Mapping[str, Any]) -> bool:

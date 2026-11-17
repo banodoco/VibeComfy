@@ -45,6 +45,7 @@ from vibecomfy.workflow import (
     canonical_ir_projection,
 )
 from vibecomfy.model_assets import reconcile_model_requirements
+from vibecomfy.ui_constants import UI_ONLY_CLASS_TYPES
 
 
 _logger = logging.getLogger(__name__)
@@ -373,8 +374,6 @@ def _validate_annotations(
     valid_node_refs: set[tuple[str, str]] | None = None,
     valid_groups: set[tuple[str, str]] | None = None,
 ) -> list[dict[str, Any]]:
-    from vibecomfy.porting.emit.emit_constants import UI_ONLY_CLASS_TYPES
-
     if not isinstance(value, list):
         raise WorkflowBundleError("workflow presentation annotations must be a list")
     result: list[dict[str, Any]] = []
@@ -483,7 +482,9 @@ def _validate_v1_sidecar(
     # sidecar validation below still fail-closes on identities, nodes, links,
     # scopes, and native port rosters, so this does not bless a divergent graph.
     # Preserve the supplied digest unchanged as revision diagnostic evidence.
-    from vibecomfy.porting.emit.ui import capture_presentation_graph_records
+    # Keep the ingest door lazy: its schema/runtime imports refer back to this
+    # module, while reading presentation records must never load the emitter.
+    from vibecomfy.ingest.normalize import capture_presentation_graph_records
 
     presentation = capture_presentation_graph_records(sidecar)
     nodes = presentation.nodes
@@ -511,8 +512,6 @@ def _validate_v1_sidecar(
             # UI-only nodes are presentation custody, not executable graph
             # members.  Require their explicit class witness so an arbitrary
             # unknown node cannot be smuggled through this exception.
-            from vibecomfy.porting.emit.emit_constants import UI_ONLY_CLASS_TYPES
-
             if not isinstance(sidecar_class, str) or sidecar_class not in UI_ONLY_CLASS_TYPES:
                 raise WorkflowBundleError(f"workflow sidecar node {uid!r} does not match a Python node")
         elif sidecar_class is not None:
