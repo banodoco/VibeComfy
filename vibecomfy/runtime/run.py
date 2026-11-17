@@ -498,10 +498,10 @@ async def _run_impl(
     server_client: Any | None = None,
     artifact_client: Any | None = None,
 ) -> RunResult:
-    from vibecomfy.prepared import PreparedProjectionRecord, prepared_queue_payload
+    from vibecomfy.prepared import PreparedProjectionRecord, prepared_queue_payload, require_prepared_target
 
-    if type(record) is PreparedProjectionRecord:
-        record._session.require_target(server_url)
+    if isinstance(record, PreparedProjectionRecord):
+        require_prepared_target(record, server_url)
         prepared_queue_payload(record, bundle)
     if server_client is not None and (
         server_url is None
@@ -685,11 +685,11 @@ async def _run_impl(
         # and the API record is recompiled from that corrected IR.
         from .reconciliation import ReconciliationError, reconcile_before_queue_async
 
-        from vibecomfy.prepared import PreparedProjectionRecord, prepared_queue_payload
+        from vibecomfy.prepared import PreparedProjectionRecord, prepared_queue_payload, require_prepared_target
 
-        is_prepared = type(record) is PreparedProjectionRecord
+        is_prepared = isinstance(record, PreparedProjectionRecord)
         if is_prepared:
-            record._session.require_target(active_url)
+            require_prepared_target(record, active_url)
             prepared_queue_payload(record, bundle)
         live_provider = schema_provider
         if not is_prepared and (live_provider is None or not getattr(live_provider, "requires_fresh_target", False)):

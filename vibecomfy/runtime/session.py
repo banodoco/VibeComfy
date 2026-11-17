@@ -95,7 +95,7 @@ def _require_runtime_boundary(
 ) -> VibeWorkflow:
     from vibecomfy.prepared import PreparedProjectionRecord, PreparedWorkflowUnavailable
 
-    if type(record) is PreparedProjectionRecord and not allow_prepared:
+    if isinstance(record, PreparedProjectionRecord) and not allow_prepared:
         raise PreparedWorkflowUnavailable(
             "session-managed and embedded entry points require full approval; "
             "submit a prepared record through its admitted server_url"
@@ -3523,7 +3523,7 @@ async def _prepare_prompt_async(
 ) -> dict[str, Any]:
     from vibecomfy.prepared import PreparedProjectionRecord, prepared_queue_payload
 
-    if type(record) is PreparedProjectionRecord:
+    if isinstance(record, PreparedProjectionRecord):
         if backend != "api":
             raise WorkflowBuildError("runtime execution accepts only the approved API projection")
         return PreparedPrompt(
@@ -3598,7 +3598,7 @@ def _prepare_runtime_prompt_with_evidence(
     """Validate the already-approved API projection without rewriting it."""
     from vibecomfy.prepared import PreparedProjectionRecord, prepared_queue_payload
 
-    if type(record) is PreparedProjectionRecord:
+    if isinstance(record, PreparedProjectionRecord):
         return prepared_queue_payload(record, bundle), []
     if not isinstance(record, ApprovedProjectionRecord) or not isinstance(bundle, WorkflowBundle):
         raise WorkflowBundleError("runtime preparation requires an approved record and bundle")

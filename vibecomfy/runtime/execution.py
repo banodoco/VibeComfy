@@ -174,7 +174,7 @@ def authorized_queue_payload(
     """
     from vibecomfy.prepared import PreparedProjectionRecord, prepared_queue_payload
 
-    if type(record) is PreparedProjectionRecord:
+    if isinstance(record, PreparedProjectionRecord):
         return prepared_queue_payload(record, bundle)
     if not isinstance(record, ApprovedProjectionRecord):
         raise WorkflowBundleError(
@@ -265,7 +265,7 @@ async def queue_embedded_prompt(
 ) -> QueuedExecution:
     from vibecomfy.prepared import PreparedProjectionRecord, PreparedWorkflowUnavailable
 
-    if type(record) is PreparedProjectionRecord:
+    if isinstance(record, PreparedProjectionRecord):
         raise PreparedWorkflowUnavailable("prepared records require their admitted server target")
     api_dict = authorized_queue_payload(record, bundle)
     try:
@@ -297,10 +297,10 @@ async def queue_server_prompt(
         if server_url is None:
             raise ValueError("server_url is required when client is not provided")
         client = ComfyClient(server_url)
-    from vibecomfy.prepared import PreparedProjectionRecord
+    from vibecomfy.prepared import PreparedProjectionRecord, require_prepared_target
 
-    if type(record) is PreparedProjectionRecord:
-        record._session.require_target(getattr(client, "server_url", server_url))
+    if isinstance(record, PreparedProjectionRecord):
+        require_prepared_target(record, getattr(client, "server_url", server_url))
     try:
         queued = await client._post_prompt(api_dict)
     except asyncio.TimeoutError:

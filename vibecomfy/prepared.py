@@ -254,9 +254,50 @@ class _ArrayTemplate:
 
 
 @dataclass(frozen=True, slots=True)
+class _ModelSpellings:
+    exact: Mapping[str, str]
+    portable: Mapping[str, str | None]
+
+
+@dataclass(frozen=True, slots=True)
 class _ModelSlot:
     index: int
-    spellings: Mapping[str, str]
+    spellings: _ModelSpellings
+
+
+def _model_spellings(choices: Any, folder: str) -> _ModelSpellings:
+    """Capture exact witnesses and only unambiguous separator aliases."""
+    from vibecomfy.model_assets import model_picker_reference
+
+    grouped: dict[str, set[str]] = {}
+    exact: dict[str, str] = {}
+    for choice in choices:
+        if not isinstance(choice, str):
+            continue
+        try:
+            reference = model_picker_reference(choice, folder, allow_backslash=True)
+        except ValueError:
+            continue
+        exact[choice] = choice
+        grouped.setdefault(reference.key, set()).add(choice)
+    spellings: dict[str, str | None] = {
+        key: next(iter(matches)) if len(matches) == 1 else None
+        for key, matches in grouped.items()
+    }
+    # Keep exact witnesses separate: a canonical slash spelling must not
+    # overwrite an ambiguous portable key used by a third, mixed spelling.
+    return _ModelSpellings(MappingProxyType(exact), MappingProxyType(spellings))
+
+
+def _model_value(value: Any, spellings: _ModelSpellings) -> Any:
+    if type(value) is not str:
+        return value
+    if value in spellings.exact:
+        return spellings.exact[value]
+    bound = spellings.portable.get(value.replace("\\", "/"), value)
+    if bound is None:
+        raise PreparedWorkflowUnavailable("prepared model spelling is ambiguous; use full preparation")
+    return bound
 
 
 _DYNAMIC = (LiteralSlot, _ModelSlot, _ObjectTemplate, _ArrayTemplate)
@@ -280,8 +321,7 @@ def _render(value: Any, slots: tuple[Any, ...]) -> Any:
     if type(value) is LiteralSlot:
         return slots[value.index]
     if type(value) is _ModelSlot:
-        bound = slots[value.index]
-        return value.spellings.get(bound.replace("\\", "/"), bound) if type(bound) is str else bound
+        return _model_value(slots[value.index], value.spellings)
     if type(value) is _ObjectTemplate:
         return MappingProxyType({key: _render(item, slots) for key, item in value.items})
     if type(value) is _ArrayTemplate:
@@ -361,7 +401,8 @@ class _Template:
     bindings: tuple[_Binding, ...]
     graph: Any
     ui: Mapping[str, Any]
-    model_spellings: Mapping[tuple[str, str], Mapping[str, str]]
+    model_spellings: Mapping[tuple[str, str], _ModelSpellings]
+    model_slots: tuple[_ModelSlot, ...]
     diagnostics: tuple[Mapping[str, Any], ...]
     provenance: Mapping[str, Any]
 
@@ -374,14 +415,19 @@ class PreparedProjectionRecord(ApprovedProjectionRecord):
     _handle: str = field(repr=False)
     output_identity: str
 
+    def __post_init__(self) -> None:
+        raise WorkflowBundleError("prepared projection was not issued; use a live session fill")
+
     @classmethod
     def _issue(cls, template: _Template, inputs: Mapping[str, Any],
                api: Mapping[str, Any], digest: str, session: "PreparedWorkflowSession",
                handle: str, output_identity: str) -> "PreparedProjectionRecord":
         # All static data was frozen at admission. The session has rendered,
         # bounded and digested this payload; do not freeze the unchanged UI or
-        # digest the same API a second time. Public construction still runs
-        # ApprovedProjectionRecord.__post_init__ and cannot register authority.
+        # digest the same API a second time. Public construction is refused;
+        # only the private registry can retain this record's issued authority.
+        if cls is not PreparedProjectionRecord:
+            raise WorkflowBundleError("prepared projection must have its concrete issued type")
         record = object.__new__(cls)
         for name, value in (
             ("revision_id", template.bundle.revision_id),
@@ -397,7 +443,7 @@ class PreparedProjectionRecord(ApprovedProjectionRecord):
 
     def assert_matches(self, bundle, variant=None, run_inputs=None,
                        api_projection=None, ui_projection=None) -> None:
-        self._session.authorize(self, bundle)
+        prepared_queue_payload(self, bundle)
         if variant != self.selected_variant:
             raise WorkflowBundleError("prepared projection variant does not match")
         if canonical_bytes(run_inputs or {}) != canonical_bytes(self.input_binding):
@@ -408,7 +454,7 @@ class PreparedProjectionRecord(ApprovedProjectionRecord):
             raise WorkflowBundleError("prepared projection UI projection does not match")
 
     def preparation_provenance(self) -> dict[str, Any]:
-        return self._session.provenance(self._handle)
+        return PreparedWorkflowSession.provenance(_record_session(self), self._handle)
 
     @classmethod
     def from_dict(cls, value: Any) -> ApprovedProjectionRecord:
@@ -417,6 +463,70 @@ class PreparedProjectionRecord(ApprovedProjectionRecord):
     @classmethod
     def from_canonical_bytes(cls, value: bytes) -> ApprovedProjectionRecord:
         return ApprovedProjectionRecord.from_canonical_bytes(value)
+
+
+@dataclass(frozen=True, slots=True)
+class _IssuedRecord:
+    record: weakref.ReferenceType[PreparedProjectionRecord]
+    handle: str
+    bundle: WorkflowBundle
+    digest: str
+    revision: str
+    variant: str | None
+    inputs: Mapping[str, Any]
+    ui: Mapping[str, Any]
+    output_identity: str
+
+
+@dataclass(slots=True)
+class _SessionAuthority:
+    context: PreparedWorkflowContext
+    pid: int
+    compiler_identity: str
+    issued: dict[int, _IssuedRecord] = field(default_factory=dict)
+
+
+# Neither a record's fields nor a session-shaped object's attributes can
+# recreate membership here. Weak keys/references release idle authority without
+# retaining every filled graph for the lifetime of the session.
+_SESSION_REGISTRY: weakref.WeakKeyDictionary[PreparedWorkflowSession, _SessionAuthority] = weakref.WeakKeyDictionary()
+_SESSION_REGISTRY_LOCK = threading.RLock()
+
+
+def _session_authority(session: Any) -> _SessionAuthority:
+    if type(session) is not PreparedWorkflowSession:
+        raise WorkflowBundleError("prepared authority requires a concrete live session")
+    with _SESSION_REGISTRY_LOCK:
+        authority = _SESSION_REGISTRY.get(session)
+    if authority is None:
+        raise PreparedWorkflowUnavailable("prepared workflow admission generation is no longer current")
+    return authority
+
+
+def _record_session(record: PreparedProjectionRecord) -> PreparedWorkflowSession:
+    if type(record) is not PreparedProjectionRecord:
+        raise WorkflowBundleError("prepared queue requires an issued prepared projection")
+    session = record._session
+    _session_authority(session)
+    return session
+
+
+def _compiler_identity() -> str:
+    """Resolve this installed compiler, never a job's claimed version."""
+    from vibecomfy.runtime.session import current_source_revision
+
+    revision = current_source_revision()
+    if revision:
+        return "git:" + revision
+    # Installed wheels have no checkout. Their own Python bytes still identify
+    # the compiler, independently of the caller's contextual compiler label.
+    root = Path(__file__).parent
+    digest = hashlib.sha256()
+    for path in sorted(root.rglob("*.py")):
+        digest.update(path.relative_to(root).as_posix().encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(hashlib.sha256(path.read_bytes()).digest())
+    return "sha256:" + digest.hexdigest()
 
 
 class PreparedWorkflowSession:
@@ -428,6 +538,8 @@ class PreparedWorkflowSession:
     """
 
     def __init__(self, context: PreparedWorkflowContext, *, capacity: int = 64) -> None:
+        if type(self) is not PreparedWorkflowSession:
+            raise WorkflowBundleError("prepared authority requires a concrete live session")
         if type(context) is not PreparedWorkflowContext:
             raise WorkflowBundleError("prepared session requires an admitted context")
         if type(capacity) is not int or not 1 <= capacity <= 1024:
@@ -440,10 +552,14 @@ class PreparedWorkflowSession:
         self._lock = threading.RLock()
         self._templates: dict[str, _Template] = {}
         self._keys: dict[str, str] = {}
-        self._issued: weakref.WeakValueDictionary[int, PreparedProjectionRecord] = weakref.WeakValueDictionary()
+        authority = _SessionAuthority(replace(context), self._pid, _compiler_identity())
+        with _SESSION_REGISTRY_LOCK:
+            _SESSION_REGISTRY[self] = authority
 
     def _check(self, context: PreparedWorkflowContext) -> None:
-        if not self._active or self._pid != os.getpid() or context != self.context:
+        authority = _session_authority(self)
+        if (not self._active or authority.pid != os.getpid()
+                or context != authority.context or self.context != authority.context):
             raise PreparedWorkflowUnavailable("prepared workflow admission generation is no longer current")
 
     def invalidate(self) -> None:
@@ -451,13 +567,14 @@ class PreparedWorkflowSession:
             self._active = False
             self._templates.clear()
             self._keys.clear()
-            self._issued.clear()
+            with _SESSION_REGISTRY_LOCK:
+                _SESSION_REGISTRY.pop(self, None)
 
     def prepare(self, bundle: WorkflowBundle, *, inputs: Mapping[str, Any],
                 schema_provider: Any = None, variant: str | None = None) -> str:
         """Compile an admitted static graph once and return an opaque handle."""
         with self._lock:
-            self._check(self.context)
+            PreparedWorkflowSession._check(self, self.context)
             if type(bundle) is not WorkflowBundle or type(bundle.workflow) is not VibeWorkflow:
                 raise PreparedWorkflowUnavailable("prepared workflow requires a canonical static IR")
             bundle.require_canonical_authority("prepared workflow admission")
@@ -475,7 +592,8 @@ class PreparedWorkflowSession:
                 for kind in sorted({node.class_type for node in bundle.workflow.nodes.values()})
             } if schema_provider is not None else {}
             key = canonical_digest([
-                _FORMAT, asdict(self.context), source, bundle.revision_id,
+                _FORMAT, _session_authority(self).compiler_identity,
+                asdict(self.context), source, bundle.revision_id,
                 selected_variant, shape, schemas,
             ])
             if key in self._keys:
@@ -564,7 +682,7 @@ class PreparedWorkflowSession:
             template_graph = _freeze_template(graph)
             samples = tuple(binding.value(supplied) for binding in bindings)
             sample_api = _thaw_json(_render(template_graph, samples))
-            spellings: dict[tuple[str, str], Mapping[str, str]] = {}
+            spellings: dict[tuple[str, str], _ModelSpellings] = {}
             diagnostics: list[Mapping[str, Any]] = []
             if schema_provider is not None:
                 from vibecomfy.model_assets import _subdir_for_model_reference
@@ -574,14 +692,13 @@ class PreparedWorkflowSession:
                     if schema is None or getattr(schema_provider, "model_availability", None) != "target":
                         continue
                     for field_name in row["inputs"]:
-                        if _subdir_for_model_reference(row["class_type"], field_name) is None:
+                        folder = _subdir_for_model_reference(row["class_type"], field_name)
+                        if folder is None:
                             continue
                         spec = schema.inputs.get(field_name)
                         choices = getattr(spec, "choices", None)
                         if choices is not None:
-                            spellings[(node_id, field_name)] = MappingProxyType({
-                                choice.replace("\\", "/"): choice for choice in choices if type(choice) is str
-                            })
+                            spellings[(node_id, field_name)] = _model_spellings(choices, folder)
                 _bind_model_spellings(sample_api, spellings)
                 issues = [*validate_api_against_schema(sample_api, schema_provider, require_explicit_required=True),
                           *validate_api_link_shapes(sample_api, schema_provider)]
@@ -589,12 +706,15 @@ class PreparedWorkflowSession:
                     diagnostic = {"code": str(issue.code), "message": str(issue.message), "severity": "warning"}
                     diagnostics.append(_freeze_json(diagnostic))
                     _LOG.warning("prepared workflow structural check: %s", issue.message)
+            model_slots = []
             for (node_id, field_name), choices in spellings.items():
                 value = graph[node_id]["inputs"].get(field_name)
                 if type(value) is LiteralSlot:
-                    graph[node_id]["inputs"][field_name] = _ModelSlot(value.index, choices)
+                    slot = _ModelSlot(value.index, choices)
+                    model_slots.append(slot)
+                    graph[node_id]["inputs"][field_name] = slot
                 elif type(value) is str:
-                    graph[node_id]["inputs"][field_name] = choices.get(value.replace("\\", "/"), value)
+                    graph[node_id]["inputs"][field_name] = _model_value(value, choices)
             template_graph = _freeze_template(graph)
             # No UI emitter is needed per fill. The admitted source's UI is
             # retained once for the same evidence shape as ordinary records.
@@ -602,10 +722,11 @@ class PreparedWorkflowSession:
             handle = f"{self._nonce}.{uuid.uuid4().hex}"
             self._templates[handle] = _Template(
                 key, snapshot, selected_variant, shape, MappingProxyType(aliases),
-                tuple(bindings), template_graph, ui, MappingProxyType(spellings), tuple(diagnostics),
+                tuple(bindings), template_graph, ui, MappingProxyType(spellings), tuple(model_slots), tuple(diagnostics),
                 _freeze_json({
                     "validation": "prepared-at-admission", "authority": "ComfyUI",
                     "format": _FORMAT, "template_key": key, "context_digest": self.context.digest,
+                    "compiler_identity": _session_authority(self).compiler_identity,
                     "source_closure_digest": source, "schema_digest": self.context.schema_digest,
                     "target_identity": self.context.target_identity,
                     "target_generation": self.context.target_generation,
@@ -615,84 +736,140 @@ class PreparedWorkflowSession:
             self._keys[key] = handle
             return handle
 
+    def accepts(self, handle: str, inputs: Mapping[str, Any], *, attempt_id: str = "admission") -> bool:
+        """Check fill compatibility before media upload; no source/schema IO.
+
+        A changed shape, value presence, or ambiguous captured model spelling
+        requires the full path. Stale authority and unsafe transport values
+        still refuse rather than silently selecting a different authority.
+        """
+        with self._lock:
+            PreparedWorkflowSession._check(self, self.context)
+            template = self._templates.get(handle) if type(handle) is str else None
+            if template is None:
+                return False
+            try:
+                _fill_values(template, inputs, attempt_id + "_" + "0" * 32)
+            except PreparedWorkflowUnavailable:
+                return False
+            return True
+
     def fill(self, handle: str, inputs: Mapping[str, Any], *, attempt_id: str,
              context: PreparedWorkflowContext) -> tuple[PreparedProjectionRecord, WorkflowBundle]:
         """Bind typed values, private names, and a digest; no code or schema IO."""
         with self._lock:
-            self._check(context)
+            PreparedWorkflowSession._check(self, context)
             template = self._templates.get(handle) if type(handle) is str else None
             if template is None:
                 raise PreparedWorkflowUnavailable("unknown or cross-session prepared workflow handle")
             if (type(attempt_id) is not str or not _IDENTITY.fullmatch(attempt_id)
                     or attempt_id.endswith(("-", ".", ":"))):
                 raise WorkflowBundleError("prepared attempt identity is invalid")
-            if _value_shape(inputs) != template.shape:
-                raise PreparedWorkflowUnavailable("prepared input type or shape changed; prepare a new template")
-            supplied = {template.aliases[name]: value for name, value in inputs.items()}
             identity = f"{attempt_id}_{uuid.uuid4().hex}"
-            values = []
-            for binding in template.bindings:
-                value = binding.value(supplied)
-                if _is_ui_only_prompt_input(binding.field, value) != binding.omitted:
-                    raise PreparedWorkflowUnavailable("prepared input presence changed; prepare a new template")
-                if binding.output_prefix:
-                    value = _private_prefix(value, identity)
-                if binding.media:
-                    _filename_bound(value)
-                values.append(value)
-            api = _render(template.graph, tuple(values))
+            api = _render(template.graph, _fill_values(template, inputs, identity))
             raw = canonical_bytes(api)
             if len(raw) > _MAX_PAYLOAD_BYTES:
                 raise WorkflowBundleError("prepared prompt exceeds the transport byte bound")
             record = PreparedProjectionRecord._issue(
                 template, inputs, api, hashlib.sha256(raw).hexdigest(), self, handle, identity,
             )
-            self._issued[id(record)] = record
+            authority = _session_authority(self)
+            record_id = id(record)
+
+            def forget(reference: weakref.ReferenceType[PreparedProjectionRecord]) -> None:
+                with _SESSION_REGISTRY_LOCK:
+                    issued = authority.issued.get(record_id)
+                    if issued is not None and issued.record is reference:
+                        authority.issued.pop(record_id)
+
+            issued = _IssuedRecord(
+                weakref.ref(record, forget), handle, template.bundle, record.api_digest,
+                record.revision_id, record.selected_variant, record.input_binding,
+                record.ui_projection, identity,
+            )
+            with _SESSION_REGISTRY_LOCK:
+                authority.issued[record_id] = issued
             return record, template.bundle
 
     def authorize(self, record: PreparedProjectionRecord, bundle: WorkflowBundle) -> dict[str, Any]:
-        """Identity membership, not a digest-consistent value, grants authority."""
+        """Recheck issued identity and digest on the exact detached payload."""
+        authority = _session_authority(self)
         with self._lock:
-            self._check(self.context)
-            template = self._templates.get(record._handle)
-            if (type(record) is not PreparedProjectionRecord or self._issued.get(id(record)) is not record
-                    or record._session is not self or template is None or bundle is not template.bundle):
+            PreparedWorkflowSession._check(self, self.context)
+            with _SESSION_REGISTRY_LOCK:
+                issued = authority.issued.get(id(record))
+            if (type(record) is not PreparedProjectionRecord or issued is None
+                    or issued.record() is not record or record._session is not self
+                    or record._handle != issued.handle or bundle is not issued.bundle
+                    or issued.handle not in self._templates):
                 raise WorkflowBundleError("prepared projection was not issued by this live admission")
-            return _thaw_json(record.api_projection)
+            if (record.api_digest != issued.digest or record.revision_id != issued.revision
+                    or record.selected_variant != issued.variant or record.input_binding is not issued.inputs
+                    or record.ui_projection is not issued.ui or record.output_identity != issued.output_identity):
+                raise WorkflowBundleError("prepared projection differs from its issued record")
+            # Detach first and hash exactly the object returned to the transport.
+            # This also prevents a mutable or stateful replacement Mapping from
+            # providing one graph for the digest and another for submission.
+            payload = _thaw_json(record.api_projection)
+            if not isinstance(payload, dict) or canonical_digest(payload) != issued.digest:
+                raise WorkflowBundleError("prepared projection digest does not match its issued digest")
+            return payload
 
     def key(self, handle: str) -> str:
         with self._lock:
-            self._check(self.context)
+            PreparedWorkflowSession._check(self, self.context)
             if handle not in self._templates:
                 raise PreparedWorkflowUnavailable("unknown prepared workflow handle")
             return self._templates[handle].key
 
     def require_target(self, target_identity: str | None) -> None:
+        _session_authority(self)
         with self._lock:
-            self._check(self.context)
+            PreparedWorkflowSession._check(self, self.context)
             if (type(target_identity) is not str or
                     target_identity.rstrip("/") != self.context.target_identity.rstrip("/")):
                 raise PreparedWorkflowUnavailable("prepared workflow belongs to another target")
 
     def provenance(self, handle: str) -> dict[str, Any]:
         with self._lock:
-            self._check(self.context)
+            PreparedWorkflowSession._check(self, self.context)
             template = self._templates.get(handle)
             if template is None:
                 raise PreparedWorkflowUnavailable("unknown prepared workflow handle")
             return _thaw_json(template.provenance)
 
 
-def _bind_model_spellings(api: dict[str, Any], spellings: Mapping[tuple[str, str], Mapping[str, str]]) -> None:
+def _fill_values(template: _Template, inputs: Mapping[str, Any], identity: str) -> tuple[Any, ...]:
+    if _value_shape(inputs) != template.shape:
+        raise PreparedWorkflowUnavailable("prepared input type or shape changed; prepare a new template")
+    supplied = {template.aliases[name]: value for name, value in inputs.items()}
+    values = []
+    for binding in template.bindings:
+        value = binding.value(supplied)
+        if _is_ui_only_prompt_input(binding.field, value) != binding.omitted:
+            raise PreparedWorkflowUnavailable("prepared input presence changed; prepare a new template")
+        if binding.output_prefix:
+            value = _private_prefix(value, identity)
+        if binding.media:
+            _filename_bound(value)
+        values.append(value)
+    for slot in template.model_slots:
+        _model_value(values[slot.index], slot.spellings)
+    return tuple(values)
+
+
+def _bind_model_spellings(api: dict[str, Any], spellings: Mapping[tuple[str, str], _ModelSpellings]) -> None:
     for (node_id, field_name), choices in spellings.items():
         value = api[node_id]["inputs"].get(field_name)
         if type(value) is str:
             # A captured mapping only selects the target spelling. Presence
             # and validity are ComfyUI's decision, not a per-job local gate.
-            api[node_id]["inputs"][field_name] = choices.get(value.replace("\\", "/"), value)
+            api[node_id]["inputs"][field_name] = _model_value(value, choices)
 
 
 def prepared_queue_payload(record: PreparedProjectionRecord, bundle: WorkflowBundle) -> dict[str, Any]:
-    if type(record) is not PreparedProjectionRecord:
-        raise WorkflowBundleError("prepared queue requires an issued prepared projection")
-    return record._session.authorize(record, bundle)
+    return PreparedWorkflowSession.authorize(_record_session(record), record, bundle)
+
+
+def require_prepared_target(record: PreparedProjectionRecord, target_identity: str | None) -> None:
+    PreparedWorkflowSession.require_target(_record_session(record), target_identity)

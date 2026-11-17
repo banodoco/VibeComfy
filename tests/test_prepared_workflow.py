@@ -141,10 +141,16 @@ def test_forged_copied_decoded_and_cross_session_records_never_gain_authority():
     altered = record.to_dict()
     altered["api_projection"]["1"]["inputs"]["seed"] = 999
     from vibecomfy.testing.canonical import canonical_digest
-    forged = replace(record, api_projection=altered["api_projection"], api_digest=canonical_digest(altered["api_projection"]))
-    for candidate in [forged, copy.copy(record), replace(record)]:
+    # Constructors now refuse before a forged value can reach the queue.
+    # Keep all three original attacks, including a self-consistent new digest.
+    for construct in (
+        lambda: replace(record, api_projection=altered["api_projection"],
+                        api_digest=canonical_digest(altered["api_projection"])),
+        lambda: copy.copy(record),
+        lambda: replace(record),
+    ):
         with pytest.raises(WorkflowBundleError, match="not issued"):
-            authorized_queue_payload(candidate, frozen)
+            authorized_queue_payload(construct(), frozen)
     decoded = PreparedProjectionRecord.from_canonical_bytes(record.to_canonical_bytes())
     assert type(decoded) is ApprovedProjectionRecord
     with pytest.raises(WorkflowBundleError, match="current bundle"):
@@ -332,6 +338,82 @@ def test_model_spelling_is_retained_but_presence_and_ranges_belong_to_comfy(capl
     unknown, _ = session.fill(handle, {"model": "not-present.safetensors", "seed": 10**20}, attempt_id="attempt", context=ctx)
     assert unknown.api_projection["3"]["inputs"]["unet_name"] == "not-present.safetensors"
     assert unknown.api_projection["1"]["inputs"]["seed"] == 10**20
+
+
+@pytest.mark.parametrize("choices,value", [
+    ([r"folder/model.safetensors", r"folder\model.safetensors"], "folder/model.safetensors"),
+    ([r"folder\model.safetensors", r"folder/model.safetensors"], r"folder\model.safetensors"),
+    ([r"folder\deep\model.safetensors"], "folder/deep/model.safetensors"),
+    ([r"folder\deep/model.safetensors", r"folder/deep\model.safetensors"], "folder/deep/model.safetensors"),
+    ([r"folder/deep/model.safetensors", r"folder\deep\model.safetensors"], r"folder\deep/model.safetensors"),
+])
+def test_model_spelling_uses_exact_witness_and_never_selects_an_ambiguous_alias(choices, value):
+    from vibecomfy.model_assets import model_picker_reference
+
+    bundle, _ = tiny()
+    workflow = bundle.workflow
+    workflow.nodes["3"] = VibeNode("3", "UNETLoader", inputs={"unet_name": choices[0], "weight_dtype": "default"},
+                                  uid="model", native_input_names=["unet_name", "weight_dtype"],
+                                  native_input_types=["STRING", "STRING"],
+                                  native_output_names=["MODEL"], native_output_types=["MODEL"])
+    workflow.register_input("model", "3", "unet_name", choices[0], type="STRING")
+    bundle = load_bundle(workflow)
+    provider = TargetSchemaProvider.from_object_info({
+        "UNETLoader": {"input": {"required": {"unet_name": [choices], "weight_dtype": [["default"]]}}, "output": ["MODEL"]},
+        "SeedImage": {"input": {"required": {"seed": ["INT", {}], "text": ["STRING", {}]}}, "output": ["IMAGE"]},
+        "SaveImage": {"input": {"required": {"images": ["IMAGE"], "filename_prefix": ["STRING", {}]}}, "output": []},
+    }, server_url=context().target_identity, model_availability="target")
+    session = PreparedWorkflowSession(context())
+    handle = session.prepare(bundle, inputs={"model": choices[0]}, schema_provider=provider)
+    expected = model_picker_reference(value, "diffusion_models", allow_backslash=True).advertised_value(choices)
+    if expected is None:
+        assert not session.accepts(handle, {"model": value})
+        with pytest.raises(PreparedWorkflowUnavailable, match="ambiguous"):
+            session.fill(handle, {"model": value}, attempt_id="attempt", context=context())
+    else:
+        assert session.accepts(handle, {"model": value})
+        record, _ = session.fill(handle, {"model": value}, attempt_id="attempt", context=context())
+        assert record.api_projection["3"]["inputs"]["unet_name"] == expected
+
+
+def test_compiler_identity_comes_from_vibecomfy_and_is_frozen_at_admission(monkeypatch):
+    from vibecomfy.runtime import session as runtime_session
+
+    bundle, provider = tiny()
+    ctx = context(compiler_identity="unchanged-caller-claim")
+    monkeypatch.setattr(runtime_session, "current_source_revision", lambda: "a" * 40)
+    first = PreparedWorkflowSession(ctx)
+    first_handle = first.prepare(bundle, inputs={"seed": 7}, schema_provider=provider)
+    assert first.provenance(first_handle)["compiler_identity"] == "git:" + "a" * 40
+    monkeypatch.setattr(runtime_session, "current_source_revision", lambda: "b" * 40)
+    second = PreparedWorkflowSession(ctx)
+    second_handle = second.prepare(bundle, inputs={"seed": 7}, schema_provider=provider)
+    assert second.key(second_handle) != first.key(first_handle)
+
+    def forbidden():
+        raise AssertionError("per-job compiler source lookup")
+
+    monkeypatch.setattr(runtime_session, "current_source_revision", forbidden)
+    assert first.accepts(first_handle, {"seed": 8})
+    first.fill(first_handle, {"seed": 8}, attempt_id="attempt", context=ctx)
+
+
+def test_accepts_checks_shape_and_presence_without_source_schema_or_graph_work(monkeypatch):
+    bundle, provider = tiny()
+    session = PreparedWorkflowSession(context())
+    handle = session.prepare(bundle, inputs={"seed": 7}, schema_provider=provider)
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("compatibility lookup performed preparation")
+
+    monkeypatch.setattr(VibeWorkflow, "compile", forbidden)
+    monkeypatch.setattr(type(bundle), "compile", forbidden)
+    monkeypatch.setattr(Path, "read_bytes", forbidden)
+    monkeypatch.setattr(provider, "get_schema", forbidden)
+    assert session.accepts(handle, {"seed": 8})
+    assert not session.accepts(handle, {"seed": 8, "text": "new shape"})
+    assert not session.accepts(handle, {"seed": "wrong type"})
+    assert not session.accepts(handle, {})
 
 
 def test_transport_bound_and_process_generation_remain_enforced(monkeypatch):

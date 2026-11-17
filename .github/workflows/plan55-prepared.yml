@@ -25,6 +25,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ matrix.source == 'baseline' && 'e5596dcd5ee1b9657acca4c90913c0da7631764a' || github.event.pull_request.head.sha || github.sha }}
+      - name: Obtain the new full-bundle probes for the unchanged base
+        if: matrix.source == 'baseline'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: proof-source
+      - name: Install only the new comparison probes on the base
+        if: matrix.source == 'baseline'
+        run: |
+          cp proof-source/tests/test_prepared_default_target_compile.py tests/
+          cp proof-source/tests/fixtures/prepared_default_target_inventory.json tests/fixtures/
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -39,6 +50,8 @@ jobs:
           python -VV >> proof/source.txt
           uname -a >> proof/source.txt
           python -m pip freeze > proof/dependencies.txt
+          sha256sum tests/test_prepared_default_target_compile.py \
+            tests/fixtures/prepared_default_target_inventory.json > proof/target-probe-sha256.txt
       - name: Unchanged compiler and queue regressions
         run: |
           python -m pytest -q \
@@ -53,13 +66,83 @@ jobs:
         if: always() && matrix.source == 'candidate' && steps.install.outcome == 'success'
         run: |
           python -m pytest -q \
-            tests/test_prepared_workflow.py tests/test_prepared_default_workflows.py \
+            tests/test_prepared_workflow.py tests/test_prepared_queue_fence.py \
+            tests/test_prepared_default_workflows.py \
             --junitxml=proof/prepared.xml 2>&1 | tee proof/prepared.log
+      - name: Real target bundle compilation on both exact sources
+        if: always() && steps.install.outcome == 'success'
+        run: |
+          python -m pytest -q tests/test_prepared_default_target_compile.py \
+            -k test_default_full_bundle_compile \
+            --junitxml=proof/target-full.xml 2>&1 | tee proof/target-full.log
+      - name: Per-default prepared equality through real bundle compilation
+        if: always() && matrix.source == 'candidate' && steps.install.outcome == 'success'
+        run: |
+          python -m pytest -q tests/test_prepared_default_target_compile.py \
+            -k test_default_matches_real_bundle_compile_with_selected_target \
+            --junitxml=proof/target-prepared.xml 2>&1 | tee proof/target-prepared.log
       - name: Retain exact-head proof including failures
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: plan55-ls4-vibe-${{ matrix.source }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: proof/
+          if-no-files-found: error
+          retention-days: 30
+
+  reviewed-attacks:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'p55/ls-4'
+    name: LS-4 attacks on reviewed a7f9dc2
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: a7f9dc2e4a5284bfe4b7078d8a27a7145b3e7933
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: proof-source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install unchanged reviewed source and new attack probes
+        run: |
+          python -m pip install -e '.[dev,png]'
+          cp proof-source/tests/test_prepared_queue_fence.py tests/
+          mkdir -p proof
+          git rev-parse HEAD > proof/source.txt
+          git rev-parse 'HEAD^{tree}' >> proof/source.txt
+          python -VV >> proof/source.txt
+          python -m pip freeze > proof/dependencies.txt
+          sha256sum tests/test_prepared_queue_fence.py > proof/attack-probe-sha256.txt
+      - name: Retain the eight attacks accepted by the reviewed source
+        run: |
+          set +e
+          python -m pytest -q tests/test_prepared_queue_fence.py \
+            --junitxml=proof/attacks.xml > proof/attacks.log 2>&1
+          result=$?
+          set -e
+          cat proof/attacks.log
+          test "$result" = 1
+          python - <<'PY'
+          from xml.etree import ElementTree as ET
+          cases = list(ET.parse('proof/attacks.xml').iter('testcase'))
+          assert len(cases) == 8
+          for case in cases:
+              failure = case.find('failure')
+              assert failure is not None, case.attrib
+              assert 'DID NOT RAISE' in failure.get('message', ''), case.attrib
+              assert case.find('error') is None and case.find('skipped') is None
+          PY
+      - name: Retain reviewed-source attack evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: plan55-ls4-vibe-reviewed-attacks-${{ github.run_id }}-${{ github.run_attempt }}
           path: proof/
           if-no-files-found: error
           retention-days: 30
