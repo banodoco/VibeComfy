@@ -30,6 +30,7 @@ from vibecomfy.porting._provenance_utils import _normalize_provenance_paths
 from vibecomfy.porting.widgets.aliases import resolve_widget_key_with_provenance
 from vibecomfy.porting.widgets.compact_resolver import compact_widget_names_for_node
 from vibecomfy.porting.widgets.schema import WIDGET_SCHEMA
+from vibecomfy.ui_constants import UI_ONLY_CLASS_TYPES
 
 logger = logging.getLogger(__name__)
 
@@ -101,12 +102,6 @@ __all__ = [
 ]
 
 
-# Only non-executing canvas furniture belongs here. Preview/show classes remain
-# semantic nodes: custom packs commonly implement them as auxiliary outputs,
-# and canonical bundle emission must preserve their node identity.
-UI_ONLY_CLASS_TYPES: frozenset[str] = frozenset(
-    {"Note", "MarkdownNote", "Label (rgthree)"}
-)
 FALLBACK_CLASS_TYPES: frozenset[str] = frozenset({
     "Note",
     "MarkdownNote",
