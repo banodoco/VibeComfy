@@ -119,7 +119,7 @@ def build() -> VibeWorkflow:
         enable_turbo_mode=None,
     )
 
-    saveimage = SaveImage(_id='60', images=qwen_image_edit_result)
+    saveimage = SaveImage(_id='60', images=qwen_image_edit_result, filename_prefix='ComfyUI')
 
     return wf.finalize(PUBLIC_INPUT_METADATA, output_node=saveimage, output_type='SaveImage', name='image', artifact_kind='image', mime_type='image/png', expected_cardinality='one', filename_prefix='ComfyUI')
 
