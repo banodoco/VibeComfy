@@ -673,6 +673,11 @@ def _extract_raw_primitive_value(node: Any, diagnostics: list[HelperDiagnostic])
 
 def _validate_primitive_literal(node: Any, value: Any) -> None:
     """Check primitive values before helper lowering can erase the node."""
+    # Prepared compilation traces the literal through the ordinary lowering
+    # pass. Check its actual sample, retaining the slot at every consumer.
+    from vibecomfy._compile._slots import literal_sample
+
+    value = literal_sample(value)
     class_type = str(node.class_type)
     if value is None:
         raise ValueError("value is missing")

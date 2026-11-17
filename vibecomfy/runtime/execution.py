@@ -172,6 +172,10 @@ def authorized_queue_payload(
     the payload sent to Comfy is always reconstructed from the immutable
     record after the current bundle and digest have been rechecked.
     """
+    from vibecomfy.prepared import PreparedProjectionRecord, prepared_queue_payload
+
+    if type(record) is PreparedProjectionRecord:
+        return prepared_queue_payload(record, bundle)
     if not isinstance(record, ApprovedProjectionRecord):
         raise WorkflowBundleError(
             "runtime queue requires an ApprovedProjectionRecord"

@@ -3512,6 +3512,17 @@ async def _prepare_prompt_async(
     on_unavailable,
     cache_only: bool = False,
 ) -> dict[str, Any]:
+    from vibecomfy.prepared import PreparedProjectionRecord, prepared_queue_payload
+
+    if type(record) is PreparedProjectionRecord:
+        if backend != "api":
+            raise WorkflowBuildError("runtime execution accepts only the approved API projection")
+        return PreparedPrompt(
+            prepared_queue_payload(record, bundle), schema_validation_skipped=[],
+            normalization=None,
+            schema_provenance={"validation": "prepared-at-admission", "authority": "ComfyUI",
+                               "schema_digest": record._session.context.schema_digest},
+        )
     effective = await _warm_schema_provider(
         schema_provider,
         on_unavailable=on_unavailable,
@@ -3577,6 +3588,10 @@ def _prepare_runtime_prompt_with_evidence(
     schema_provider: Any | None,
 ) -> tuple[dict[str, Any], list[str]]:
     """Validate the already-approved API projection without rewriting it."""
+    from vibecomfy.prepared import PreparedProjectionRecord, prepared_queue_payload
+
+    if type(record) is PreparedProjectionRecord:
+        return prepared_queue_payload(record, bundle), []
     if not isinstance(record, ApprovedProjectionRecord) or not isinstance(bundle, WorkflowBundle):
         raise WorkflowBundleError("runtime preparation requires an approved record and bundle")
     record.assert_matches(

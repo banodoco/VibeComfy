@@ -680,8 +680,13 @@ async def _run_impl(
         # and the API record is recompiled from that corrected IR.
         from .reconciliation import ReconciliationError, reconcile_before_queue_async
 
+        from vibecomfy.prepared import PreparedProjectionRecord, prepared_queue_payload
+
+        is_prepared = type(record) is PreparedProjectionRecord
+        if is_prepared:
+            prepared_queue_payload(record, bundle)
         live_provider = schema_provider
-        if live_provider is None or not getattr(live_provider, "requires_fresh_target", False):
+        if not is_prepared and (live_provider is None or not getattr(live_provider, "requires_fresh_target", False)):
             live_provider = _build_schema_provider(active_url)
         can_reconcile = callable(getattr(live_provider, "object_info", None)) or callable(
             getattr(live_provider, "refresh", None)
@@ -693,7 +698,7 @@ async def _run_impl(
                     target_schema_provider=live_provider,
                     publish=True,
                 )
-                if live_provider is not None and can_reconcile
+                if not is_prepared and live_provider is not None and can_reconcile
                 else None
             )
         except ReconciliationError as exc:
@@ -750,8 +755,9 @@ async def _run_impl(
         try:
             attempt_bundle["dependency_report"] = dependency_report
             write_attempt_json(run_dir, attempt_bundle)
-            apply_model_preflight(workflow, policy)
-            provider = schema_provider if schema_provider is not None else _build_schema_provider(active_url)
+            if not is_prepared:
+                apply_model_preflight(workflow, policy)
+            provider = schema_provider if is_prepared or schema_provider is not None else _build_schema_provider(active_url)
             api_dict = await _prepare_prompt_async(
                 record,
                 bundle,
