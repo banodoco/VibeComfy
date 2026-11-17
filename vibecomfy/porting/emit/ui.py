@@ -82,7 +82,7 @@ from vibecomfy.contracts.intent_nodes import (
 )
 from vibecomfy.errors import RuntimeConfigurationError, _safe_value_label
 from vibecomfy.identity.uid import mint_local_uid
-from vibecomfy.presentation import PresentationGraphRecords, capture_presentation_graph_records
+from vibecomfy.ingest.normalize import PresentationGraphRecords, capture_presentation_graph_records
 from vibecomfy.porting.endpoint_invariant import schema_input_sockets_for_unwired_node
 from vibecomfy.porting.widgets.compact_resolver import compact_widget_names_for_node
 from vibecomfy.porting.widgets.aliases import widget_names_for_class, widget_names_from_schema

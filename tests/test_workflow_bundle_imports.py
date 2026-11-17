@@ -66,7 +66,7 @@ def test_emitter_reexports_the_same_presentation_records() -> None:
         PresentationGraphRecords as emitted_records,
         capture_presentation_graph_records as emitted_capture,
     )
-    from vibecomfy.presentation import PresentationGraphRecords, capture_presentation_graph_records
+    from vibecomfy.ingest.normalize import PresentationGraphRecords, capture_presentation_graph_records
 
     assert emitted_records is PresentationGraphRecords
     assert emitted_capture is capture_presentation_graph_records
