@@ -1,13 +1,24 @@
 name: canonical-parity
 
 on:
-  push: {}
+  # Pushes run only on main, release mains and the megaplan branch that strict-ready.yml also lists.
+  push:
+    branches: [main, "release/*/main", "megaplan/production-parity-templates"]
+  # Pull requests run for every base branch.
   pull_request: {}
+
+# A newer run of the same pull request or branch supersedes an older one. main and release mains keep every commit's result.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !(startsWith(github.ref, 'refs/heads/release/') && endsWith(github.ref, '/main')) }}
 
 jobs:
   canonical-parity:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # The runner's default Python moved to 3.14, where the pinned dependencies do not install.
+      UV_PYTHON: "3.11"
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
