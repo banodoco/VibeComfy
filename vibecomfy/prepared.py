@@ -139,6 +139,9 @@ def _source_closure(bundle: WorkflowBundle) -> str:
         raise PreparedWorkflowUnavailable("workflow mutates an external object")
 
     for node in ast.walk(tree):
+        if isinstance(node, ast.stmt) and not isinstance(node, (
+                ast.ImportFrom, ast.Assign, ast.Expr, ast.FunctionDef, ast.Return, ast.With)):
+            raise PreparedWorkflowUnavailable("workflow contains an untracked Python statement")
         if isinstance(node, forbidden):
             raise PreparedWorkflowUnavailable("workflow has executable or untracked builder behavior")
         if isinstance(node, ast.ImportFrom):
@@ -240,23 +243,51 @@ def _source_closure(bundle: WorkflowBundle) -> str:
     return canonical_digest(members)
 
 
+@dataclass(frozen=True, slots=True)
+class _ObjectTemplate:
+    items: tuple[tuple[str, Any], ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _ArrayTemplate:
+    items: tuple[Any, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _ModelSlot:
+    index: int
+    spellings: Mapping[str, str]
+
+
+_DYNAMIC = (LiteralSlot, _ModelSlot, _ObjectTemplate, _ArrayTemplate)
+
+
 def _freeze_template(value: Any) -> Any:
-    if type(value) is LiteralSlot:
+    if type(value) in (LiteralSlot, _ModelSlot):
         return value
     if isinstance(value, Mapping):
-        return MappingProxyType({key: _freeze_template(item) for key, item in value.items()})
+        items = tuple((key, _freeze_template(item)) for key, item in value.items())
+        if any(type(item) in _DYNAMIC for _, item in items):
+            return _ObjectTemplate(items)
+        return MappingProxyType(dict(items))
     if isinstance(value, (list, tuple)):
-        return tuple(_freeze_template(item) for item in value)
+        items = tuple(_freeze_template(item) for item in value)
+        return _ArrayTemplate(items) if any(type(item) in _DYNAMIC for item in items) else items
     return _freeze_json(value)
 
 
 def _render(value: Any, slots: tuple[Any, ...]) -> Any:
     if type(value) is LiteralSlot:
         return slots[value.index]
-    if isinstance(value, Mapping):
-        return {key: _render(item, slots) for key, item in value.items()}
-    if isinstance(value, tuple):
-        return [_render(item, slots) for item in value]
+    if type(value) is _ModelSlot:
+        bound = slots[value.index]
+        return value.spellings.get(bound.replace("\\", "/"), bound) if type(bound) is str else bound
+    if type(value) is _ObjectTemplate:
+        return MappingProxyType({key: _render(item, slots) for key, item in value.items})
+    if type(value) is _ArrayTemplate:
+        return tuple(_render(item, slots) for item in value.items)
+    # Containers without slots were recursively frozen at admission. Sharing
+    # them is safe; every path containing a job value gets a new frozen parent.
     return value
 
 
@@ -276,6 +307,7 @@ class _Binding:
     fallback: Any
     output_prefix: bool
     omitted: bool
+    media: bool
 
     def value(self, supplied: Mapping[str, Any]) -> Any:
         chosen = self.fallback
@@ -301,7 +333,22 @@ def _private_prefix(value: Any, identity: str) -> str:
     if (normal.startswith("/") or "\x00" in normal or ":" in normal
             or any(part == ".." for part in normal.split("/"))):
         raise WorkflowBundleError("prepared output prefix must stay inside the output directory")
-    return f"{value}_astrid_{identity}"
+    result = f"{value}_astrid_{identity}"
+    _filename_bound(result)
+    return result
+
+
+def _filename_bound(value: Any) -> None:
+    """Contain a staged input/output name without inspecting the filesystem."""
+    if type(value) is not str:
+        raise WorkflowBundleError("prepared filename must be a string")
+    normal = value.replace("\\", "/")
+    if (normal.startswith("/") or "\x00" in normal or ":" in normal
+            or any(part == ".." for part in normal.split("/"))):
+        raise WorkflowBundleError("prepared filename must stay inside its directory")
+    if len(normal.encode("utf-8")) > 4096 or any(
+            len(part.encode("utf-8")) > 255 for part in normal.split("/")):
+        raise WorkflowBundleError("prepared filename exceeds the finite path bound")
 
 
 @dataclass(frozen=True, slots=True)
@@ -312,10 +359,11 @@ class _Template:
     shape: Any
     aliases: Mapping[str, str]
     bindings: tuple[_Binding, ...]
-    graph: Mapping[str, Any]
+    graph: Any
     ui: Mapping[str, Any]
     model_spellings: Mapping[tuple[str, str], Mapping[str, str]]
     diagnostics: tuple[Mapping[str, Any], ...]
+    provenance: Mapping[str, Any]
 
 
 @dataclass(frozen=True, slots=True, weakref_slot=True, eq=False)
@@ -325,6 +373,27 @@ class PreparedProjectionRecord(ApprovedProjectionRecord):
     _session: "PreparedWorkflowSession" = field(repr=False)
     _handle: str = field(repr=False)
     output_identity: str
+
+    @classmethod
+    def _issue(cls, template: _Template, inputs: Mapping[str, Any],
+               api: Mapping[str, Any], digest: str, session: "PreparedWorkflowSession",
+               handle: str, output_identity: str) -> "PreparedProjectionRecord":
+        # All static data was frozen at admission. The session has rendered,
+        # bounded and digested this payload; do not freeze the unchanged UI or
+        # digest the same API a second time. Public construction still runs
+        # ApprovedProjectionRecord.__post_init__ and cannot register authority.
+        record = object.__new__(cls)
+        for name, value in (
+            ("revision_id", template.bundle.revision_id),
+            ("selected_variant", template.variant),
+            ("input_binding", _freeze_json(inputs)),
+            ("api_projection", api),
+            ("ui_projection", template.ui),
+            ("api_digest", digest), ("_session", session), ("_handle", handle),
+            ("output_identity", output_identity),
+        ):
+            object.__setattr__(record, name, value)
+        return record
 
     def assert_matches(self, bundle, variant=None, run_inputs=None,
                        api_projection=None, ui_projection=None) -> None:
@@ -337,6 +406,9 @@ class PreparedProjectionRecord(ApprovedProjectionRecord):
             raise WorkflowBundleError("prepared projection API projection does not match")
         if (ui_projection is not None and canonical_bytes(ui_projection) != canonical_bytes(self.ui_projection)):
             raise WorkflowBundleError("prepared projection UI projection does not match")
+
+    def preparation_provenance(self) -> dict[str, Any]:
+        return self._session.provenance(self._handle)
 
     @classmethod
     def from_dict(cls, value: Any) -> ApprovedProjectionRecord:
@@ -389,8 +461,13 @@ class PreparedWorkflowSession:
             if type(bundle) is not WorkflowBundle or type(bundle.workflow) is not VibeWorkflow:
                 raise PreparedWorkflowUnavailable("prepared workflow requires a canonical static IR")
             bundle.require_canonical_authority("prepared workflow admission")
-            _rebind_current_bundle(bundle)
             source = _source_closure(bundle)
+            try:
+                current = _rebind_current_bundle(bundle)
+            except WorkflowBundleError as exc:
+                raise PreparedWorkflowUnavailable("prepared workflow source changed; reload before admission") from exc
+            if current.revision_id != bundle.revision_id or _source_closure(bundle) != source:
+                raise PreparedWorkflowUnavailable("prepared workflow source changed; reload before admission")
             shape = _value_shape(inputs)
             selected_variant = bundle.workflow.default_variant if variant is None else variant
             schemas = {
@@ -454,14 +531,19 @@ class PreparedWorkflowSession:
                               for spec in workflow.inputs.values()
                               if str(spec.node_id) == node_id and spec.field == field_name)
                 fallback = node.inputs.get(field_name, node.widgets.get(field_name))
+                media = any(str(spec.node_id) == node_id and spec.field == field_name
+                            and spec.media_semantics in {"image", "mask", "video", "audio"}
+                            for spec in workflow.inputs.values())
                 binding = _Binding(node_id, field_name, specs, _freeze_json(fallback),
-                                   node_id in outputs and field_name == "filename_prefix", False)
+                                   node_id in outputs and field_name == "filename_prefix", False, media)
                 sample = binding.value(supplied)
                 if type(sample) not in {str, int, float, bool, type(None)}:
                     raise PreparedWorkflowUnavailable("collection-valued inputs require full preparation")
                 _value_shape(sample)
                 if binding.output_prefix:
                     _private_prefix(sample, "admission")
+                if binding.media:
+                    _filename_bound(sample)
                 binding = replace(binding, omitted=_is_ui_only_prompt_input(field_name, sample))
                 marker = LiteralSlot(len(bindings), sample)
                 bindings.append(binding)
@@ -475,9 +557,13 @@ class PreparedWorkflowSession:
                         spec.value = marker
                         spec.default = sample
             graph = selected.compile("api")
+            for output in workflow.outputs:
+                row = graph.get(str(output.node_id))
+                if row is None or row["class_type"] != output.output_type:
+                    raise PreparedWorkflowUnavailable("prepared graph does not preserve its declared final sink")
             template_graph = _freeze_template(graph)
             samples = tuple(binding.value(supplied) for binding in bindings)
-            sample_api = _render(template_graph, samples)
+            sample_api = _thaw_json(_render(template_graph, samples))
             spellings: dict[tuple[str, str], Mapping[str, str]] = {}
             diagnostics: list[Mapping[str, Any]] = []
             if schema_provider is not None:
@@ -503,6 +589,13 @@ class PreparedWorkflowSession:
                     diagnostic = {"code": str(issue.code), "message": str(issue.message), "severity": "warning"}
                     diagnostics.append(_freeze_json(diagnostic))
                     _LOG.warning("prepared workflow structural check: %s", issue.message)
+            for (node_id, field_name), choices in spellings.items():
+                value = graph[node_id]["inputs"].get(field_name)
+                if type(value) is LiteralSlot:
+                    graph[node_id]["inputs"][field_name] = _ModelSlot(value.index, choices)
+                elif type(value) is str:
+                    graph[node_id]["inputs"][field_name] = choices.get(value.replace("\\", "/"), value)
+            template_graph = _freeze_template(graph)
             # No UI emitter is needed per fill. The admitted source's UI is
             # retained once for the same evidence shape as ordinary records.
             ui = _freeze_json(snapshot.materialize_ui(schema_provider=schema_provider))
@@ -510,6 +603,14 @@ class PreparedWorkflowSession:
             self._templates[handle] = _Template(
                 key, snapshot, selected_variant, shape, MappingProxyType(aliases),
                 tuple(bindings), template_graph, ui, MappingProxyType(spellings), tuple(diagnostics),
+                _freeze_json({
+                    "validation": "prepared-at-admission", "authority": "ComfyUI",
+                    "format": _FORMAT, "template_key": key, "context_digest": self.context.digest,
+                    "source_closure_digest": source, "schema_digest": self.context.schema_digest,
+                    "target_identity": self.context.target_identity,
+                    "target_generation": self.context.target_generation,
+                    "structural_diagnostics": diagnostics,
+                }),
             )
             self._keys[key] = handle
             return handle
@@ -522,7 +623,8 @@ class PreparedWorkflowSession:
             template = self._templates.get(handle) if type(handle) is str else None
             if template is None:
                 raise PreparedWorkflowUnavailable("unknown or cross-session prepared workflow handle")
-            if not _IDENTITY.fullmatch(attempt_id) or attempt_id.endswith(("-", ".", ":")):
+            if (type(attempt_id) is not str or not _IDENTITY.fullmatch(attempt_id)
+                    or attempt_id.endswith(("-", ".", ":"))):
                 raise WorkflowBundleError("prepared attempt identity is invalid")
             if _value_shape(inputs) != template.shape:
                 raise PreparedWorkflowUnavailable("prepared input type or shape changed; prepare a new template")
@@ -535,15 +637,15 @@ class PreparedWorkflowSession:
                     raise PreparedWorkflowUnavailable("prepared input presence changed; prepare a new template")
                 if binding.output_prefix:
                     value = _private_prefix(value, identity)
+                if binding.media:
+                    _filename_bound(value)
                 values.append(value)
             api = _render(template.graph, tuple(values))
-            _bind_model_spellings(api, template.model_spellings)
             raw = canonical_bytes(api)
             if len(raw) > _MAX_PAYLOAD_BYTES:
                 raise WorkflowBundleError("prepared prompt exceeds the transport byte bound")
-            record = PreparedProjectionRecord(
-                template.bundle.revision_id, template.variant, inputs, api, template.ui,
-                hashlib.sha256(raw).hexdigest(), self, handle, identity,
+            record = PreparedProjectionRecord._issue(
+                template, inputs, api, hashlib.sha256(raw).hexdigest(), self, handle, identity,
             )
             self._issued[id(record)] = record
             return record, template.bundle
@@ -564,6 +666,21 @@ class PreparedWorkflowSession:
             if handle not in self._templates:
                 raise PreparedWorkflowUnavailable("unknown prepared workflow handle")
             return self._templates[handle].key
+
+    def require_target(self, target_identity: str | None) -> None:
+        with self._lock:
+            self._check(self.context)
+            if (type(target_identity) is not str or
+                    target_identity.rstrip("/") != self.context.target_identity.rstrip("/")):
+                raise PreparedWorkflowUnavailable("prepared workflow belongs to another target")
+
+    def provenance(self, handle: str) -> dict[str, Any]:
+        with self._lock:
+            self._check(self.context)
+            template = self._templates.get(handle)
+            if template is None:
+                raise PreparedWorkflowUnavailable("unknown prepared workflow handle")
+            return _thaw_json(template.provenance)
 
 
 def _bind_model_spellings(api: dict[str, Any], spellings: Mapping[tuple[str, str], Mapping[str, str]]) -> None:

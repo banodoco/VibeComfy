@@ -1,0 +1,65 @@
+name: Plan 55 prepared workflow proof
+
+on:
+  pull_request:
+    branches: [release/14/plan-55]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  prepared:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'p55/ls-4'
+    name: LS-4 ${{ matrix.source }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        source: [baseline, candidate]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.source == 'baseline' && 'e5596dcd5ee1b9657acca4c90913c0da7631764a' || github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install the same test dependencies on both sides
+        id: install
+        run: python -m pip install -e '.[dev,png]'
+      - name: Record exact source and environment
+        run: |
+          mkdir -p proof
+          git rev-parse HEAD > proof/source.txt
+          git rev-parse 'HEAD^{tree}' >> proof/source.txt
+          python -VV >> proof/source.txt
+          uname -a >> proof/source.txt
+          python -m pip freeze > proof/dependencies.txt
+      - name: Unchanged compiler and queue regressions
+        run: |
+          python -m pytest -q \
+            tests/test_runtime_execution.py tests/test_workflow_bundle.py \
+            tests/test_runtime_run.py tests/test_runtime_session_validation.py \
+            tests/test_runtime_session_embedded.py tests/test_runtime_session_server.py \
+            tests/test_runtime_session_run_untracked.py \
+            tests/test_compile_invariance.py tests/test_edge_primitives.py \
+            tests/test_rc_primitive_widget_alias.py \
+            --junitxml=proof/regressions.xml 2>&1 | tee proof/regressions.log
+      - name: All defaults and prepared authority
+        if: always() && matrix.source == 'candidate' && steps.install.outcome == 'success'
+        run: |
+          python -m pytest -q \
+            tests/test_prepared_workflow.py tests/test_prepared_default_workflows.py \
+            --junitxml=proof/prepared.xml 2>&1 | tee proof/prepared.log
+      - name: Retain exact-head proof including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: plan55-ls4-vibe-${{ matrix.source }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: proof/
+          if-no-files-found: error
+          retention-days: 30

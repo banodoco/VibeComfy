@@ -15,12 +15,12 @@ from vibecomfy.prepared import (
     PreparedProjectionRecord, PreparedWorkflowContext, PreparedWorkflowSession,
     PreparedWorkflowUnavailable,
 )
-from vibecomfy.runtime.execution import authorized_queue_payload, queue_server_prompt
+from vibecomfy.runtime.execution import authorized_queue_payload, queue_server_prompt, queue_embedded_prompt
 from vibecomfy.schema.provider import TargetSchemaProvider
 from vibecomfy.security.provenance import Provenance
 from vibecomfy.testing.canonical import canonical_bytes
 from vibecomfy.workflow import VibeEdge, VibeNode, VibeOutput, VibeWorkflow, WorkflowSource
-from vibecomfy.workflow_bundle import ApprovedProjectionRecord, WorkflowBundleError, load_bundle
+from vibecomfy.workflow_bundle import ApprovedProjectionRecord, WorkflowBundleError, emit_bundle, load_bundle
 
 
 def context(**changes):
@@ -121,6 +121,7 @@ def test_fill_and_queue_do_no_compile_source_read_emission_or_schema_validation(
     record, frozen = session.fill(handle, values, attempt_id="attempt-1", context=ctx)
     payloads = []
     class Client:
+        server_url = ctx.target_identity
         async def _post_prompt(self, payload):
             payloads.append(payload)
             return {"prompt_id": "our-prompt", "node_errors": {}}
@@ -229,3 +230,146 @@ def test_fill_latency_under_five_milliseconds(capsys):
         assert record.api_projection["1"]["inputs"]["seed"] == index
     assert max(elapsed) < 5, {"median_ms": statistics.median(elapsed), "max_ms": max(elapsed)}
     print({"samples": len(elapsed), "median_ms": statistics.median(elapsed), "max_ms": max(elapsed)})
+
+
+def test_source_and_companion_bytes_change_the_key_and_stale_ir_cannot_admit(tmp_path):
+    bundle, provider = tiny()
+    path = tmp_path / "workflow.py"
+    bundle = emit_bundle(bundle.workflow, path, Provenance.USER_CONFIRMED)
+    session = PreparedWorkflowSession(context())
+    first = session.prepare(bundle, inputs={"seed": 1}, schema_provider=provider)
+    # Whitespace leaves the decoded companion semantics identical but changes
+    # the admitted source closure. Its raw bytes are part of the key too.
+    companion = path.with_suffix(".vibe.json")
+    companion.write_text(companion.read_text() + "\n")
+    second = session.prepare(load_bundle(path, trust=Provenance.USER_CONFIRMED),
+                             inputs={"seed": 1}, schema_provider=provider)
+    assert session.key(first) != session.key(second)
+    path.write_text(path.read_text() + "\n# another admitted source revision\n")
+    third = session.prepare(load_bundle(path, trust=Provenance.USER_CONFIRMED),
+                            inputs={"seed": 1}, schema_provider=provider)
+    assert len({session.key(first), session.key(second), session.key(third)}) == 3
+    memory, provider = tiny()
+    memory.workflow.nodes["1"].inputs["text"] = "unsealed edit"
+    with pytest.raises(PreparedWorkflowUnavailable, match="source changed"):
+        session.prepare(memory, inputs={"seed": 1}, schema_provider=provider)
+
+
+@pytest.mark.parametrize("extra", [
+    "from time import time\n",
+    "from pathlib import Path\n",
+    "import os\n",
+    "def after_outputs():\n    return None\n",
+    "if True:\n    pass\n",
+])
+def test_untracked_executable_builders_fall_back_before_reexecution(tmp_path, monkeypatch, extra):
+    bundle, provider = tiny()
+    bundle = emit_bundle(bundle.workflow, tmp_path / "workflow.py", Provenance.USER_CONFIRMED)
+    bundle.python_path.write_text(bundle.python_path.read_text() + "\n" + extra)
+    def forbidden(*args, **kwargs):
+        raise AssertionError("unsupported code must not be reexecuted by preparation")
+    import vibecomfy.prepared as prepared
+    monkeypatch.setattr(prepared, "_rebind_current_bundle", forbidden)
+    with pytest.raises(PreparedWorkflowUnavailable):
+        PreparedWorkflowSession(context()).prepare(bundle, inputs={"seed": 1}, schema_provider=provider)
+
+
+def test_target_and_embedded_routes_cannot_reuse_server_authority():
+    bundle, provider = tiny()
+    ctx = context()
+    session = PreparedWorkflowSession(ctx)
+    handle = session.prepare(bundle, inputs={"seed": 1}, schema_provider=provider)
+    record, frozen = session.fill(handle, {"seed": 2}, attempt_id="attempt", context=ctx)
+    class WrongTarget:
+        server_url = "http://127.0.0.1:9999"
+        async def _post_prompt(self, payload):
+            raise AssertionError("wrong target received a prepared prompt")
+        async def queue_prompt_api(self, payload):
+            raise AssertionError("embedded target received a server authority")
+    with pytest.raises(PreparedWorkflowUnavailable, match="another target"):
+        asyncio.run(queue_server_prompt(record, frozen, client=WrongTarget()))
+    with pytest.raises(PreparedWorkflowUnavailable, match="server target"):
+        asyncio.run(queue_embedded_prompt(WrongTarget(), record, frozen))
+
+
+def test_alias_precedence_matches_full_compilation_for_conflicting_values():
+    bundle, provider = tiny()
+    workflow = bundle.workflow
+    workflow.inputs["seed"].aliases = ("random_seed",)
+    workflow.register_input("other_seed", "1", "seed", 7, type="INT")
+    bundle = load_bundle(workflow)
+    ctx = context()
+    session = PreparedWorkflowSession(ctx)
+    values = {"random_seed": 1, "other_seed": 7}
+    handle = session.prepare(bundle, inputs=values, schema_provider=provider)
+    for first, second in ((1, 7), (7, 2), (3, 4), (7, 7)):
+        values = {"random_seed": first, "other_seed": second}
+        record, _ = session.fill(handle, values, attempt_id="attempt", context=ctx)
+        reference, bindings = reference_api(bundle, values, record.output_identity)
+        assert canonical_bytes(record.api_projection) == canonical_bytes(reference.compile("api", run_inputs=bindings))
+
+
+def test_model_spelling_is_retained_but_presence_and_ranges_belong_to_comfy(caplog):
+    bundle, _ = tiny()
+    workflow = bundle.workflow
+    workflow.nodes["3"] = VibeNode("3", "UNETLoader", inputs={"unet_name": "folder/model.safetensors", "weight_dtype": "default"},
+                                  uid="model", native_input_names=["unet_name", "weight_dtype"],
+                                  native_input_types=["STRING", "STRING"],
+                                  native_output_names=["MODEL"], native_output_types=["MODEL"])
+    workflow.register_input("model", "3", "unet_name", "folder/model.safetensors", type="STRING")
+    bundle = load_bundle(workflow)
+    provider = TargetSchemaProvider.from_object_info({
+        "UNETLoader": {"input": {"required": {
+            "unet_name": [["folder\\model.safetensors"]], "weight_dtype": [["default"]]}}, "output": ["MODEL"]},
+        "SeedImage": {"input": {"required": {"seed": ["INT", {"min": 0, "max": 10}], "text": ["STRING", {}]}}, "output": ["IMAGE"]},
+        "SaveImage": {"input": {"required": {"images": ["IMAGE"], "filename_prefix": ["STRING", {}]}}, "output": []},
+    }, server_url=context().target_identity, model_availability="target")
+    ctx = context()
+    session = PreparedWorkflowSession(ctx)
+    handle = session.prepare(bundle, inputs={"model": "folder/model.safetensors", "seed": -1}, schema_provider=provider)
+    mapped, _ = session.fill(handle, {"model": "folder/model.safetensors", "seed": -999}, attempt_id="attempt", context=ctx)
+    assert mapped.api_projection["3"]["inputs"]["unet_name"] == "folder\\model.safetensors"
+    unknown, _ = session.fill(handle, {"model": "not-present.safetensors", "seed": 10**20}, attempt_id="attempt", context=ctx)
+    assert unknown.api_projection["3"]["inputs"]["unet_name"] == "not-present.safetensors"
+    assert unknown.api_projection["1"]["inputs"]["seed"] == 10**20
+
+
+def test_transport_bound_and_process_generation_remain_enforced(monkeypatch):
+    import os
+
+    bundle, provider = tiny()
+    ctx = context()
+    session = PreparedWorkflowSession(ctx)
+    handle = session.prepare(bundle, inputs={"text": "small"}, schema_provider=provider)
+    with pytest.raises(WorkflowBundleError, match="transport byte bound"):
+        session.fill(handle, {"text": "x" * (9 * 1024 * 1024)}, attempt_id="attempt", context=ctx)
+    pid = os.getpid()
+    monkeypatch.setattr(os, "getpid", lambda: pid + 1)
+    with pytest.raises(PreparedWorkflowUnavailable, match="generation"):
+        session.fill(handle, {"text": "small"}, attempt_id="attempt", context=ctx)
+
+
+def test_structural_schema_diagnostics_warn_once_and_do_not_gate_fills(caplog):
+    bundle, provider = tiny()
+    observed = copy.deepcopy(provider._object_info)
+    observed["SeedImage"]["output"] = ["MASK"]
+    provider = TargetSchemaProvider.from_object_info(observed, server_url=context().target_identity)
+    session = PreparedWorkflowSession(context())
+    handle = session.prepare(bundle, inputs={"seed": 1}, schema_provider=provider)
+    record, frozen = session.fill(handle, {"seed": 2}, attempt_id="attempt", context=context())
+    provenance = record.preparation_provenance()
+    assert provenance["structural_diagnostics"]
+    assert all(item["severity"] == "warning" for item in provenance["structural_diagnostics"])
+    assert any("structural check" in message for message in caplog.messages)
+    assert authorized_queue_payload(record, frozen)["2"]["inputs"]["images"] == ["1", 0]
+
+
+def test_media_paths_have_finite_containment_bounds():
+    bundle, provider = tiny()
+    bundle.workflow.inputs["text"].media_semantics = "image"
+    bundle = load_bundle(bundle.workflow)
+    session = PreparedWorkflowSession(context())
+    handle = session.prepare(bundle, inputs={"text": "astrid/input.png"}, schema_provider=provider)
+    for value in ("../escape.png", "/absolute.png", "C:\\outside.png", "x" * 256):
+        with pytest.raises(WorkflowBundleError, match="filename"):
+            session.fill(handle, {"text": value}, attempt_id="attempt", context=context())

@@ -90,7 +90,16 @@ _MODEL_FINGERPRINT_DEFAULTS: dict[str, dict[str, str]] = {
 def _require_runtime_boundary(
     record: ApprovedProjectionRecord,
     bundle: WorkflowBundle,
+    *,
+    allow_prepared: bool = False,
 ) -> VibeWorkflow:
+    from vibecomfy.prepared import PreparedProjectionRecord, PreparedWorkflowUnavailable
+
+    if type(record) is PreparedProjectionRecord and not allow_prepared:
+        raise PreparedWorkflowUnavailable(
+            "session-managed and embedded entry points require full approval; "
+            "submit a prepared record through its admitted server_url"
+        )
     if not isinstance(record, ApprovedProjectionRecord):
         raise WorkflowBundleError(
             "runtime session requires an ApprovedProjectionRecord"
@@ -3520,8 +3529,7 @@ async def _prepare_prompt_async(
         return PreparedPrompt(
             prepared_queue_payload(record, bundle), schema_validation_skipped=[],
             normalization=None,
-            schema_provenance={"validation": "prepared-at-admission", "authority": "ComfyUI",
-                               "schema_digest": record._session.context.schema_digest},
+            schema_provenance=record.preparation_provenance(),
         )
     effective = await _warm_schema_provider(
         schema_provider,
@@ -3657,7 +3665,7 @@ def _run_metadata(
     run_context: RunContext | None = None,
     identity_config: SessionConfig | None = None,
 ) -> dict[str, Any]:
-    workflow = _require_runtime_boundary(record, bundle)
+    workflow = _require_runtime_boundary(record, bundle, allow_prepared=True)
     approved = record.to_dict()
     api_dict = approved["api_projection"]
     if comfy_outputs is None:
