@@ -942,6 +942,8 @@ def _build_managed_generation_result(
                 destination.relative_to(custody_root)
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 before_copy = _identity(source)
+                if before_copy != receipt["file_identity"]:
+                    raise OSError("artifact changed before copying")
                 shutil.copyfile(source, destination)
                 if _identity(source) != before_copy:
                     raise OSError("artifact changed while copying")
@@ -1021,6 +1023,28 @@ def _build_managed_generation_result(
         "log": dict(metadata.get("log_provenance") or {}),
         "media_verification": metadata.get("media_validation"),
     }
+    from .output_receipts import RECEIPT_OBSERVATIONS_FILENAME, project_evidence_receipts
+
+    try:
+        producer = project_evidence_receipts(producer, output_receipts)
+    except ValueError as exc:
+        return None, {"reason": str(exc)}
+    result_identity = {
+        "task_id": str(metadata.get("task_id") or metadata.get("workflow_id") or "vibecomfy-task"),
+        "attempt_id": str(metadata.get("attempt_id") or metadata.get("run_id")),
+        "producer_run_id": str(metadata.get("run_id")),
+    }
+    # The sidecar is an optional local optimization, not output authority. Its
+    # timestamps must not change the result's serialized content identity.
+    # Consumers independently hash if it is absent, stale or mismatched.
+    try:
+        atomic_write_json(run_dir / RECEIPT_OBSERVATIONS_FILENAME, {
+            "schema_version": 1,
+            **result_identity,
+            "output_receipts": output_receipts,
+        })
+    except OSError as exc:
+        logger.warning("Could not persist local output receipt observations: %s", exc)
     return {
         "schema_version": 1,
         "kind": "managed-generation-result.v1",
@@ -1028,9 +1052,7 @@ def _build_managed_generation_result(
         "outputs": output_rows,
         "created": str(metadata.get("created") or datetime.datetime.now(datetime.timezone.utc).isoformat()),
         "warnings": [],
-        "task_id": str(metadata.get("task_id") or metadata.get("workflow_id") or "vibecomfy-task"),
-        "attempt_id": str(metadata.get("attempt_id") or metadata.get("run_id")),
-        "producer_run_id": str(metadata.get("run_id")),
+        **result_identity,
         "outcomes": {
             "execution": {"status": "succeeded"},
             "retrieval": {"status": "succeeded"},
