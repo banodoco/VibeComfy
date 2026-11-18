@@ -2121,7 +2121,12 @@ def _rebind_current_bundle(bundle: "WorkflowBundle") -> "WorkflowBundle":
 
 
 def _picker_refusal(provider: Any, class_type: str, field: str, value: str) -> str:
-    advertised = json.dumps(provider.advertised_input_spec(class_type, field), ensure_ascii=False)
+    return _picker_refusal_from_spec(class_type, field, value, provider.advertised_input_spec(class_type, field))
+
+
+def _picker_refusal_from_spec(class_type: str, field: str, value: str, advertised_spec: Any) -> str:
+    """Format the same refusal from an already captured target constraint."""
+    advertised = json.dumps(advertised_spec, ensure_ascii=False)
     if len(advertised) > 200:
         advertised = advertised[:197] + "..."
     return (

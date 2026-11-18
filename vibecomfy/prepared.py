@@ -15,6 +15,7 @@ import logging
 import math
 import os
 import re
+import subprocess
 import threading
 import uuid
 import weakref
@@ -28,7 +29,7 @@ from vibecomfy.testing.canonical import canonical_bytes, canonical_digest
 from vibecomfy.workflow import VibeWorkflow, _is_ui_only_prompt_input, _node_input_socket_type
 from vibecomfy.workflow_bundle import (
     ApprovedProjectionRecord, WorkflowBundle, WorkflowBundleError,
-    _freeze_json, _raise_approval_schema_errors, _rebind_current_bundle, _thaw_json,
+    _freeze_json, _picker_refusal_from_spec, _raise_approval_schema_errors, _rebind_current_bundle, _thaw_json,
 )
 
 
@@ -257,6 +258,7 @@ class _ArrayTemplate:
 class _ModelSpellings:
     exact: Mapping[str, str]
     portable: Mapping[str, str | None]
+    refusal: tuple[str, str, Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -265,7 +267,7 @@ class _ModelSlot:
     spellings: _ModelSpellings
 
 
-def _model_spellings(choices: Any, folder: str) -> _ModelSpellings:
+def _model_spellings(choices: Any, folder: str, *, refusal: tuple[str, str, Any] | None = None) -> _ModelSpellings:
     """Capture exact witnesses and only unambiguous separator aliases."""
     from vibecomfy.model_assets import model_picker_reference
 
@@ -286,7 +288,7 @@ def _model_spellings(choices: Any, folder: str) -> _ModelSpellings:
     }
     # Keep exact witnesses separate: a canonical slash spelling must not
     # overwrite an ambiguous portable key used by a third, mixed spelling.
-    return _ModelSpellings(MappingProxyType(exact), MappingProxyType(spellings))
+    return _ModelSpellings(MappingProxyType(exact), MappingProxyType(spellings), refusal)
 
 
 def _model_value(value: Any, spellings: _ModelSpellings) -> Any:
@@ -294,7 +296,11 @@ def _model_value(value: Any, spellings: _ModelSpellings) -> Any:
         return value
     if value in spellings.exact:
         return spellings.exact[value]
-    bound = spellings.portable.get(value.replace("\\", "/"), value)
+    key = value.replace("\\", "/")
+    if key not in spellings.portable and spellings.refusal is not None and value not in {"none", "None"}:
+        class_type, field_name, spec = spellings.refusal
+        raise WorkflowBundleError(_picker_refusal_from_spec(class_type, field_name, value, _thaw_json(spec)))
+    bound = spellings.portable.get(key, value)
     if bound is None:
         raise PreparedWorkflowUnavailable("prepared model spelling is ambiguous; use full preparation")
     return bound
@@ -372,9 +378,14 @@ def _private_prefix(value: Any, identity: str) -> str:
     normal = value.replace("\\", "/")
     if (normal.startswith("/") or "\x00" in normal or ":" in normal
             or any(part == ".." for part in normal.split("/"))):
-        raise WorkflowBundleError("prepared output prefix must stay inside the output directory")
+        raise PreparedWorkflowUnavailable("prepared output prefix must stay inside the output directory")
     result = f"{value}_astrid_{identity}"
-    _filename_bound(result)
+    try:
+        _filename_bound(result)
+    except WorkflowBundleError as exc:
+        # These are prepared transport bounds. The ordinary path retains its
+        # own filename policy and must decide whether the job is admissible.
+        raise PreparedWorkflowUnavailable(str(exc)) from exc
     return result
 
 
@@ -392,6 +403,16 @@ def _filename_bound(value: Any) -> None:
 
 
 @dataclass(frozen=True, slots=True)
+class _LiteralConstraint:
+    node_id: str
+    class_type: str
+    name: str
+    slot: Any
+    spec: Any
+    strict_target_choices: bool
+
+
+@dataclass(frozen=True, slots=True)
 class _Template:
     key: str
     bundle: WorkflowBundle
@@ -403,6 +424,7 @@ class _Template:
     ui: Mapping[str, Any]
     model_spellings: Mapping[tuple[str, str], _ModelSpellings]
     model_slots: tuple[_ModelSlot, ...]
+    literal_constraints: tuple[_LiteralConstraint, ...]
     diagnostics: tuple[Mapping[str, Any], ...]
     provenance: Mapping[str, Any]
 
@@ -511,13 +533,31 @@ def _record_session(record: PreparedProjectionRecord) -> PreparedWorkflowSession
     return session
 
 
+def _compiler_worktree_dirty() -> bool | None:
+    """Observe checkout edits once, using the same isolated Git environment."""
+    from vibecomfy.runtime.session import _checkout_git_environment
+
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=all", "--", "vibecomfy"],
+            cwd=Path(__file__).parent.parent, check=False, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL, text=True, timeout=5,
+            env=_checkout_git_environment(),
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return bool(result.stdout.strip()) if result.returncode == 0 else None
+
+
 def _compiler_identity() -> str:
     """Resolve this installed compiler, never a job's claimed version."""
     from vibecomfy.runtime.session import current_source_revision
 
     revision = current_source_revision()
     if revision:
-        return "git:" + revision
+        dirty = _compiler_worktree_dirty()
+        if dirty is not None:
+            return "git:" + revision + (":dirty" if dirty else "")
     # Installed wheels have no checkout. Their own Python bytes still identify
     # the compiler, independently of the caller's contextual compiler label.
     root = Path(__file__).parent
@@ -526,7 +566,7 @@ def _compiler_identity() -> str:
         digest.update(path.relative_to(root).as_posix().encode("utf-8"))
         digest.update(b"\0")
         digest.update(hashlib.sha256(path.read_bytes()).digest())
-    return "sha256:" + digest.hexdigest()
+    return ("git:" + revision + ":" if revision else "") + "sha256:" + digest.hexdigest()
 
 
 class PreparedWorkflowSession:
@@ -597,7 +637,9 @@ class PreparedWorkflowSession:
                 selected_variant, shape, schemas,
             ])
             if key in self._keys:
-                return self._keys[key]
+                handle = self._keys[key]
+                _fill_values(self._templates[handle], inputs, "admission", scope_outputs=False)
+                return handle
             if len(self._templates) >= self._capacity:
                 raise PreparedWorkflowUnavailable("prepared workflow session is full; use full preparation")
             # Keep a detached source snapshot. The caller cannot change the
@@ -614,6 +656,19 @@ class PreparedWorkflowSession:
                 if spec is None:
                     raise PreparedWorkflowUnavailable(workflow._unknown_input_message(name))
                 node = workflow.nodes.get(str(spec.node_id))
+                schema = schemas.get(node.class_type) if node is not None else None
+                constraint = schema.inputs.get(spec.field) if schema is not None else None
+                # These values select a different payload field set. Keep
+                # such controllers on the ordinary full path; a fixed graph
+                # cannot promise literal-only validation for their changes.
+                if (getattr(constraint, "dynamic_fields", None)
+                        or (node is not None and (node.class_type, spec.field) in {
+                            ("LTXVImgToVideoInplaceKJ", "num_images"),
+                            ("ImageConcatMulti", "inputcount"),
+                            ("SimpleCalculator", "variables"),
+                            ("SimpleCalculatorKJ", "variables"),
+                        })):
+                    raise PreparedWorkflowUnavailable("dynamic schema controller requires full preparation")
                 declared = str(spec.type or (_node_input_socket_type(node, spec.field) if node else "") or "").upper()
                 allowed = {"INT": (int,), "INTEGER": (int,), "FLOAT": (int, float),
                            "NUMBER": (int, float), "BOOLEAN": (bool,), "BOOL": (bool,),
@@ -636,7 +691,12 @@ class PreparedWorkflowSession:
                 if type(prefix) is not str:
                     raise PreparedWorkflowUnavailable("final output has no private filename-prefix slot")
                 targets.add((node_id, "filename_prefix"))
-            selected = workflow._with_selection(variant, dict(inputs)).copy()
+            try:
+                selected = workflow._with_selection(variant, dict(inputs)).copy()
+            except Exception as exc:
+                raise WorkflowBundleError(
+                    f"workflow API projection failed: {type(exc).__name__}: {exc}"
+                ) from exc
             for node in selected.nodes.values():
                 if node.class_type in schemas and schemas[node.class_type] is not None:
                     node.metadata["schema"] = copy.deepcopy(schemas[node.class_type])
@@ -674,7 +734,12 @@ class PreparedWorkflowSession:
                     if str(spec.node_id) == node_id and spec.field == field_name:
                         spec.value = marker
                         spec.default = sample
-            graph = selected.compile("api")
+            try:
+                graph = selected.compile("api")
+            except Exception as exc:
+                raise WorkflowBundleError(
+                    f"workflow API projection failed: {type(exc).__name__}: {exc}"
+                ) from exc
             for output in workflow.outputs:
                 row = graph.get(str(output.node_id))
                 if row is None or row["class_type"] != output.output_type:
@@ -683,12 +748,15 @@ class PreparedWorkflowSession:
             samples = tuple(binding.value(supplied) for binding in bindings)
             sample_api = _thaw_json(_render(template_graph, samples))
             spellings: dict[tuple[str, str], _ModelSpellings] = {}
+            api_schemas: dict[str, Any] = {}
             diagnostics: list[Mapping[str, Any]] = []
             if schema_provider is not None:
                 from vibecomfy.model_assets import _subdir_for_model_reference
+                from vibecomfy.schema.provider import TargetSchemaProvider
                 from vibecomfy.schema.validate import validate_api_against_schema, validate_api_link_shapes
                 for node_id, row in sample_api.items():
                     schema = schema_provider.get_schema(row["class_type"])
+                    api_schemas[node_id] = schema
                     if schema is None or getattr(schema_provider, "model_availability", None) != "target":
                         continue
                     for field_name in row["inputs"]:
@@ -698,19 +766,24 @@ class PreparedWorkflowSession:
                         spec = schema.inputs.get(field_name)
                         choices = getattr(spec, "choices", None)
                         if choices is not None:
-                            spellings[(node_id, field_name)] = _model_spellings(choices, folder)
+                            refusal = None
+                            if isinstance(schema_provider, TargetSchemaProvider):
+                                refusal = (row["class_type"], field_name, _freeze_json(
+                                    schema_provider.advertised_input_spec(row["class_type"], field_name),
+                                ))
+                            spellings[(node_id, field_name)] = _model_spellings(choices, folder, refusal=refusal)
                 _bind_model_spellings(sample_api, spellings)
-                issues = [*validate_api_against_schema(sample_api, schema_provider, require_explicit_required=True),
-                          *validate_api_link_shapes(sample_api, schema_provider)]
-                # A missing or unknown API input cannot be repaired by filling
-                # this fixed template. Refuse that target surface at admission
-                # with the same error as full approval, before issuing a handle.
-                # Range, model-presence and link diagnostics remain advisory;
-                # no schema check is repeated for individual jobs.
-                _raise_approval_schema_errors([
-                    issue for issue in issues
-                    if issue.code in {"missing_required_input", "unknown_input"}
-                ])
+                try:
+                    issues = [*validate_api_against_schema(sample_api, schema_provider, require_explicit_required=True),
+                              *validate_api_link_shapes(sample_api, schema_provider)]
+                except Exception as exc:
+                    raise WorkflowBundleError(
+                        f"local schema validation failed: {type(exc).__name__}: {exc}"
+                    ) from exc
+                # Full approval's errors also block admission. Its warnings
+                # remain diagnostics; only mutable literal constraints need
+                # to be checked again when filling the fixed graph.
+                _raise_approval_schema_errors(issues)
                 for issue in issues:
                     diagnostic = {"code": str(issue.code), "message": str(issue.message), "severity": "warning"}
                     diagnostics.append(_freeze_json(diagnostic))
@@ -725,13 +798,27 @@ class PreparedWorkflowSession:
                 elif type(value) is str:
                     graph[node_id]["inputs"][field_name] = _model_value(value, choices)
             template_graph = _freeze_template(graph)
+            constraints = []
+            for node_id, row in graph.items():
+                schema = api_schemas.get(node_id)
+                if schema is None:
+                    continue
+                for name in sorted(row["inputs"]):
+                    slot = row["inputs"][name]
+                    spec = schema.inputs.get(name)
+                    if type(slot) in (LiteralSlot, _ModelSlot) and spec is not None:
+                        constraints.append(_LiteralConstraint(
+                            str(node_id), row["class_type"], name, slot, copy.deepcopy(spec),
+                            bool(getattr(schema_provider, "requires_fresh_target", False)),
+                        ))
             # No UI emitter is needed per fill. The admitted source's UI is
             # retained once for the same evidence shape as ordinary records.
             ui = _freeze_json(snapshot.materialize_ui(schema_provider=schema_provider))
             handle = f"{self._nonce}.{uuid.uuid4().hex}"
             self._templates[handle] = _Template(
                 key, snapshot, selected_variant, shape, MappingProxyType(aliases),
-                tuple(bindings), template_graph, ui, MappingProxyType(spellings), tuple(model_slots), tuple(diagnostics),
+                tuple(bindings), template_graph, ui, MappingProxyType(spellings), tuple(model_slots),
+                tuple(constraints), tuple(diagnostics),
                 _freeze_json({
                     "validation": "prepared-at-admission", "authority": "ComfyUI",
                     "format": _FORMAT, "template_key": key, "context_digest": self.context.digest,
@@ -748,9 +835,9 @@ class PreparedWorkflowSession:
     def accepts(self, handle: str, inputs: Mapping[str, Any], *, attempt_id: str = "admission") -> bool:
         """Check fill compatibility before media upload; no source/schema IO.
 
-        A changed shape, value presence, or ambiguous captured model spelling
-        requires the full path. Stale authority and unsafe transport values
-        still refuse rather than silently selecting a different authority.
+        A changed shape, value presence, ambiguous captured model spelling or
+        prepared-only prefix bound requires the full path. Stale authority
+        and full-compiler schema errors still refuse before any upload.
         """
         with self._lock:
             PreparedWorkflowSession._check(self, self.context)
@@ -848,7 +935,8 @@ class PreparedWorkflowSession:
             return _thaw_json(template.provenance)
 
 
-def _fill_values(template: _Template, inputs: Mapping[str, Any], identity: str) -> tuple[Any, ...]:
+def _fill_values(template: _Template, inputs: Mapping[str, Any], identity: str, *,
+                 scope_outputs: bool = True) -> tuple[Any, ...]:
     if _value_shape(inputs) != template.shape:
         raise PreparedWorkflowUnavailable("prepared input type or shape changed; prepare a new template")
     supplied = {template.aliases[name]: value for name, value in inputs.items()}
@@ -858,21 +946,39 @@ def _fill_values(template: _Template, inputs: Mapping[str, Any], identity: str) 
         if _is_ui_only_prompt_input(binding.field, value) != binding.omitted:
             raise PreparedWorkflowUnavailable("prepared input presence changed; prepare a new template")
         if binding.output_prefix:
-            value = _private_prefix(value, identity)
+            scoped = _private_prefix(value, identity)
+            if scope_outputs:
+                value = scoped
         if binding.media:
             _filename_bound(value)
         values.append(value)
     for slot in template.model_slots:
         _model_value(values[slot.index], slot.spellings)
-    return tuple(values)
+    filled = tuple(values)
+    from vibecomfy.schema.validate import validate_literal_against_schema
+
+    issues = []
+    try:
+        for constraint in template.literal_constraints:
+            issues.extend(validate_literal_against_schema(
+                node_id=constraint.node_id, class_type=constraint.class_type,
+                name=constraint.name, value=_render(constraint.slot, filled), spec=constraint.spec,
+                strict_target_choices=constraint.strict_target_choices,
+            ))
+    except Exception as exc:
+        raise WorkflowBundleError(
+            f"local schema validation failed: {type(exc).__name__}: {exc}"
+        ) from exc
+    _raise_approval_schema_errors(issues)
+    return filled
 
 
 def _bind_model_spellings(api: dict[str, Any], spellings: Mapping[tuple[str, str], _ModelSpellings]) -> None:
     for (node_id, field_name), choices in spellings.items():
         value = api[node_id]["inputs"].get(field_name)
         if type(value) is str:
-            # A captured mapping only selects the target spelling. Presence
-            # and validity are ComfyUI's decision, not a per-job local gate.
+            # A captured mapping only selects the target spelling. Literal
+            # validity is handled separately by the shared approval rules.
             api[node_id]["inputs"][field_name] = _model_value(value, choices)
 
 

@@ -67,8 +67,17 @@ jobs:
         run: |
           python -m pytest -q \
             tests/test_prepared_workflow.py tests/test_prepared_queue_fence.py \
+            tests/test_prepared_schema_parity.py \
             tests/test_prepared_default_workflows.py \
             --junitxml=proof/prepared.xml 2>&1 | tee proof/prepared.log
+      - name: Unchanged schema rules and target authority
+        if: always() && steps.install.outcome == 'success'
+        run: |
+          python -m pytest -q tests/test_schema_validate.py tests/test_schema_target_authority.py \
+            --junitxml=proof/schema-regressions.xml 2>&1 | tee proof/schema-regressions.log
+      - name: Record the schema-parity probe bytes
+        if: always() && matrix.source == 'candidate' && steps.install.outcome == 'success'
+        run: sha256sum tests/test_prepared_schema_parity.py > proof/schema-probe-sha256.txt
       - name: Real target bundle compilation on both exact sources
         if: always() && steps.install.outcome == 'success'
         run: |
@@ -86,6 +95,75 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: plan55-ls4-vibe-${{ matrix.source }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: proof/
+          if-no-files-found: error
+          retention-days: 30
+
+  schema-parity-before:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'p55/ls-4'
+    name: LS-4 schema parity on reviewed 4f6ba9f5
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 4f6ba9f5508198be0f672f11bedb49e5f7cd51e7
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: proof-source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install reviewed source and identical new parity probes
+        run: |
+          python -m pip install -e '.[dev,png]'
+          cp proof-source/tests/test_prepared_schema_parity.py tests/
+          mkdir -p proof
+          git rev-parse HEAD > proof/source.txt
+          git rev-parse 'HEAD^{tree}' >> proof/source.txt
+          python -VV >> proof/source.txt
+          python -m pip freeze > proof/dependencies.txt
+          sha256sum tests/test_prepared_schema_parity.py > proof/schema-probe-sha256.txt
+      - name: Retain exact reviewed-source schema and prefix failures
+        run: |
+          set +e
+          python -m pytest -q tests/test_prepared_schema_parity.py \
+            --junitxml=proof/schema-parity-before.xml > proof/schema-parity-before.log 2>&1
+          result=$?
+          set -e
+          cat proof/schema-parity-before.log
+          test "$result" = 1
+          python - <<'PY'
+          from xml.etree import ElementTree as ET
+          cases = list(ET.parse('proof/schema-parity-before.xml').iter('testcase'))
+          values = ['below-minimum', 'above-maximum', 'undeclared-choice', 'range-and-choice-order']
+          failed = {
+              *(f'test_admission_refuses_same_schema_error_as_full_compile[{value}]' for value in values),
+              *(f'test_cached_admission_rechecks_new_values_against_full_compile[{value}]' for value in values),
+              *(f'test_cached_values_refuse_same_schema_error_without_reentering_compiler[{entry}-{value}]'
+                for entry in ['accepts', 'fill'] for value in values),
+              'test_admission_wraps_public_input_compile_error_exactly_like_full_compile',
+              'test_prepared_only_prefix_bounds_choose_full_path[colon]',
+              'test_prepared_only_prefix_bounds_choose_full_path[long-component]',
+              'test_compiler_identity_distinguishes_dirty_source_at_the_same_commit',
+              'test_dynamic_count_controller_keeps_full_preparation',
+              'test_observed_dynamic_choice_controller_keeps_full_preparation',
+          }
+          assert len(cases) == 24 and len(failed) == 22
+          assert {case.get('name') for case in cases if case.find('failure') is not None} == failed
+          assert all(case.find('error') is None and case.find('skipped') is None for case in cases)
+          assert all(case.get('name').startswith('test_cached_constraints_preserve_inclusive_boundaries_and_approved_bytes[')
+                     for case in cases if case.find('failure') is None)
+          PY
+      - name: Retain reviewed-source parity evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: plan55-ls4-vibe-schema-before-${{ github.run_id }}-${{ github.run_attempt }}
           path: proof/
           if-no-files-found: error
           retention-days: 30

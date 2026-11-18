@@ -332,12 +332,26 @@ def test_model_spelling_is_retained_but_presence_and_ranges_belong_to_comfy(capl
     }, server_url=context().target_identity, model_availability="target")
     ctx = context()
     session = PreparedWorkflowSession(ctx)
-    handle = session.prepare(bundle, inputs={"model": "folder/model.safetensors", "seed": -1}, schema_provider=provider)
-    mapped, _ = session.fill(handle, {"model": "folder/model.safetensors", "seed": -999}, attempt_id="attempt", context=ctx)
+    # Keep the original case ID and model-spelling/presence coverage. Lead
+    # 6966041442 requires ranges to match full approval's local refusals.
+    handle = session.prepare(bundle, inputs={"model": "folder/model.safetensors", "seed": 7}, schema_provider=provider)
+    mapped, _ = session.fill(handle, {"model": "folder/model.safetensors", "seed": 0}, attempt_id="attempt", context=ctx)
     assert mapped.api_projection["3"]["inputs"]["unet_name"] == "folder\\model.safetensors"
-    unknown, _ = session.fill(handle, {"model": "not-present.safetensors", "seed": 10**20}, attempt_id="attempt", context=ctx)
-    assert unknown.api_projection["3"]["inputs"]["unet_name"] == "not-present.safetensors"
-    assert unknown.api_projection["1"]["inputs"]["seed"] == 10**20
+    for values in (
+        {"model": "not-present.safetensors", "seed": 10},
+        *({"model": "folder/model.safetensors", "seed": seed} for seed in (-1, -999, 10**20)),
+    ):
+        with pytest.raises(WorkflowBundleError) as full:
+            bundle.compile(run_inputs=values, schema_provider=provider)
+        for operation in (
+            lambda: PreparedWorkflowSession(ctx).prepare(bundle, inputs=values, schema_provider=provider),
+            lambda: session.accepts(handle, values),
+            lambda: session.fill(handle, values, attempt_id="attempt", context=ctx),
+        ):
+            with pytest.raises(WorkflowBundleError) as prepared:
+                operation()
+            assert type(prepared.value) is type(full.value)
+            assert str(prepared.value) == str(full.value)
 
 
 @pytest.mark.parametrize("choices,value", [
@@ -377,10 +391,12 @@ def test_model_spelling_uses_exact_witness_and_never_selects_an_ambiguous_alias(
 
 
 def test_compiler_identity_comes_from_vibecomfy_and_is_frozen_at_admission(monkeypatch):
+    from vibecomfy import prepared
     from vibecomfy.runtime import session as runtime_session
 
     bundle, provider = tiny()
     ctx = context(compiler_identity="unchanged-caller-claim")
+    monkeypatch.setattr(prepared, "_compiler_worktree_dirty", lambda: False)
     monkeypatch.setattr(runtime_session, "current_source_revision", lambda: "a" * 40)
     first = PreparedWorkflowSession(ctx)
     first_handle = first.prepare(bundle, inputs={"seed": 7}, schema_provider=provider)
