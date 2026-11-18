@@ -380,26 +380,21 @@ def _private_prefix(value: Any, identity: str) -> str:
             or any(part == ".." for part in normal.split("/"))):
         raise PreparedWorkflowUnavailable("prepared output prefix must stay inside the output directory")
     result = f"{value}_astrid_{identity}"
-    try:
-        _filename_bound(result)
-    except WorkflowBundleError as exc:
-        # These are prepared transport bounds. The ordinary path retains its
-        # own filename policy and must decide whether the job is admissible.
-        raise PreparedWorkflowUnavailable(str(exc)) from exc
+    _filename_bound(result)
     return result
 
 
 def _filename_bound(value: Any) -> None:
-    """Contain a staged input/output name without inspecting the filesystem."""
+    """Decline prepared-only filename bounds; full preparation owns admission."""
     if type(value) is not str:
-        raise WorkflowBundleError("prepared filename must be a string")
+        raise PreparedWorkflowUnavailable("prepared filename must be a string")
     normal = value.replace("\\", "/")
     if (normal.startswith("/") or "\x00" in normal or ":" in normal
             or any(part == ".." for part in normal.split("/"))):
-        raise WorkflowBundleError("prepared filename must stay inside its directory")
+        raise PreparedWorkflowUnavailable("prepared filename must stay inside its directory")
     if len(normal.encode("utf-8")) > 4096 or any(
             len(part.encode("utf-8")) > 255 for part in normal.split("/")):
-        raise WorkflowBundleError("prepared filename exceeds the finite path bound")
+        raise PreparedWorkflowUnavailable("prepared filename exceeds the finite path bound")
 
 
 @dataclass(frozen=True, slots=True)
