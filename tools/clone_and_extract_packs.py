@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from vibecomfy.node_packs import CustomNodePack, get_known_node_packs
+from vibecomfy.porting.object_info.serialize import publish_extracted_shards
 from vibecomfy.schema.extract import ExtractResult, extract_pack_schemas
 
 # TODO(repo-root): migrate to vibecomfy.utils.find_repo_root() once this tool's
@@ -84,11 +85,11 @@ def clone_pack(pack: CustomNodePack, report: PackReport) -> Path | None:
     return dest
 
 
-def write_cache(pack: CustomNodePack, version: str, entries: dict[str, OrderedDict[str, Any]], index: dict[str, str], report: PackReport) -> None:
+def write_cache(pack: CustomNodePack, version: str, entries: dict[str, OrderedDict[str, Any]], index: dict[str, str], report: PackReport, shards: dict[str, dict]) -> None:
     filename = f"{pack.name}@{version}.json"
     path = CACHE_DIR / filename
     ordered = OrderedDict((name, entries[name]) for name in sorted(entries))
-    path.write_text(json.dumps(ordered, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+    shards[filename] = ordered
     report.cache_file = str(path.relative_to(ROOT))
 
     for class_name in sorted(entries):
@@ -98,7 +99,7 @@ def write_cache(pack: CustomNodePack, version: str, entries: dict[str, OrderedDi
         index[class_name] = filename
 
 
-def process_pack(pack: CustomNodePack, index: dict[str, str]) -> PackReport:
+def process_pack(pack: CustomNodePack, index: dict[str, str], shards: dict[str, dict]) -> PackReport:
     report = PackReport(name=pack.name, repo=pack.repo)
     pack_dir = clone_pack(pack, report)
     if pack_dir is None:
@@ -122,7 +123,7 @@ def process_pack(pack: CustomNodePack, index: dict[str, str]) -> PackReport:
         return report
 
     report.class_count = len(result.entries)
-    write_cache(pack, version, result.entries, index, report)
+    write_cache(pack, version, result.entries, index, report, shards)
     return report
 
 
@@ -137,16 +138,15 @@ def main() -> int:
     os.chdir(ROOT)
     args = parse_args()
     index = load_index()
-    original_index = dict(index)
+    shards = {}
     selected = missing_packs(index)
     if args.pack:
         wanted = set(args.pack)
         selected = [pack for pack in get_known_node_packs() if pack.name in wanted]
 
     print(f"Missing packs: {', '.join(pack.name for pack in selected) or '(none)'}")
-    reports = [process_pack(pack, index) for pack in selected]
-    if index != original_index:
-        INDEX_PATH.write_text(json.dumps(dict(sorted(index.items())), indent=2) + "\n", encoding="utf-8")
+    reports = [process_pack(pack, index, shards) for pack in selected]
+    publish_extracted_shards(CACHE_DIR, shards)
 
     print("\nReport:")
     for report in reports:

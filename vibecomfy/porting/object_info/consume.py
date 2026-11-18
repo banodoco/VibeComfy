@@ -25,7 +25,7 @@ from typing import Any, Iterable, Mapping
 
 from vibecomfy.errors import ObjectInfoIdentityAmbiguityError
 from vibecomfy.errors import ObjectInfoCacheCorruptError
-from vibecomfy.porting.object_info.generation import active_cache_root, cache_file_witness, read_json, safe_cache_filename
+from vibecomfy.porting.object_info.generation import active_cache_root, read_json, safe_cache_filename
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -194,84 +194,46 @@ def _normalize_output_name(name: str) -> str:
     return cleaned.upper()
 
 
-def _sync_reader() -> bool:
+def _sync_reader() -> None:
     global _reader_state, _index
-    configured = Path(CACHE_DIR).expanduser().resolve(strict=False)
+    configured = Path(CACHE_DIR).expanduser().absolute()
     marker = configured / "CURRENT"
-    marker_sig = cache_file_witness(marker)
+    try:
+        info = marker.lstat()
+        signature = (info.st_dev, info.st_ino, info.st_ctime_ns)
+    except FileNotFoundError:
+        signature = None
     prior = _reader_state
-    if prior and prior["root"] == configured and prior["committed"] and marker_sig is None:
+    if prior and prior["root"] == configured:
+        if prior["marker_sig"] == signature:
+            return
+        if signature is None:
+            raise ObjectInfoCacheCorruptError(f"object_info cache marker disappeared: {marker}")
+    active = active_cache_root(configured) if signature is not None else configured
+    if signature is not None and active == configured:
         raise ObjectInfoCacheCorruptError(f"object_info cache marker disappeared: {marker}")
-    marker_changed = not prior or prior["root"] != configured or marker_sig != prior["marker_sig"]
-    committed = bool(marker_sig)
-    marker_text = prior["marker_text"] if prior and not marker_changed else None
-    if marker_sig is not None and marker_changed:
-        active = active_cache_root(configured)
-        try:
-            marker_text = marker.read_text(encoding="utf-8").strip()
-        except OSError as exc:
-            raise ObjectInfoCacheCorruptError(f"cannot read object_info cache marker {marker}: {exc}") from exc
-    elif marker_sig is None:
-        active = configured
-        committed = False
-    else:
-        active = prior["active"]
-    index_sig = cache_file_witness(active / "index.json")
-    pack_changed = bool(prior and prior["root"] == configured and prior["pack_sigs"] and any(cache_file_witness(active / name) != sig for name, sig in prior["pack_sigs"].items()))
-    changed = marker_changed or not prior or index_sig != (prior["index_sig"] if prior else None) or pack_changed
-    if changed and committed and not (marker_sig is not None and marker_changed):
-        active = active_cache_root(configured)
-        index_sig = cache_file_witness(active / "index.json")
-    if changed:
-        _index = None
-        _pack_cache.clear()
-    pack_sigs = {} if changed else (prior["pack_sigs"] if prior else {})
-    _reader_state = {"root": configured, "active": active, "committed": committed,
-                     "marker_sig": marker_sig, "marker_text": marker_text,
-                     "index_sig": index_sig, "pack_sigs": pack_sigs}
-    return changed
+    _reader_state = {"root": configured, "active": active, "marker_sig": signature}
+    _index = None
+    _pack_cache.clear()
 
 
 def _load_index() -> dict[str, str]:
     global _index
     with _reader_lock:
-        for attempt in range(2):
-            _sync_reader()
-            if _index is None:
-                root = _reader_state["active"]
-                _index = _read_index_at_root(root)
-            if not _sync_reader():
-                return _index
-            if attempt:
-                raise ObjectInfoCacheCorruptError("object_info cache changed during index load")
+        _sync_reader()
+        if _index is None:
+            root = _reader_state["active"]
+            path = root / "index.json"
+            data = read_json(root, "index.json") if path.exists() or path.is_symlink() else {}
+            _index, _reader_state["held"] = split_index(data)
         return _index
 
 
-def _read_index_at_root(root: Path) -> dict[str, str]:
-    """Read one index without allowing publication to change its root."""
-    path = root / "index.json"
-    if not path.exists() and not path.is_symlink():
-        return {}
-    data = read_json(root, "index.json")
-    if not isinstance(data, dict):
-        raise ObjectInfoCacheCorruptError(f"object_info index must be an object: {path}")
-    return split_index(data)[0]
-
-
 def _load_pack(filename: str) -> dict[str, dict[str, Any]]:
-    with _reader_lock:
-        for attempt in range(2):
-            _sync_reader()
-            if filename not in _pack_cache:
-                root = _reader_state["active"]
-                data = _read_pack_at_root(root, filename)
-                _pack_cache[filename] = data
-                _reader_state["pack_sigs"][filename] = cache_file_witness(root / filename)
-            if not _sync_reader():
-                return _pack_cache[filename]
-            if attempt:
-                raise ObjectInfoCacheCorruptError("object_info cache changed during pack load")
-        return _pack_cache[filename]
+    """Load from the generation selected under the caller's reader lock."""
+    if filename not in _pack_cache:
+        _pack_cache[filename] = _read_pack_at_root(_reader_state["active"], filename)
+    return _pack_cache[filename]
 
 
 def _read_pack_at_root(root: Path, filename: str) -> dict[str, dict[str, Any]]:
@@ -287,22 +249,10 @@ def _read_pack_at_root(root: Path, filename: str) -> dict[str, dict[str, Any]]:
     }
 
 
-def _pack_filenames_at_root(root: Path) -> list[str]:
-    path = root / "index.json"
-    if not path.exists():
-        return []
-    _, held = split_index(read_json(root, "index.json"))
-    return sorted({filename for filenames in held.values() for filename in filenames})
-
-
 def _all_pack_filenames() -> list[str]:
     with _reader_lock:
-        _sync_reader()
-        root = _reader_state["active"]
-        # Read the index from the captured immutable generation. Calling
-        # _load_index() here could observe a newly published CURRENT and pair
-        # that index with this old generation's glob result.
-        return _pack_filenames_at_root(root)
+        _load_index()
+        return sorted({name for files in _reader_state["held"].values() for name in files})
 
 
 def _resolve_class_type(class_type: str) -> dict[str, Any] | None:
@@ -349,9 +299,8 @@ def _identity_lookup_matches(
     _identity_key(pack_slug, git_commit, evidence_identity)
     matches: list[tuple[str, dict[str, Any]]] = []
     with _reader_lock:
-        _sync_reader()
-        root = _reader_state["active"]
-        _, held = split_index(read_json(root, "index.json", required=False) or {})
+        _load_index()
+        held = _reader_state["held"]
         if git_commit is not None:
             key = json.dumps([pack_slug, "git_commit", git_commit], separators=(",", ":"))
             filenames = held.get(key, [])
@@ -359,7 +308,7 @@ def _identity_lookup_matches(
             filenames = sorted({filename for key, files in held.items()
                                 if json.loads(key)[0] == pack_slug for filename in files})
         for filename in filenames:
-            entry = _read_pack_at_root(root, filename).get(class_type)
+            entry = _load_pack(filename).get(class_type)
             if isinstance(entry, dict) and _identity_matches(
                 entry,
                 pack_slug=pack_slug,
@@ -407,15 +356,7 @@ def get_class(class_type: str) -> dict[str, Any] | None:
 
 @contextmanager
 def class_entry_snapshot(class_types: Iterable[str]):
-    """Bind one content-witnessed object-info view for a bounded operation.
-
-    Scalar lookups intentionally recheck loaded pack bytes on every call. A
-    conversion performs many related lookups against one logical input, so it
-    first captures all known classes with :func:`get_classes` and reuses that
-    coherent view. An unrequested late lookup fails closed rather than mixing
-    entries from two cache generations. Outside this context scalar freshness
-    is unchanged.
-    """
+    """Capture the requested classes so an operation can span a publication."""
     requested = tuple(sorted({str(item) for item in class_types if str(item)}))
     current = _CLASS_ENTRY_SNAPSHOT.get()
     if current is not None and all(
@@ -449,16 +390,7 @@ def class_entry_snapshot(class_types: Iterable[str]):
 
 
 def get_classes(class_types: Iterable[str]) -> dict[str, dict[str, Any]]:
-    """Resolve a class set against one content-witnessed reader snapshot.
-
-    Bulk static consumers must not call :func:`get_class` once per AST node:
-    every scalar lookup intentionally rechecks the content witness for every
-    pack already read.  This variant performs the same before/after reader
-    checks once for the requested set, reads each required pack at most once,
-    and retries if publication or any retained pack changes during the batch.
-    """
-    global _index
-
+    """Resolve a class set from one published generation."""
     requested = tuple(sorted({str(item) for item in class_types if str(item)}))
     if not requested:
         return {}
@@ -478,62 +410,16 @@ def get_classes(class_types: Iterable[str]) -> dict[str, dict[str, Any]]:
             if item in snapshot.entries
         }
     with _reader_lock:
-        for attempt in range(2):
-            _sync_reader()
-            assert _reader_state is not None
-            root = _reader_state["active"]
-            if _index is None:
-                _index = _read_index_at_root(root)
-            by_filename: dict[str, list[str]] = {}
-            for class_type in requested:
-                filename = _index.get(class_type)
-                if filename is not None:
-                    by_filename.setdefault(filename, []).append(class_type)
-            resolved: dict[str, dict[str, Any]] = {}
-            changed_during_read = False
-            for filename, names in sorted(by_filename.items()):
-                if filename not in _pack_cache:
-                    path = root / filename
-                    witness_before = cache_file_witness(path)
-                    _reader_state["pack_sigs"][filename] = witness_before
-                    pack = _read_pack_at_root(root, filename)
-                    witness_after = cache_file_witness(path)
-                    if witness_before != witness_after:
-                        changed_during_read = True
-                        break
-                    _pack_cache[filename] = pack
-                    _reader_state["pack_sigs"][filename] = witness_after
-                pack = _pack_cache[filename]
-                for class_type in names:
-                    entry = pack.get(class_type)
-                    if isinstance(entry, dict):
-                        resolved[class_type] = entry
-            if changed_during_read:
-                _index = None
-                _pack_cache.clear()
-                # Reconcile the before-read witness through the normal reader
-                # boundary.  A mutable legacy root retries; a modified
-                # committed generation fails its manifest check instead of
-                # admitting bytes from a tampered generation.
-                _sync_reader()
-                if attempt:
-                    raise ObjectInfoCacheCorruptError(
-                        "object_info cache changed during batch class load"
-                    )
-                continue
-            if not _sync_reader():
-                for class_type in requested:
-                    if class_type in resolved:
-                        continue
-                    curated_outputs = _CURATED_OUTPUTS.get(class_type)
-                    if curated_outputs is not None:
-                        resolved[class_type] = {"outputs": curated_outputs}
-                return resolved
-            if attempt:
-                raise ObjectInfoCacheCorruptError(
-                    "object_info cache changed during batch class load"
-                )
-    raise AssertionError("unreachable")
+        index = _load_index()
+        resolved = {}
+        for class_type in requested:
+            filename = index.get(class_type)
+            entry = _load_pack(filename).get(class_type) if filename else None
+            if isinstance(entry, dict):
+                resolved[class_type] = entry
+            elif class_type in _CURATED_OUTPUTS:
+                resolved[class_type] = {"outputs": _CURATED_OUTPUTS[class_type]}
+        return resolved
 
 
 def resolve_class_entry(
@@ -666,7 +552,7 @@ def get_class_by_identity(
                 for filename, entry in matches
             ],
         )
-    return matches[0][1]
+    return copy.deepcopy(matches[0][1])
 
 
 def has_class_identity(

@@ -118,6 +118,9 @@ def test_builder_writes_shard_and_index_and_report(tmp_path: Path) -> None:
     assert report.packs_succeeded == 1
     assert report.classes_extracted >= 1
 
+    generation = (cache_dir / "CURRENT").read_text().strip()
+    assert (cache_dir / "generations" / generation / "index.json").is_file()
+
     # Shard file written, named <pack>@<version>.json.
     shards = list(cache_dir.glob("fixture-pack@*.json"))
     assert len(shards) == 1, f"expected one shard, got {shards}"

@@ -700,6 +700,7 @@ def _publish_cache_state(
     index: dict[str, str],
     pack_files: dict[str, dict[str, dict[str, Any]]],
     provenance: dict[str, Any],
+    ordered_shards: frozenset[str] = frozenset(),
 ) -> str:
     """Stage and commit a complete pack/index/provenance generation."""
     for filename in pack_files:
@@ -728,11 +729,12 @@ def _publish_cache_state(
         artifacts: dict[str, str] = {}
         serialized: dict[str, str] = {}
         for filename, pack in sorted(pack_files.items()):
-            text = json.dumps(pack, indent=2, sort_keys=True, ensure_ascii=False)
+            preserve_order = filename in ordered_shards
+            text = json.dumps(pack, indent=2, sort_keys=not preserve_order, ensure_ascii=False)
             # Preserve unchanged provider bytes, including class field order,
             # when registering a legacy cache or publishing another identity.
             path = cache_root / filename
-            if path.exists() and not path.is_symlink():
+            if not preserve_order and path.exists() and not path.is_symlink():
                 original = path.read_text(encoding="utf-8")
                 try:
                     if json.loads(original) == pack:
@@ -844,6 +846,23 @@ def _latest_valid_generation(cache_root: Path) -> Path | None:
             continue
         return candidate
     return None
+
+
+def publish_extracted_shards(cache_root: Path, shards: dict[str, dict]) -> None:
+    """Merge normalized corpus-builder shards and publish the whole sweep once."""
+    if not shards:
+        return
+    with cache_publish_transaction(cache_root):
+        index, providers, provenance = _read_cache_state(cache_root)
+        index = {name: filename for name, filename in index.items() if filename not in shards}
+        for filename, entries in shards.items():
+            validate_provider_filename(filename)
+            providers[filename] = entries
+            index.update(dict.fromkeys(entries, filename))
+        _publish_cache_state(
+            cache_root, index=index, pack_files=providers, provenance=provenance,
+            ordered_shards=frozenset(shards),
+        )
 
 
 def republish_cache_root(cache_dir: str | Path) -> str:

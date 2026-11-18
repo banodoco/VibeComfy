@@ -43,6 +43,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from vibecomfy.node_packs import CustomNodePack, get_known_node_packs
+from vibecomfy.porting.object_info.serialize import publish_extracted_shards
 from vibecomfy.schema.extract import ExtractResult, extract_pack_schemas
 
 # TODO(repo-root): migrate to vibecomfy.utils.find_repo_root() once this tool's
@@ -270,6 +271,7 @@ def process_pack(
     *,
     cache_dir: Path,
     index: dict[str, str],
+    shards: dict[str, dict],
     scratch_dir: Path,
     keep: bool,
 ) -> PackReport:
@@ -302,7 +304,7 @@ def process_pack(
                 report.failures.append("no classes extracted")
             return report
 
-        _write_shard(pack, report.version, result.entries, cache_dir, index, report)
+        _write_shard(pack, report.version, result.entries, cache_dir, index, report, shards)
     except Exception as exc:  # noqa: BLE001 — one bad pack must never abort the sweep
         report.failures.append(f"{type(exc).__name__}: {exc}")
     finally:
@@ -319,12 +321,13 @@ def _write_shard(
     cache_dir: Path,
     index: dict[str, str],
     report: PackReport,
+    shards: dict[str, dict],
 ) -> None:
-    """Write one sharded cache file + update the class->file index (clone_and_extract parity)."""
+    """Collect one sharded cache file + update the class->file index (clone_and_extract parity)."""
     filename = f"{pack.name}@{version}.json"
     path = cache_dir / filename
     ordered = OrderedDict((name, entries[name]) for name in sorted(entries))
-    path.write_text(json.dumps(ordered, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+    shards[filename] = ordered
     report.cache_file = str(path.relative_to(ROOT)) if _is_relative(path, ROOT) else str(path)
 
     for class_name in sorted(entries):
@@ -384,7 +387,7 @@ def build_corpus(
     index: dict[str, str] = {}
     if index_path.exists():
         index = json.loads(index_path.read_text(encoding="utf-8"))
-    original_index = dict(index)
+    shards = {}
 
     report = CorpusReport()
     for pack in packs:
@@ -393,6 +396,7 @@ def build_corpus(
             pack,
             cache_dir=cache_dir,
             index=index,
+            shards=shards,
             scratch_dir=scratch,
             keep=keep,
         )
@@ -406,7 +410,8 @@ def build_corpus(
             for failure in pack_report.failures:
                 print(f"     ! {failure}", file=sys.stderr, flush=True)
 
-    if index != original_index:
+    publish_extracted_shards(cache_dir, shards)
+    if shards and index_path != cache_dir / "index.json":
         index_path.write_text(
             json.dumps(dict(sorted(index.items())), indent=2) + "\n", encoding="utf-8"
         )

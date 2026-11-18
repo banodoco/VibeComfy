@@ -18,10 +18,9 @@ TEMPLATE_ID = "audio/hunyuan_video_foley"
 
 
 def generate() -> None:
-    from tools.build_node_corpus import PackReport, _write_shard
+    from vibecomfy.porting.object_info.serialize import publish_extracted_shards
     from tools.refresh_template_index import main as refresh_index
     from vibecomfy.ingest.normalize import from_api
-    from vibecomfy.node_packs import CustomNodePack
     from vibecomfy.node_packs._lockfile import LockEntry, compute_schema_hash, upsert_lockfile_entry
     from vibecomfy.porting.convert import _ready_requirements, port_convert_and_write, port_convert_workflow
     from vibecomfy.schema import get_authoring_schema_provider
@@ -40,10 +39,8 @@ def generate() -> None:
         for name, inputs in schema_source["inputs"].items()
     }
     cache = ROOT / "vibecomfy/porting/cache/object_info"
-    index = json.loads((cache / "index.json").read_text())
-    _write_shard(CustomNodePack(pack["name"], pack["url"], frozenset(schemas)),
-                 "source-" + pack["commit"][:7], schemas, cache, index, PackReport(name=pack["name"], repo=pack["url"]))
-    (cache / "index.json").write_text(json.dumps(dict(sorted(index.items())), indent=2) + "\n")
+    filename = f"{pack['name']}@source-{pack['commit'][:7]}.json"
+    publish_extracted_shards(cache, {filename: schemas})
     upsert_lockfile_entry(LockEntry(name=pack["name"], git_commit_sha=pack["commit"],
         url=pack["url"], class_set=tuple(schemas), class_schema_sha256=compute_schema_hash(schemas),
         pip_packages=("diffusers", "timm", "transformers>=4.49.0", "descript-audiotools", "omegaconf")),

@@ -5464,7 +5464,7 @@ def test_frozen_session_ingest_snapshot_never_consults_ambient_object_info(
         raise AssertionError("ambient object-info state was consulted")
 
     monkeypatch.setattr(consume, "get_class", poison)
-    monkeypatch.setattr(consume, "cache_file_witness", poison)
+    monkeypatch.setattr(consume, "_sync_reader", poison)
 
     raw = _load_flat_fixture_raw()
     provider = _test_frozen_schema_provider(raw)

@@ -204,6 +204,22 @@ def test_warm_consumer_tracks_later_generation_without_reset(
     build_cache(_source(tmp_path / "one.json", "One"), version="v1", cache_dir=cache)
     _use_cache(monkeypatch, cache)
     assert consume.output_names("One") == ["IMAGE"]
+
+    def unexpected_io(*args, **kwargs):
+        pytest.fail("warm class lookup reopened a file or hashed its contents")
+
+    original_stat = Path.stat
+
+    def marker_only(path, *args, **kwargs):
+        assert path == cache / "CURRENT"
+        return original_stat(path, *args, **kwargs)
+
+    with monkeypatch.context() as guard:
+        guard.setattr(Path, "stat", marker_only)
+        guard.setattr(Path, "open", unexpected_io)
+        guard.setattr("hashlib.sha256", unexpected_io)
+        for _ in range(100):
+            assert consume.output_names("One") == ["IMAGE"]
     build_cache(_source(tmp_path / "two.json", "Two"), version="v2", cache_dir=cache)
     assert consume.output_names("Two") == ["IMAGE"]
 
@@ -290,7 +306,7 @@ def test_warm_index_provider_tracks_additions_removals_and_same_pack_bytes(
     assert provider.get_schema("Two") is not None
 
 
-def test_loaded_committed_pack_change_fails_closed(
+def test_reopening_modified_committed_pack_fails_closed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     cache = tmp_path / "cache"
@@ -302,6 +318,7 @@ def test_loaded_committed_pack_change_fails_closed(
     filename = json.loads((generation / "index.json").read_text(encoding="utf-8"))["One"]
     pack = generation / filename
     pack.write_text(pack.read_text(encoding="utf-8").replace("IMAGE", "BROKEN"), encoding="utf-8")
+    consume.reset_cache()
     with pytest.raises(ObjectInfoCacheCorruptError, match="failed its hash check"):
         consume.get_class("One")
 
@@ -317,6 +334,7 @@ def test_legacy_witnesses_and_marker_disappearance_fail_closed(
     _use_cache(monkeypatch, cache)
     assert consume.output_names("Old") == ["OLD"]
     pack.write_text('{"Old": {"outputs": [{"name": "NEW", "type": "NEW"}]}}', encoding="utf-8")
+    consume.reset_cache()
     assert consume.output_names("Old") == ["NEW"]
     build_cache(_source(tmp_path / "committed.json", "Committed"), version="v1", cache_dir=cache)
     assert consume.output_names("Committed") == ["IMAGE"]
