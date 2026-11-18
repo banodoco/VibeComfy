@@ -149,11 +149,12 @@ jobs:
               'test_admission_wraps_public_input_compile_error_exactly_like_full_compile',
               'test_prepared_only_prefix_bounds_choose_full_path[colon]',
               'test_prepared_only_prefix_bounds_choose_full_path[long-component]',
+              'test_prepared_only_declared_type_bound_keeps_accepted_full_value',
               'test_compiler_identity_distinguishes_dirty_source_at_the_same_commit',
               'test_dynamic_count_controller_keeps_full_preparation',
               'test_observed_dynamic_choice_controller_keeps_full_preparation',
           }
-          assert len(cases) == 24 and len(failed) == 22
+          assert len(cases) == 25 and len(failed) == 23
           assert {case.get('name') for case in cases if case.find('failure') is not None} == failed
           assert all(case.find('error') is None and case.find('skipped') is None for case in cases)
           assert all(case.get('name').startswith('test_cached_constraints_preserve_inclusive_boundaries_and_approved_bytes[')

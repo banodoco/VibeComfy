@@ -676,7 +676,7 @@ class PreparedWorkflowSession:
                 if getattr(spec, "media_semantics", None) in {"image", "mask", "video", "audio"}:
                     allowed = (str,)
                 if value is not None and allowed is not None and type(value) not in allowed:
-                    raise WorkflowBundleError(f"prepared input {name!r} must have declared type {declared}")
+                    raise PreparedWorkflowUnavailable(f"prepared input {name!r} must have declared type {declared}")
                 aliases[name] = spec.name
                 supplied[spec.name] = _thaw_json(_freeze_json(value))
                 targets.add((str(spec.node_id), spec.field))

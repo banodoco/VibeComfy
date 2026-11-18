@@ -131,6 +131,15 @@ def test_prepared_only_prefix_bounds_choose_full_path(prefix):
         session.fill(handle, {"prefix": prefix}, attempt_id="attempt", context=context())
 
 
+def test_prepared_only_declared_type_bound_keeps_accepted_full_value():
+    bundle, provider = tiny()
+    values = {"seed": "7"}
+    full = bundle.compile(run_inputs=values, schema_provider=provider)
+    assert full.api_projection["1"]["inputs"]["seed"] == "7"
+    with pytest.raises(PreparedWorkflowUnavailable, match="declared type INT"):
+        PreparedWorkflowSession(context()).prepare(bundle, inputs=values, schema_provider=provider)
+
+
 def test_compiler_identity_distinguishes_dirty_source_at_the_same_commit(tmp_path, monkeypatch):
     from vibecomfy import prepared
     from vibecomfy.runtime import session as runtime_session
