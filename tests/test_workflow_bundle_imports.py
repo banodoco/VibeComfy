@@ -210,3 +210,26 @@ def test_loading_official_json_bundle_does_not_load_node_library(relative_path: 
         assert snapshot.semantic_digest
         """
     )
+
+
+def test_importing_contract_primitives_does_not_load_node_library() -> None:
+    _assert_lightweight_imports(
+        """
+        from vibecomfy._canonical_contract_primitives import canonical_json_bytes_v1
+
+        assert canonical_json_bytes_v1({"b": 2, "a": 1}) == b'{"a":1,"b":2}'
+        """
+    )
+
+
+def test_agent_contract_primitives_reexport_the_same_objects() -> None:
+    from vibecomfy import _canonical_contract_primitives as shared
+    from vibecomfy.comfy_nodes.agent import _canonical_contract_primitives as compatibility
+    from vibecomfy.comfy_nodes.agent import projection_registry_v1 as registry
+
+    assert compatibility.__all__ is shared.__all__
+    for name in shared.__all__:
+        assert getattr(compatibility, name) is getattr(shared, name), name
+    assert registry.ContractError is shared.ContractError
+    assert registry.canonical_json is shared.canonical_json
+    assert registry.canonical_json_bytes_v1 is shared.canonical_json_bytes_v1

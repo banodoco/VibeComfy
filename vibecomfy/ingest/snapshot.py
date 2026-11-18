@@ -22,7 +22,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any, Mapping
 
-from vibecomfy.comfy_nodes.agent._canonical_contract_primitives import (
+from vibecomfy._canonical_contract_primitives import (
     canonical_json_bytes_v1,
 )
 
