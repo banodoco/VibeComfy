@@ -186,3 +186,27 @@ assert not loaded, loaded
 
 def test_nonempty_v2_presentation_does_not_load_node_library() -> None:
     _assert_lightweight_imports(_NONEMPTY_V2_PRESENTATION_PROBE)
+
+
+@pytest.mark.parametrize("relative_path", ["image/z_image.json", "video/ltx2_3_t2v.json"])
+def test_loading_official_json_bundle_does_not_load_node_library(relative_path: str) -> None:
+    _assert_lightweight_imports(
+        f"""
+        import json
+        from pathlib import Path
+
+        from vibecomfy.cli_loader import load_bundle
+
+        source = Path("ready_templates/sources/official") / {relative_path!r}
+        bundle = load_bundle(source)
+        assert bundle.workflow.id == json.loads(source.read_text(encoding="utf-8"))["id"]
+        assert bundle.workflow.nodes
+        assert bundle.workflow.edges
+        from vibecomfy.ingest.snapshot import snapshot_of
+
+        snapshot = snapshot_of(bundle.workflow)
+        assert snapshot.source_representation == "ui"
+        assert snapshot.workflow is not bundle.workflow
+        assert snapshot.semantic_digest
+        """
+    )

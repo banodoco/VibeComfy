@@ -87,7 +87,7 @@ jobs:
         # Makefile is the local/GitHub contract for repo hygiene, the bounded
         # fast Python tier, browser smoke, snapshot freshness, the Comfy
         # oracle, and the IR boundary checker.
-        run: make PYTHON=.venv/bin/python ci
+        run: make PYTHON=.venv/bin/python PYTEST=".venv/bin/python -m pytest -rA" ci
 
       - name: Upload coverage artifact
         if: always()
