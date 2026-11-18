@@ -1,0 +1,204 @@
+/workspace/scratch/f85b5894b649/VibeComfy/.venv/lib/python3.11/site-packages/pytest_asyncio/plugin.py:306: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+The event loop scope for asynchronous fixtures will default to the fixture scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to "function" scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session". Set it to "fixture-scope" to keep the current behavior.
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+..............x......................................................... [ 61%]
+...........FF.....F..........................                            [100%]
+=================================== FAILURES ===================================
+_ test_raw_json_is_bound_import_evidence_and_cannot_be_rebundled_as_authority[raw-api.json-payload0] _
+tests/test_cli_loader.py:328: in test_raw_json_is_bound_import_evidence_and_cannot_be_rebundled_as_authority
+    assert rebound.provenance["operation"] == "imported"
+E   AssertionError: assert 'authored' == 'imported'
+E
+E     - imported
+E     + authored
+_ test_raw_json_is_bound_import_evidence_and_cannot_be_rebundled_as_authority[raw-ui.json-payload1] _
+tests/test_cli_loader.py:328: in test_raw_json_is_bound_import_evidence_and_cannot_be_rebundled_as_authority
+    assert rebound.provenance["operation"] == "imported"
+E   AssertionError: assert 'authored' == 'imported'
+E
+E     - imported
+E     + authored
+___________ test_run_binds_public_inputs_without_mutating_candidate ____________
+tests/test_cli_loader.py:503: in test_run_binds_public_inputs_without_mutating_candidate
+    assert set(calls[0]) == {"run_inputs", "schema_provider"}
+E   AssertionError: assert {'models_root...ema_provider'} == {'run_inputs'...ema_provider'}
+E
+E     Extra items in the left set:
+E     'models_root'
+E     Use -v to get more diff
+----------------------------- Captured stdout call -----------------------------
+status: completed
+queue_status: accepted
+media_validated: False
+run_id: r
+prompt_id: p
+metadata_path: m
+log_path: unavailable (captured process log is unavailable)
+=============================== warnings summary ===============================
+tests/test_ingest_snapshot.py::test_shape_dispatch_detects_ui_api_and_prompt_api_once
+tests/test_ingest_snapshot.py::test_ingest_never_mutates_caller_inputs
+tests/test_ingest_snapshot.py::test_prompt_api_wrapper_is_retained_as_sidecar
+tests/test_ingest_snapshot.py::test_session_turn_lineage_and_mixed_representation_reject
+  /workspace/scratch/f85b5894b649/VibeComfy/vibecomfy/porting/emit/ui.py:3654: UserWarning: emit_ui_json: schema-less node 1(LoadImage); emitting best-effort slots. Pass strict=True to hard-fail.
+    return func(wf, *args, **kwargs)
+
+tests/test_ingest_snapshot.py::test_shape_dispatch_detects_ui_api_and_prompt_api_once
+tests/test_ingest_snapshot.py::test_ingest_never_mutates_caller_inputs
+tests/test_ingest_snapshot.py::test_prompt_api_wrapper_is_retained_as_sidecar
+tests/test_ingest_snapshot.py::test_session_turn_lineage_and_mixed_representation_reject
+  /workspace/scratch/f85b5894b649/VibeComfy/vibecomfy/porting/emit/ui.py:3654: UserWarning: emit_ui_json: schema-less node 2(SaveImage); emitting best-effort slots. Pass strict=True to hard-fail.
+    return func(wf, *args, **kwargs)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+==================================== PASSES ====================================
+---------------------------- Captured log teardown -----------------------------
+WARNING  vibecomfy.comfy_nodes.agent.routes:routes.py:2299 vibecomfy agent routes module could not register server routes: No module named 'comfy'
+__________ test_run_command_blocks_bare_runtime_after_bundle_compile ___________
+----------------------------- Captured stdout call -----------------------------
+status: completed
+queue_status: accepted
+media_validated: False
+run_id: r
+prompt_id: p
+metadata_path: m
+log_path: unavailable (captured process log is unavailable)
+_____ test_validation_mints_one_approval_record_and_no_schema_stays_compat _____
+----------------------------- Captured stdout call -----------------------------
+ok
+ok
+__________________ test_doctor_compile_failure_is_fail_closed __________________
+----------------------------- Captured stdout call -----------------------------
+Layer: Python scratchpad import/build
+- AttributeError: 'Bundle' object has no attribute 'require_canonical_authority'
+Next: vibecomfy doctor x --json
+_________ test_runtime_eval_and_queue_guards_fail_before_legacy_paths __________
+----------------------------- Captured stdout call -----------------------------
+{
+  "queued": false
+}
+pytest gate counts: passed=113 failed=3 errors=0 skipped=0 xfailed=1 xpassed=0 quarantined_failures=0 unexpected_failures=3 stale_quarantines=264
+======================== NEW FAILURES (not quarantined) ========================
+  NEW FAIL: tests/test_cli_loader.py::test_raw_json_is_bound_import_evidence_and_cannot_be_rebundled_as_authority[raw-api.json-payload0]
+  NEW FAIL: tests/test_cli_loader.py::test_raw_json_is_bound_import_evidence_and_cannot_be_rebundled_as_authority[raw-ui.json-payload1]
+  NEW FAIL: tests/test_cli_loader.py::test_run_binds_public_inputs_without_mutating_candidate
+3 new failure(s) detected — add a scoped tests/quarantine/*.txt entry only if intentional.
+=========================== short test summary info ============================
+PASSED tests/test_workflow_bundle_imports.py::test_importing_bundle_does_not_load_node_library
+PASSED tests/test_workflow_bundle_imports.py::test_emitter_reexports_the_same_ui_only_classes
+PASSED tests/test_workflow_bundle_imports.py::test_emitter_reexports_the_same_presentation_records
+PASSED tests/test_workflow_bundle_imports.py::test_validating_annotations_does_not_load_node_library[None]
+PASSED tests/test_workflow_bundle_imports.py::test_validating_annotations_does_not_load_node_library[Note]
+PASSED tests/test_workflow_bundle_imports.py::test_validating_annotations_does_not_load_node_library[MarkdownNote]
+PASSED tests/test_workflow_bundle_imports.py::test_validating_annotations_does_not_load_node_library[Label (rgthree)]
+PASSED tests/test_workflow_bundle_imports.py::test_loading_python_bundle_does_not_load_node_library[False]
+PASSED tests/test_workflow_bundle_imports.py::test_loading_python_bundle_does_not_load_node_library[True]
+PASSED tests/test_workflow_bundle_imports.py::test_nonempty_v2_presentation_does_not_load_node_library
+PASSED tests/test_workflow_bundle_imports.py::test_loading_official_json_bundle_does_not_load_node_library[image/z_image.json]
+PASSED tests/test_workflow_bundle_imports.py::test_loading_official_json_bundle_does_not_load_node_library[video/ltx2_3_t2v.json]
+PASSED tests/test_workflow_bundle_imports.py::test_importing_contract_primitives_does_not_load_node_library
+PASSED tests/test_workflow_bundle_imports.py::test_agent_contract_primitives_reexport_the_same_objects
+PASSED tests/test_ingest_snapshot.py::test_snapshot_keyed_by_uid
+PASSED tests/test_ingest_snapshot.py::test_snapshot_class_type_recorded
+PASSED tests/test_ingest_snapshot.py::test_snapshot_widget_values_sig_captures_non_link_inputs
+PASSED tests/test_ingest_snapshot.py::test_snapshot_incoming_edge_sig_captured
+PASSED tests/test_ingest_snapshot.py::test_snapshot_outgoing_edge_sig_captured
+PASSED tests/test_ingest_snapshot.py::test_snapshot_no_edges_produces_empty_sigs
+PASSED tests/test_ingest_snapshot.py::test_snapshot_stashed_on_workflow_metadata
+PASSED tests/test_ingest_snapshot.py::test_snapshot_survives_ir_mutation
+PASSED tests/test_ingest_snapshot.py::test_shape_dispatch_detects_ui_api_and_prompt_api_once
+PASSED tests/test_ingest_snapshot.py::test_ingest_never_mutates_caller_inputs
+PASSED tests/test_ingest_snapshot.py::test_workflow_snapshot_is_frozen_copy_with_canonical_hash
+PASSED tests/test_ingest_snapshot.py::test_prompt_api_wrapper_is_retained_as_sidecar
+PASSED tests/test_ingest_snapshot.py::test_unknown_node_opaque_data_survives_unrelated_projection
+PASSED tests/test_ingest_snapshot.py::test_session_turn_lineage_and_mixed_representation_reject
+PASSED tests/test_ingest_snapshot.py::test_model_python_render_uses_retained_snapshot_ir
+PASSED tests/test_ingest_snapshot.py::test_recovered_ensure_ingest_uses_retained_snapshot
+PASSED tests/test_m1_contracts.py::test_shared_m1_golden_projection_corpus
+PASSED tests/test_m1_contracts.py::test_typed_projection_rejects_malformed_graph_containers[None-structural_v1-nodes]
+PASSED tests/test_m1_contracts.py::test_typed_projection_rejects_malformed_graph_containers[None-structural_v1-links]
+PASSED tests/test_m1_contracts.py::test_typed_projection_rejects_malformed_graph_containers[None-layout_v1-nodes]
+PASSED tests/test_m1_contracts.py::test_typed_projection_rejects_malformed_graph_containers[None-layout_v1-groups]
+PASSED tests/test_m1_contracts.py::test_typed_projection_rejects_malformed_graph_containers[malformed1-structural_v1-nodes]
+PASSED tests/test_m1_contracts.py::test_typed_projection_rejects_malformed_graph_containers[malformed1-structural_v1-links]
+PASSED tests/test_m1_contracts.py::test_typed_projection_rejects_malformed_graph_containers[malformed1-layout_v1-nodes]
+PASSED tests/test_m1_contracts.py::test_typed_projection_rejects_malformed_graph_containers[malformed1-layout_v1-groups]
+PASSED tests/test_m1_contracts.py::test_typed_projection_rejects_duplicate_node_identities[structural_v1]
+PASSED tests/test_m1_contracts.py::test_typed_projection_rejects_duplicate_node_identities[layout_v1]
+PASSED tests/test_m1_contracts.py::test_typed_projection_uses_shared_validation_precedence[structural_v1]
+PASSED tests/test_m1_contracts.py::test_typed_projection_uses_shared_validation_precedence[layout_v1]
+PASSED tests/test_m1_contracts.py::test_typed_projection_canonicalizes_numeric_native_ids_like_browser
+PASSED tests/test_m1_contracts.py::test_typed_projection_native_numeric_identity_contract_is_integral_and_safe
+PASSED tests/test_m1_contracts.py::test_typed_projection_preserves_unknown_custom_node_types_and_fields
+PASSED tests/test_m1_contracts.py::test_native_projection_normalizes_host_ui_metadata_and_zero_widget_encodings
+PASSED tests/test_m1_contracts.py::test_load_image_projection_excludes_frontend_upload_widget_carriers
+PASSED tests/test_m1_contracts.py::test_delta_v1_and_prepared_authority_are_strict_and_immutable
+PASSED tests/test_m1_contracts.py::test_m1_static_authority_guardrails
+PASSED tests/test_m1_contracts.py::test_projection_reference_canonical_evidence_is_digest_bound
+PASSED tests/test_m1_contracts.py::test_layout_undo_and_legacy_policies_fail_closed
+PASSED tests/test_m1_contracts.py::test_candidate_authority_rejects_compensation
+PASSED tests/test_m1_contracts.py::test_candidate_authority_rejects_null_compensation
+PASSED tests/test_m1_contracts.py::test_prepared_authority_without_compensation_is_valid
+PASSED tests/test_m1_contracts.py::test_prepared_authority_with_valid_compensation_is_valid
+PASSED tests/test_m1_contracts.py::test_prepared_authority_compensation_fence_unbound
+PASSED tests/test_m1_contracts.py::test_prepared_authority_compensation_digest_mismatch
+PASSED tests/test_m1_contracts.py::test_prepared_authority_malformed_compensation
+PASSED tests/test_m1_contracts.py::test_persisted_operation_ops_is_rejected
+PASSED tests/test_m1_contracts.py::test_structural_family_missing_materialization_fails_closed
+PASSED tests/test_m1_contracts.py::test_layout_family_missing_layout_operation_fails_closed
+PASSED tests/test_m1_contracts.py::test_structural_family_unexpected_materialization_fails_closed
+PASSED tests/test_m1_contracts.py::test_c0_ownership_guards
+PASSED tests/test_m1_contracts.py::test_projection_resolves_named_port_with_validated_index_fallback
+PASSED tests/test_b18_browser_contract.py::test_b18_canonical_fixture_matches_checked_in_browser_vectors
+PASSED tests/test_b18_browser_contract.py::test_b18_python_fixture_retains_proto_as_data
+PASSED tests/test_cli_loader.py::test_load_workflow_any_accepts_basename_ready_id
+PASSED tests/test_cli_loader.py::test_load_workflow_any_accepts_slash_ready_id
+PASSED tests/test_cli_loader.py::test_load_workflow_any_accepts_scratchpad_path
+PASSED tests/test_cli_loader.py::test_load_workflow_any_accepts_workflow_directory
+PASSED tests/test_cli_loader.py::test_workflow_directory_load_preserves_companion_binding_after_scalar_edit
+PASSED tests/test_cli_loader.py::test_import_generated_folder_loads_and_validates_after_python_scalar_edit
+PASSED tests/test_cli_loader.py::test_workflow_directory_without_workflow_py_has_actionable_error
+PASSED tests/test_cli_loader.py::test_load_workflow_any_accepts_json_path
+PASSED tests/test_cli_loader.py::test_direct_file_loading_does_not_require_ready_discovery[.py]
+PASSED tests/test_cli_loader.py::test_direct_file_loading_does_not_require_ready_discovery[.json]
+PASSED tests/test_cli_loader.py::test_load_workflow_any_missing_id_raises_key_error
+PASSED tests/test_cli_loader.py::test_load_workflow_any_missing_path_raises_file_not_found
+PASSED tests/test_cli_loader.py::test_load_bundle_is_distinct_from_bare_compatibility_loader
+PASSED tests/test_cli_loader.py::test_load_bundle_imported_json_uses_offline_provider
+PASSED tests/test_cli_loader.py::test_load_bundle_imported_api_preserves_reserved_node_ids
+PASSED tests/test_cli_loader.py::test_load_bundle_prompt_identity_does_not_strip_inner_reserved_node
+PASSED tests/test_cli_loader.py::test_load_bundle_rejects_ambiguous_reserved_api_mapping
+PASSED tests/test_cli_loader.py::test_load_bundle_accepts_only_explicit_ephemeral_workflow
+PASSED tests/test_cli_loader.py::test_production_inspection_enters_bundle_boundary
+PASSED tests/test_cli_loader.py::test_run_command_blocks_bare_runtime_after_bundle_compile
+PASSED tests/test_cli_loader.py::test_run_preserves_parser_options_and_server_preflight
+PASSED tests/test_cli_loader.py::test_raw_run_failure_prints_safe_port_actions
+PASSED tests/test_cli_loader.py::test_real_raw_run_rejects_before_runtime[payload0]
+PASSED tests/test_cli_loader.py::test_real_raw_run_rejects_before_runtime[payload1]
+PASSED tests/test_cli_loader.py::test_real_raw_inspect_and_no_schema_validate_reject_before_consumption[payload0]
+PASSED tests/test_cli_loader.py::test_real_raw_inspect_and_no_schema_validate_reject_before_consumption[payload1]
+PASSED tests/test_cli_loader.py::test_raw_api_is_rejected_by_other_production_inspection_and_eval_consumers
+PASSED tests/test_cli_loader.py::test_validation_mints_one_approval_record_and_no_schema_stays_compat
+PASSED tests/test_cli_loader.py::test_validation_compile_failure_does_not_fall_back_to_bare_validation
+PASSED tests/test_cli_loader.py::test_image_op_approves_copy_then_fails_without_artifact
+PASSED tests/test_cli_loader.py::test_image_op_rejects_non_public_override
+PASSED tests/test_cli_loader.py::test_ops_bind_model_when_public_input_is_declared[image]
+PASSED tests/test_cli_loader.py::test_ops_bind_model_when_public_input_is_declared[t2v]
+PASSED tests/test_cli_loader.py::test_ops_bind_model_when_public_input_is_declared[i2v]
+PASSED tests/test_cli_loader.py::test_ops_leave_routing_model_out_when_not_public[image]
+PASSED tests/test_cli_loader.py::test_ops_leave_routing_model_out_when_not_public[t2v]
+PASSED tests/test_cli_loader.py::test_ops_leave_routing_model_out_when_not_public[i2v]
+PASSED tests/test_cli_loader.py::test_video_op_binds_only_public_inputs_before_t14
+PASSED tests/test_cli_loader.py::test_inspect_uses_record_without_bare_validation
+PASSED tests/test_cli_loader.py::test_inspect_compile_failure_is_nonzero_without_bare_validation
+PASSED tests/test_cli_loader.py::test_doctor_compile_failure_is_fail_closed
+PASSED tests/test_cli_loader.py::test_health_validation_status_comes_from_record
+PASSED tests/test_cli_loader.py::test_canonical_eval_message_is_t16_only
+PASSED tests/test_cli_loader.py::test_runtime_eval_and_queue_guards_fail_before_legacy_paths
+PASSED tests/test_cli_loader.py::test_warm_smoke_retains_two_records_and_never_starts_session
+PASSED tests/test_cli_loader.py::test_router_loader_is_selection_only
+XFAIL tests/test_ingest_snapshot.py::test_r5_mixed_ui_api_fixture_cannot_pair_representations_or_fabricate_removals - T0.1 freeze: UI/API source lineage is currently collapsed at ingest
+FAILED tests/test_cli_loader.py::test_raw_json_is_bound_import_evidence_and_cannot_be_rebundled_as_authority[raw-api.json-payload0]
+FAILED tests/test_cli_loader.py::test_raw_json_is_bound_import_evidence_and_cannot_be_rebundled_as_authority[raw-ui.json-payload1]
+FAILED tests/test_cli_loader.py::test_run_binds_public_inputs_without_mutating_candidate
+3 failed, 113 passed, 1 xfailed, 8 warnings in 23.00s
