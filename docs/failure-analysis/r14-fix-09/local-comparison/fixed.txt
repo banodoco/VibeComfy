@@ -1,0 +1,2 @@
+tests/test_workflow_bundle_imports.py::test_loading_official_json_bundle_does_not_load_node_library[image/z_image.json]
+tests/test_workflow_bundle_imports.py::test_loading_official_json_bundle_does_not_load_node_library[video/ltx2_3_t2v.json]

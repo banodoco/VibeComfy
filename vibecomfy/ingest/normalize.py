@@ -3107,8 +3107,8 @@ def _from_api_impl(
     # UI-only annotations (MarkdownNote, Note) never reach a server, so they
     # are not missing: emit drops them, and counting them here made every
     # ready_template re-emit of a noted workflow fail its semantic digest.
-    # Imported here because the emit package imports ingest.
-    from vibecomfy.porting.emit.emit_constants import UI_ONLY_CLASS_TYPES
+    # Shared leaf keeps JSON ingest independent of emitter initialization.
+    from vibecomfy.ui_constants import UI_ONLY_CLASS_TYPES
 
     missing_nodes = set(str(item) for item in workflow.requirements.missing_nodes)
     for node in workflow.nodes.values():

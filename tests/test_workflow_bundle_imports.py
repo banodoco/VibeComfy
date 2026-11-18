@@ -186,3 +186,50 @@ assert not loaded, loaded
 
 def test_nonempty_v2_presentation_does_not_load_node_library() -> None:
     _assert_lightweight_imports(_NONEMPTY_V2_PRESENTATION_PROBE)
+
+
+@pytest.mark.parametrize("relative_path", ["image/z_image.json", "video/ltx2_3_t2v.json"])
+def test_loading_official_json_bundle_does_not_load_node_library(relative_path: str) -> None:
+    _assert_lightweight_imports(
+        f"""
+        import json
+        from pathlib import Path
+
+        from vibecomfy.cli_loader import load_bundle
+
+        source = Path("ready_templates/sources/official") / {relative_path!r}
+        bundle = load_bundle(source)
+        assert bundle.workflow.id == json.loads(source.read_text(encoding="utf-8"))["id"]
+        assert bundle.workflow.nodes
+        assert bundle.workflow.edges
+        from vibecomfy.ingest.snapshot import snapshot_of
+
+        snapshot = snapshot_of(bundle.workflow)
+        assert snapshot.source_representation == "ui"
+        assert snapshot.workflow is not bundle.workflow
+        assert snapshot.semantic_digest
+        """
+    )
+
+
+def test_importing_contract_primitives_does_not_load_node_library() -> None:
+    _assert_lightweight_imports(
+        """
+        from vibecomfy._canonical_contract_primitives import canonical_json_bytes_v1
+
+        assert canonical_json_bytes_v1({"b": 2, "a": 1}) == b'{"a":1,"b":2}'
+        """
+    )
+
+
+def test_agent_contract_primitives_reexport_the_same_objects() -> None:
+    from vibecomfy import _canonical_contract_primitives as shared
+    from vibecomfy.comfy_nodes.agent import _canonical_contract_primitives as compatibility
+    from vibecomfy.comfy_nodes.agent import projection_registry_v1 as registry
+
+    assert compatibility.__all__ is shared.__all__
+    for name in shared.__all__:
+        assert getattr(compatibility, name) is getattr(shared, name), name
+    assert registry.ContractError is shared.ContractError
+    assert registry.canonical_json is shared.canonical_json
+    assert registry.canonical_json_bytes_v1 is shared.canonical_json_bytes_v1

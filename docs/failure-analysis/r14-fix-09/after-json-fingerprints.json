@@ -1,0 +1,24 @@
+[
+  {
+    "bundle_semantic_digest": "012184141365cdfa5d8fb8a46f9f910f88951d80192c67b89199e119ec0ece57",
+    "edges": 10,
+    "forbidden_roots_loaded": [],
+    "nodes": 14,
+    "snapshot_semantic_digest": "b6834601ce1fde96f8706d9813ed68994c16fd6f40fa462c8d817a35ecabbcc9",
+    "snapshot_source_representation": "ui",
+    "source": "ready_templates/sources/official/image/z_image.json",
+    "source_sha256": "888c112fc224ca73a27273f5aed8fbe3fee411f219a709b65da206b31d445980",
+    "workflow_id": "9ae6082b-c7f4-433c-9971-7a8f65a3ea65"
+  },
+  {
+    "bundle_semantic_digest": "8e57cae6a493915242be2fe0e5fd648fd17557d8fad0f5d2499916a25e8f1fa5",
+    "edges": 68,
+    "forbidden_roots_loaded": [],
+    "nodes": 48,
+    "snapshot_semantic_digest": "a5bb9a685d1f972d69b704932b25a8b4fce363e3d7126440c52beb30db2fe8fe",
+    "snapshot_source_representation": "ui",
+    "source": "ready_templates/sources/official/video/ltx2_3_t2v.json",
+    "source_sha256": "0d6ea69dc57324ce3f53e3d69f81ecac19c7f71af977fe32506b50c82c03cbfa",
+    "workflow_id": "07824bbb-6672-4bb0-ac36-4313a519e35b"
+  }
+]

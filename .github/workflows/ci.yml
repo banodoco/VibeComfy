@@ -51,6 +51,9 @@ jobs:
       - name: Install bundle-reader test dependencies
         run: python -m pip install -e ".[dev]" numpy pillow
 
+      - name: Enforce IR boundary without the runtime install
+        run: python scripts/check_ir_boundary.py
+
       - name: Prove bundle reads avoid the node library
         run: >-
           python -m pytest -q -rA --tb=short
@@ -60,6 +63,52 @@ jobs:
           tests/test_workflow_bundle.py::test_rewriting_existing_pair_preserves_authored_presentation
           tests/test_workflow_bundle.py::test_v2_annotations_bind_scope_and_owner_and_materialize_content
           tests/test_workflow_bundle.py::test_presentation_collision_remint_keeps_semantic_link_endpoints
+
+  workflow-loading-compatibility:
+    name: workflow loading compatibility (${{ matrix.os }}, ${{ matrix.revision }})
+    if: github.event_name == 'pull_request'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        revision: [base, candidate]
+    steps:
+      - name: Check out the exact comparison revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.revision == 'base' && github.event.pull_request.base.sha || github.event.pull_request.head.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install workflow-loading test dependencies
+        run: python -m pip install -e ".[dev]" numpy pillow
+
+      - name: Prove snapshot and canonical-contract compatibility
+        run: >-
+          python -m pytest -q -rA --tb=short
+          tests/test_ingest_snapshot.py
+          tests/test_m1_contracts.py
+          tests/test_b18_browser_contract.py
+          --junitxml=workflow-loading-contracts.xml
+
+      - name: Run all CLI loader tests with existing failures visible
+        if: ${{ !cancelled() }}
+        run: >-
+          python -m pytest -q -rA --tb=short tests/test_cli_loader.py
+          --junitxml=workflow-loading-cli.xml
+
+      - name: Retain per-test compatibility results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workflow-loading-${{ matrix.os }}-${{ matrix.revision }}
+          path: workflow-loading-*.xml
+          if-no-files-found: error
 
   test:
     runs-on: ubuntu-latest
@@ -87,7 +136,7 @@ jobs:
         # Makefile is the local/GitHub contract for repo hygiene, the bounded
         # fast Python tier, browser smoke, snapshot freshness, the Comfy
         # oracle, and the IR boundary checker.
-        run: make PYTHON=.venv/bin/python ci
+        run: make PYTHON=.venv/bin/python PYTEST=".venv/bin/python -m pytest -rA" ci
 
       - name: Upload coverage artifact
         if: always()
