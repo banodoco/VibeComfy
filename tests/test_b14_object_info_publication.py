@@ -375,3 +375,55 @@ def test_concurrent_consumer_reads_refresh_after_publication(
     for worker in workers:
         worker.join()
     assert results == [["IMAGE"], ["IMAGE"]]
+
+
+def test_hotshot_generator_publishes_to_warm_reader(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts import generate_hotshot_stub_schema as hotshot
+
+    monkeypatch.setattr(hotshot, "REPO_ROOT", tmp_path)
+    cache = tmp_path / "vibecomfy" / "porting" / "cache" / "object_info"
+    build_cache(_source(tmp_path / "one.json", "One"), version="v1", cache_dir=cache)
+    _use_cache(monkeypatch, cache)
+    workflows = tmp_path / "external_workflows" / ".shadow" / "source"
+    workflows.mkdir(parents=True)
+    workflow = workflows / "hotshot.json"
+    for node in ["StubOne", "StubTwo"]:
+        assert consume.get_class(node) is None
+        workflow.write_text(json.dumps({"nodes": [{"type": node}]}), encoding="utf-8")
+        assert hotshot.main() == 0
+        assert consume.get_class(node)["source_kind"] == "workflow_json_stub"
+    assert consume.get_class("StubOne")["pack_version"] == "stub"
+    assert consume.output_names("One") == ["IMAGE"]
+
+
+def test_class_lookup_mutations_leave_pinned_capture_intact(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    cache = tmp_path / "cache"
+    identity = {"pack_slug": "custom_nodes.Pack", "git_commit": "pinned"}
+    build_cache(
+        _source(tmp_path / "one.json", "One"), version="v1", cache_dir=cache,
+        identity=CacheIdentity(pack_version="v1", **identity),
+    )
+    _use_cache(monkeypatch, cache)
+    for entry in (
+        consume.get_class("One"),
+        consume.get_classes(["One"])["One"],
+        consume.get_class_by_identity("One", **identity),
+    ):
+        entry["outputs"][0]["name"] = "changed"
+        assert consume.get_class_by_identity("One", **identity)["outputs"][0]["name"] == "IMAGE"
+
+
+def test_extracted_replacement_clears_previous_shard_attestation(tmp_path: Path) -> None:
+    cache = tmp_path / "cache"
+    build_cache(_source(tmp_path / "one.json", "One"), version="v1", cache_dir=cache)
+    build_cache(_source(tmp_path / "two.json", "Two", pack="Other"), version="v1", cache_dir=cache)
+    filename = "custom_nodes.Pack@v1.json"
+    prior = json.loads((serialize.active_cache_root(cache) / "provenance.json").read_text())["packs"]
+    assert prior[filename]["schema_sha256"]
+    assert prior[filename]["classes"] == 1
+
+    serialize.publish_extracted_shards(cache, {filename: {"New": {}, "Another": {}}})
+
+    current = json.loads((serialize.active_cache_root(cache) / "provenance.json").read_text())
+    assert current["packs"] == {k: v for k, v in prior.items() if k != filename}
+    assert current["class_count"] == 3

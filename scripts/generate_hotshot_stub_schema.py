@@ -9,7 +9,16 @@ harness can instantiate those nodes during agent edits.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from vibecomfy.porting.object_info.generation import active_cache_root, read_json
+from vibecomfy.porting.object_info.serialize import cache_publish_transaction, publish_extracted_shards
 
 
 def _widget_type(value: object) -> str:
@@ -22,14 +31,10 @@ def _widget_type(value: object) -> str:
     return "STRING"
 
 
-def _build_stubs() -> dict[str, dict[str, object]]:
-    repo_root = Path(__file__).resolve().parents[1]
-    stub_dir = repo_root / "vibecomfy" / "porting" / "cache" / "object_info"
-    index = json.loads((stub_dir / "index.json").read_text(encoding="utf-8"))
-
+def _build_stubs(index: dict) -> dict[str, dict[str, object]]:
     schemas: dict[str, dict[str, object]] = {}
 
-    for path in sorted((repo_root / "external_workflows" / ".shadow" / "source").glob("*hotshot*.json")):
+    for path in sorted((REPO_ROOT / "external_workflows" / ".shadow" / "source").glob("*hotshot*.json")):
         data = json.loads(path.read_text(encoding="utf-8"))
         nodes = data.get("nodes")
         if isinstance(nodes, dict):
@@ -106,33 +111,21 @@ def _build_stubs() -> dict[str, dict[str, object]]:
 
 
 def main() -> int:
-    repo_root = Path(__file__).resolve().parents[1]
-    stub_dir = repo_root / "vibecomfy" / "porting" / "cache" / "object_info"
-    index_path = stub_dir / "index.json"
-    index = json.loads(index_path.read_text(encoding="utf-8"))
+    cache = REPO_ROOT / "vibecomfy" / "porting" / "cache" / "object_info"
+    filename = "ComfyUI-Hotshot@stub.json"
+    with cache_publish_transaction(cache):
+        root = active_cache_root(cache)
+        stubs = _build_stubs(read_json(root, "index.json"))
+        if not stubs:
+            print("No new stub classes to add.")
+            return 0
 
-    stubs = _build_stubs()
-    if not stubs:
-        print("No new stub classes to add.")
-        return 0
+        existing = read_json(root, filename, required=False) or {}
+        merged = {**existing, **stubs}
+        publish_extracted_shards(cache, {filename: merged})
 
-    stub_file = stub_dir / "ComfyUI-Hotshot@stub.json"
-    existing = {}
-    if stub_file.exists():
-        existing = json.loads(stub_file.read_text(encoding="utf-8"))
-        if not isinstance(existing, dict):
-            existing = {}
-
-    # Merge, preferring freshly inferred signatures.
-    merged = {**existing, **stubs}
-    stub_file.write_text(json.dumps(merged, indent=2, sort_keys=True), encoding="utf-8")
-
-    for class_type in merged:
-        index[class_type] = "ComfyUI-Hotshot@stub.json"
-    index_path.write_text(json.dumps(index, indent=2, sort_keys=True), encoding="utf-8")
-
-    print(f"Wrote {len(merged)} stub class(es) to {stub_file}")
-    print(f"Updated {index_path}")
+    print(f"Wrote {len(merged)} stub class(es) to {cache / filename}")
+    print(f"Updated {cache / 'index.json'}")
     return 0
 
 

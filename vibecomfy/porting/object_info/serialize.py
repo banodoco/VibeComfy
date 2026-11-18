@@ -857,6 +857,9 @@ def publish_extracted_shards(cache_root: Path, shards: dict[str, dict]) -> None:
         index = {name: filename for name, filename in index.items() if filename not in shards}
         for filename, entries in shards.items():
             validate_provider_filename(filename)
+            # The extractor supplies new contents without attesting their provenance.
+            if isinstance(provenance.get("packs"), dict):
+                provenance["packs"].pop(filename, None)
             providers[filename] = entries
             index.update(dict.fromkeys(entries, filename))
         _publish_cache_state(

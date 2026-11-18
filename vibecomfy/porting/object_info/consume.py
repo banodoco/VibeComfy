@@ -347,11 +347,11 @@ def get_class(class_type: str) -> dict[str, Any] | None:
 
     entry = _resolve_class_type(class_type)
     if entry is not None:
-        return entry
+        return copy.deepcopy(entry)
     curated_outputs = _CURATED_OUTPUTS.get(class_type)
     if curated_outputs is None:
         return None
-    return {"outputs": curated_outputs}
+    return {"outputs": copy.deepcopy(curated_outputs)}
 
 
 @contextmanager
@@ -379,7 +379,7 @@ def class_entry_snapshot(class_types: Iterable[str]):
         if outer_token is not None:
             _CLASS_ENTRY_SNAPSHOT.reset(outer_token)
     state = _ClassEntrySnapshot(
-        entries=MappingProxyType(copy.deepcopy(resolved)),
+        entries=MappingProxyType(resolved),
         misses=frozenset(set(requested) - set(resolved)),
     )
     token = _CLASS_ENTRY_SNAPSHOT.set(state)
@@ -419,7 +419,7 @@ def get_classes(class_types: Iterable[str]) -> dict[str, dict[str, Any]]:
                 resolved[class_type] = entry
             elif class_type in _CURATED_OUTPUTS:
                 resolved[class_type] = {"outputs": _CURATED_OUTPUTS[class_type]}
-        return resolved
+        return copy.deepcopy(resolved)
 
 
 def resolve_class_entry(
