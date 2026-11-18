@@ -5,6 +5,8 @@ import asyncio
 import copy
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+import json
+import math
 from pathlib import Path
 import statistics
 import time
@@ -223,7 +225,7 @@ def test_prefix_containment_is_separate_from_comfy_schema_authority():
             session.fill(handle, {"prefix": prefix}, attempt_id="attempt", context=context())
 
 
-def test_fill_latency_under_five_milliseconds(capsys):
+def test_fill_latency_under_five_milliseconds(capsys, record_property):
     bundle, provider = tiny()
     ctx = context()
     session = PreparedWorkflowSession(ctx)
@@ -234,8 +236,25 @@ def test_fill_latency_under_five_milliseconds(capsys):
         record, frozen = session.fill(handle, {"seed": index, "text": f"text-{index}"}, attempt_id="attempt", context=ctx)
         elapsed.append((time.perf_counter_ns() - start) / 1e6)
         assert record.api_projection["1"]["inputs"]["seed"] == index
+    ordered = sorted(elapsed)
+    over_budget = [{"index": index, "elapsed_ms": value}
+                   for index, value in enumerate(elapsed) if value > 5]
+    metrics = {
+        "samples": len(elapsed),
+        "median_ms": statistics.median(elapsed),
+        "p99_ms": ordered[math.ceil(0.99 * len(ordered)) - 1],
+        "percentile_method": "nearest-rank",
+        "max_ms": max(elapsed),
+        "over_five_ms_count": len(over_budget),
+        "over_five_ms": over_budget,
+    }
+    record_property("fill_latency", json.dumps(metrics, sort_keys=True))
+    print(metrics)
+    assert len(elapsed) >= 1000, metrics
+    assert metrics["median_ms"] < 5, metrics
+    assert metrics["p99_ms"] < 5, metrics
+    assert len(over_budget) * 100 <= len(elapsed), metrics
     assert max(elapsed) < 5, {"median_ms": statistics.median(elapsed), "max_ms": max(elapsed)}
-    print({"samples": len(elapsed), "median_ms": statistics.median(elapsed), "max_ms": max(elapsed)})
 
 
 def test_source_and_companion_bytes_change_the_key_and_stale_ir_cannot_admit(tmp_path):
