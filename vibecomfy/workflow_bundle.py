@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import ast
 import copy
+import functools
 import hashlib
 import json
 import logging
@@ -3244,6 +3245,27 @@ def _destination_path(destination: str | Path, workflow: VibeWorkflow) -> Path:
     return path
 
 
+def _with_bundle_object_info_snapshot(func):
+    """Hold one full-content class view across a canonical pair emission."""
+    @functools.wraps(func)
+    def wrapped(workflow: VibeWorkflow, *args: Any, **kwargs: Any):
+        if not isinstance(workflow, VibeWorkflow):
+            return func(workflow, *args, **kwargs)
+        from vibecomfy.porting.object_info.consume import class_entry_snapshot
+
+        classes = {str(node.class_type) for node in workflow.nodes.values()}
+        if workflow.definitions:
+            classes.update(
+                str(node["class_type"])
+                for node in workflow._semantic_definition_nodes(workflow.definitions)
+            )
+        with class_entry_snapshot(classes):
+            return func(workflow, *args, **kwargs)
+
+    return wrapped
+
+
+@_with_bundle_object_info_snapshot
 def emit_bundle(
     workflow: VibeWorkflow,
     destination: str | Path,
@@ -3957,6 +3979,7 @@ def _preserve_python_source_with_marker(
     return result
 
 
+@_with_bundle_object_info_snapshot
 def emit_bundle_with_candidate(
     workflow: VibeWorkflow,
     destination: str | Path,

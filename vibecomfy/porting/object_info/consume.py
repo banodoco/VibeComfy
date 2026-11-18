@@ -306,6 +306,11 @@ def _all_pack_filenames() -> list[str]:
 
 
 def _resolve_class_type(class_type: str) -> dict[str, Any] | None:
+    # Every scalar helper must use the operation's admitted class set.  Going
+    # directly to the reader here both rehashed the same providers per node and
+    # could mix a newly published generation into an in-progress emission.
+    if _CLASS_ENTRY_SNAPSHOT.get() is not None:
+        return get_class(class_type)
     with _reader_lock:
         idx = _load_index()
         filename = idx.get(class_type)
