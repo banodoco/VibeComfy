@@ -16,12 +16,19 @@ from vibecomfy.model_assets import _subdir_for_model_reference
 from vibecomfy.schema.provider import TargetSchemaProvider
 from vibecomfy.security.provenance import Provenance
 from vibecomfy.testing.canonical import canonical_bytes
-from vibecomfy.workflow_bundle import load_bundle
+from vibecomfy.workflow_bundle import WorkflowBundleError, load_bundle
 
 
 ROOT = Path(__file__).resolve().parents[1]
 INVENTORY_PATH = ROOT / "tests/fixtures/prepared_default_target_inventory.json"
 DEFAULTS = tuple(json.loads(INVENTORY_PATH.read_text())["defaults"])
+# Lead decision #796/6964652193 routes these pre-existing source/schema
+# defects separately. They must remain refusals on BOTH paths with identical
+# exception type and message; the other eight retain exact API equality.
+REFUSED_DEFAULTS = frozenset({
+    "edit/qwen_image_edit", "image/qwen_image_2512",
+    "video/ltx2_3_i2v", "video/ltx2_3_runexx_first_last_frame", "video/ltx2_3_t2v",
+})
 TARGET_URL = "http://ls4-fixture-target.invalid:8188"
 SCHEMA_CAPTURES = (
     "comfy_core@cpu-runtime.json",
@@ -108,9 +115,17 @@ def test_default_full_bundle_compile(template_id, recorded_target, tmp_path, rec
     bundle, provider, values = target_case(template_id, recorded_target)
     record_property("target_schema_digest", provider._object_info_digest)
     record_property("inventory_source_revision", recorded_target[1]["source_revision"])
-    full_default = bundle.compile(run_inputs=values, schema_provider=provider, models_root=tmp_path)
-    record_property("default_full_compile_digest", full_default.api_digest)
-    assert full_default.api_projection
+    if template_id in REFUSED_DEFAULTS:
+        with pytest.raises(WorkflowBundleError) as refusal:
+            bundle.compile(run_inputs=values, schema_provider=provider, models_root=tmp_path)
+        record_property("full_compile_outcome", "refused")
+        record_property("full_compile_error", str(refusal.value))
+        record_property("full_compile_error_type", type(refusal.value).__name__)
+    else:
+        full_default = bundle.compile(run_inputs=values, schema_provider=provider, models_root=tmp_path)
+        record_property("full_compile_outcome", "approved")
+        record_property("default_full_compile_digest", full_default.api_digest)
+        assert full_default.api_projection
     assert not list(tmp_path.iterdir())
 
 
@@ -129,6 +144,20 @@ def test_default_matches_real_bundle_compile_with_selected_target(
 
     ctx = context(target_identity=TARGET_URL, schema_digest=provider._object_info_digest)
     session = PreparedWorkflowSession(ctx)
+    if template_id in REFUSED_DEFAULTS:
+        with pytest.raises(WorkflowBundleError) as full_refusal:
+            bundle.compile(run_inputs=values, schema_provider=provider, models_root=tmp_path)
+        with pytest.raises(WorkflowBundleError) as prepared_refusal:
+            session.prepare(bundle, inputs=values, schema_provider=provider)
+        assert type(prepared_refusal.value) is type(full_refusal.value)
+        assert str(prepared_refusal.value) == str(full_refusal.value)
+        record_property("prepared_full_outcome", "identical-refusal")
+        record_property("full_compile_error", str(full_refusal.value))
+        record_property("prepared_compile_error", str(prepared_refusal.value))
+        record_property("full_compile_error_type", type(full_refusal.value).__name__)
+        record_property("prepared_compile_error_type", type(prepared_refusal.value).__name__)
+        assert not list(tmp_path.iterdir())
+        return
     handle = session.prepare(bundle, inputs=values, schema_provider=provider)
     record, _ = session.fill(handle, values, attempt_id="target-proof", context=ctx)
     record_property("prepared_compile_digest", record.api_digest)
@@ -137,6 +166,7 @@ def test_default_matches_real_bundle_compile_with_selected_target(
         run_inputs=bindings, schema_provider=provider, models_root=tmp_path,
     )
     record_property("job_full_compile_digest", full_job.api_digest)
+    record_property("prepared_full_outcome", "byte-identical")
     assert canonical_bytes(record.api_projection) == canonical_bytes(full_job.api_projection)
     assert record.api_digest == full_job.api_digest
     assert not list(tmp_path.iterdir())  # No local model download or model-byte stand-in.

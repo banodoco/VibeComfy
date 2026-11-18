@@ -54,6 +54,16 @@ class WorkflowBundleError(ValueError):
     """Raised when a bundle cannot be loaded or fails a closed boundary."""
 
 
+def _raise_approval_schema_errors(schema_issues: list[Any]) -> None:
+    """Keep the full compiler's error precedence and message at admission."""
+    errors = [issue for issue in schema_issues if getattr(issue, "severity", "error") == "error"]
+    if errors:
+        missing = [issue for issue in errors if issue.code == "missing_required_input"]
+        raise WorkflowBundleError(
+            "; ".join(str(issue.message) for issue in missing) if missing else str(errors[0].message)
+        )
+
+
 class WorkflowReconciliationError(WorkflowBundleError):
     """A canonical graph cannot compile until its missing classes are resolved."""
 
@@ -2830,10 +2840,7 @@ class WorkflowBundle:
             raise WorkflowBundleError(
                 f"local schema validation failed: {type(exc).__name__}: {exc}"
             ) from exc
-        errors = [issue for issue in schema_issues if getattr(issue, "severity", "error") == "error"]
-        if errors:
-            missing = [issue for issue in errors if issue.code == "missing_required_input"]
-            raise WorkflowBundleError("; ".join(str(issue.message) for issue in missing) if missing else str(errors[0].message))
+        _raise_approval_schema_errors(schema_issues)
         ui_projection = self.materialize_ui(schema_provider=schema_provider)
         return ApprovedProjectionRecord(
             revision_id=self.revision_id,

@@ -28,7 +28,7 @@ from vibecomfy.testing.canonical import canonical_bytes, canonical_digest
 from vibecomfy.workflow import VibeWorkflow, _is_ui_only_prompt_input, _node_input_socket_type
 from vibecomfy.workflow_bundle import (
     ApprovedProjectionRecord, WorkflowBundle, WorkflowBundleError,
-    _freeze_json, _rebind_current_bundle, _thaw_json,
+    _freeze_json, _raise_approval_schema_errors, _rebind_current_bundle, _thaw_json,
 )
 
 
@@ -702,6 +702,15 @@ class PreparedWorkflowSession:
                 _bind_model_spellings(sample_api, spellings)
                 issues = [*validate_api_against_schema(sample_api, schema_provider, require_explicit_required=True),
                           *validate_api_link_shapes(sample_api, schema_provider)]
+                # A missing or unknown API input cannot be repaired by filling
+                # this fixed template. Refuse that target surface at admission
+                # with the same error as full approval, before issuing a handle.
+                # Range, model-presence and link diagnostics remain advisory;
+                # no schema check is repeated for individual jobs.
+                _raise_approval_schema_errors([
+                    issue for issue in issues
+                    if issue.code in {"missing_required_input", "unknown_input"}
+                ])
                 for issue in issues:
                     diagnostic = {"code": str(issue.code), "message": str(issue.message), "severity": "warning"}
                     diagnostics.append(_freeze_json(diagnostic))
