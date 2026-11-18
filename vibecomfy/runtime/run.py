@@ -249,7 +249,8 @@ def _allocate_run_dir(
 
 
 def _bind_downloaded_lifecycle_artifacts(
-    artifacts: list[dict[str, Any]], local_root: Path, *, download_source: str = "runpod_lifecycle"
+    artifacts: list[dict[str, Any]], local_root: Path, *, download_source: str = "runpod_lifecycle",
+    output_receipts: Mapping[str, Any] | None = None, prompt_id: str | None = None,
 ) -> int:
     """Attach safe local paths to attributed artifacts pulled by a transport."""
     root = local_root.resolve(strict=False)
@@ -274,6 +275,13 @@ def _bind_downloaded_lifecycle_artifacts(
                 artifact["path"] = str(candidate)
                 artifact["downloaded_path"] = str(candidate)
                 artifact["download_source"] = download_source
+                if output_receipts is not None:
+                    from .output_receipts import collect_receipt
+                    receipt = output_receipts.get(candidate.relative_to(root).as_posix())
+                    if not isinstance(receipt, Mapping):
+                        raise ValueError("attributed output has no collection receipt")
+                    artifact["output_receipt"] = collect_receipt(candidate, prompt_id=prompt_id,
+                        descriptor=artifact.get("descriptor"), receipt=receipt)
                 bound += 1
                 break
     return bound
@@ -879,6 +887,7 @@ async def _run_impl(
                         raise ValueError("artifact client returned a different custody root")
                     if _bind_downloaded_lifecycle_artifacts(
                         artifacts, retrieved_root, download_source="external_http",
+                        output_receipts=retrieval.get("output_receipts"), prompt_id=prompt_id,
                     ) < len(artifacts):
                         raise ValueError("artifact client did not retrieve every accepted output")
                 except Exception as exc:

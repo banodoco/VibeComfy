@@ -911,6 +911,7 @@ def _build_managed_generation_result(
     indexed.sort(key=lambda item: item[:3])
 
     output_rows: list[dict[str, Any]] = []
+    output_receipts: dict[str, Any] = {}
     unavailable: list[dict[str, Any]] = []
     custody_root = run_dir.resolve(strict=False)
     for ordinal, (_declaration_ordinal, _reported, _index, artifact, declaration) in enumerate(indexed):
@@ -925,6 +926,9 @@ def _build_managed_generation_result(
             source = Path(raw_path).expanduser().resolve(strict=True)
             if not source.is_file():
                 raise OSError("artifact path is not a file")
+            from .output_receipts import collect_receipt, copied_receipt, _identity
+            receipt = collect_receipt(source, prompt_id=metadata.get("prompt_id"),
+                descriptor=artifact.get("descriptor"), receipt=artifact.get("output_receipt"))
             try:
                 relative = source.relative_to(custody_root)
             except ValueError:
@@ -937,16 +941,14 @@ def _build_managed_generation_result(
                 destination = destination.resolve(strict=False)
                 destination.relative_to(custody_root)
                 destination.parent.mkdir(parents=True, exist_ok=True)
+                before_copy = _identity(source)
                 shutil.copyfile(source, destination)
+                if _identity(source) != before_copy:
+                    raise OSError("artifact changed while copying")
+                receipt = copied_receipt(destination, receipt)
                 relative = destination.relative_to(custody_root)
             staged = custody_root / relative
-            size_before = staged.stat().st_size
-            digest = hashlib.sha256()
-            with staged.open("rb") as handle:
-                for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-                    digest.update(chunk)
-            if staged.stat().st_size != size_before:
-                raise OSError("artifact changed while hashing")
+            size_before = receipt["bytes"]
         except (OSError, ValueError, UnicodeError, RuntimeNodeError) as exc:
             unavailable.append({
                 "reported_path": artifact.get("reported_path"),
@@ -967,6 +969,7 @@ def _build_managed_generation_result(
             })
             continue
         producer_output_id = f"vibecomfy:{output_port}:{ordinal}"
+        output_receipts[relative.as_posix()] = receipt
         output_rows.append({
             "producer_output_id": producer_output_id,
             "output_port": output_port,
@@ -974,7 +977,7 @@ def _build_managed_generation_result(
             "path": relative.as_posix(),
             "media_type": media_type,
             "bytes": size_before,
-            "sha256": digest.hexdigest(),
+            "sha256": receipt["sha256"],
         })
 
     if unavailable or len(output_rows) != len(indexed):
@@ -998,6 +1001,7 @@ def _build_managed_generation_result(
         if key not in {"managed_generation_result"}
     }
     producer = {
+        "output_receipts": output_receipts,
         "runtime": dict(evidence),
         "prompt_history": {
             "prompt_id": metadata.get("prompt_id"),
