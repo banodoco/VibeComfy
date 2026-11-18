@@ -1,0 +1,195 @@
+{
+  "description": "Synthetic selected-target inventory fixed from reviewed a7f9dc2 source declarations; it is not a real installed GPU inventory. Nested picker spellings deliberately use backslashes. Auxiliary identities are explicitly declared by this fixture, not inferred from the candidate at test time.",
+  "source_revision": "a7f9dc2e4a5284bfe4b7078d8a27a7145b3e7933",
+  "picker_choices": {
+    "checkpoints": [
+      "LTX23_audio_vae_bf16_KJ.safetensors",
+      "ltx-2.3-22b-dev-fp8.safetensors",
+      "ltx-2.3-22b-dev.safetensors"
+    ],
+    "diffusion_models": [
+      "LTXVideo\\v2\\ltx-2.3-22b-distilled-1.1_transformer_only_fp8_scaled.safetensors",
+      "acestep_v1.5_turbo.safetensors",
+      "minimax_music3_dit_int8_convrot.safetensors",
+      "qwen_image_2.1_turbo_int8_convrot.safetensors",
+      "qwen_image_2512_fp8_e4m3fn.safetensors",
+      "qwen_image_edit_fp8_e4m3fn.safetensors",
+      "z_image_turbo_bf16.safetensors"
+    ],
+    "hunyuan_foley": [
+      "hunyuanvideo_foley_xl.pth",
+      "vae_128d_48k.pth"
+    ],
+    "loras": [
+      "LTX\\v2\\ltx-2.3-22b-distilled-1.1_lora-dynamic_fro09_avg_rank_111_bf16.safetensors",
+      "Qwen-Image-2512-Lightning-4steps-V1.0-fp32.safetensors",
+      "Qwen-Image-Edit-Lightning-4steps-V1.0-bf16.safetensors",
+      "ltxv\\ltx2\\ltx-2.3-22b-distilled-lora-384-1.1.safetensors"
+    ],
+    "text_encoders": [
+      "comfy_gemma_3_12B_it.safetensors",
+      "gemma_3_12B_it_fp8_scaled.safetensors",
+      "ltx-2.3_text_projection_bf16.safetensors",
+      "minimax_music3_text_encoder_pruned_int8_convrot.safetensors",
+      "qwen3vl_8b_int8_convrot.safetensors",
+      "qwen_0.6b_ace15.safetensors",
+      "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "qwen_3_4b.safetensors",
+      "qwen_4b_ace15.safetensors"
+    ],
+    "vae": [
+      "LTX23_video_vae_bf16_KJ.safetensors",
+      "ace_1.5_vae.safetensors",
+      "ae.safetensors",
+      "minimax_music3_dav.safetensors",
+      "qwen_image_2.1_vae_bf16.safetensors",
+      "qwen_image_vae.safetensors",
+      "vae_approx\\taeltx2_3.safetensors"
+    ],
+    "latent_upscale_models": [
+      "ltx-2.3-spatial-upscaler-x2-1.1.safetensors"
+    ]
+  },
+  "target_model_assets": [
+    {
+      "name": "config.json",
+      "subdir": "TTS/Qwen3-TTS/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+      "sha256": "81aca2b6fac304944d8acf345272d8a9a727d5fc2e2e66b222ab4729340c7455",
+      "size": 4908
+    },
+    {
+      "name": "generation_config.json",
+      "subdir": "TTS/Qwen3-TTS/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+      "sha256": "f1b90b4513f3b34c62851049e2492d7b4c5940daf1276f89c82b8ef04127f3aa",
+      "size": 245
+    },
+    {
+      "name": "merges.txt",
+      "subdir": "TTS/Qwen3-TTS/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+      "sha256": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3",
+      "size": 1671839
+    },
+    {
+      "name": "model.safetensors",
+      "subdir": "TTS/Qwen3-TTS/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+      "sha256": "bc3c7e785eb961179c25450d1acff03f839e0002f2f3a5aeb67b5735c0fa2adb",
+      "size": 1811626576
+    },
+    {
+      "name": "preprocessor_config.json",
+      "subdir": "TTS/Qwen3-TTS/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+      "sha256": "efdde1022ea9d76928bf7a9cd53139138f5ba2e466e837f08f6105ab1af1c119",
+      "size": 127
+    },
+    {
+      "name": "tokenizer_config.json",
+      "subdir": "TTS/Qwen3-TTS/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+      "sha256": "dc3c31c3bdaedd5016382bb3cbe07323026775ad51f5a4fb564505992ae4a670",
+      "size": 7344
+    },
+    {
+      "name": "vocab.json",
+      "subdir": "TTS/Qwen3-TTS/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+      "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+      "size": 2776833
+    },
+    {
+      "name": "config.json",
+      "subdir": "TTS/Qwen3-TTS/Qwen3-TTS-12Hz-0.6B-CustomVoice/speech_tokenizer",
+      "sha256": "ee65bb901c876664ab8707c487157aa1a6ee57c65969b28fb5ec9dc211e68167",
+      "size": 2336
+    },
+    {
+      "name": "configuration.json",
+      "subdir": "TTS/Qwen3-TTS/Qwen3-TTS-12Hz-0.6B-CustomVoice/speech_tokenizer",
+      "sha256": "6bc26d64eb5024b4d1dab5a52371958b429256d6c9d59787f1f5294a54e0cebd",
+      "size": 76
+    },
+    {
+      "name": "model.safetensors",
+      "subdir": "TTS/Qwen3-TTS/Qwen3-TTS-12Hz-0.6B-CustomVoice/speech_tokenizer",
+      "sha256": "836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258",
+      "size": 682293092
+    },
+    {
+      "name": "preprocessor_config.json",
+      "subdir": "TTS/Qwen3-TTS/Qwen3-TTS-12Hz-0.6B-CustomVoice/speech_tokenizer",
+      "sha256": "fcb3805e597e786d4067706e602f6688524640f8d3396790e2e09b5942fcbdfb",
+      "size": 234
+    },
+    {
+      "name": "synchformer_state_dict.pth",
+      "subdir": "hunyuan_foley",
+      "sha256": "8aff082f2df5c3bc52759db0c865c7ee772ae6400b860d1b7e90413f2defb67c",
+      "size": 950058171
+    },
+    {
+      "name": "config.json",
+      "subdir": "hunyuan_foley/clap",
+      "sha256": "6268f76a067e3104bf9001e97d7dcc0fcfb16f3086cfb478ee72d95900d7fc1d",
+      "size": 643
+    },
+    {
+      "name": "merges.txt",
+      "subdir": "hunyuan_foley/clap",
+      "sha256": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+      "size": 456318
+    },
+    {
+      "name": "model.safetensors",
+      "subdir": "hunyuan_foley/clap",
+      "sha256": "c3d0e564a97cb5eccea412f11d5c51c8a1ccceb80c51e3c6957bb5a796b423b6",
+      "size": 776327440
+    },
+    {
+      "name": "vocab.json",
+      "subdir": "hunyuan_foley/clap",
+      "sha256": "ed19656ea1707df69134c4af35c8ceda2cc9860bf2c3495026153a133670ab5e",
+      "size": 798293
+    },
+    {
+      "name": "config.json",
+      "subdir": "hunyuan_foley/siglip2",
+      "sha256": "a15bc39fbcd92498dea6d5d3cb2b0d8b9ba389d6a3f2b565ea66128a2d141934",
+      "size": 276
+    },
+    {
+      "name": "model.safetensors",
+      "subdir": "hunyuan_foley/siglip2",
+      "sha256": "fe0e601c625e69eed8e73500d39e9b6164403fe03db8048e87913c3cefbbb3fe",
+      "size": 1503344520
+    },
+    {
+      "name": "preprocessor_config.json",
+      "subdir": "hunyuan_foley/siglip2",
+      "sha256": "63ff380d3e424f93e6fbca5cc8e74eeed882e96fd6be2b7728aed308f3ad1513",
+      "size": 394
+    }
+  ],
+  "input_files": {
+    "image": "prepared-input.png",
+    "video": "prepared-input.mp4",
+    "audio": "prepared-input.wav",
+    "mask": "prepared-input.png"
+  },
+  "defaults": [
+    "audio/ace_step_1_5_t2a_song",
+    "audio/hunyuan_video_foley",
+    "audio/minimax_music_3",
+    "audio/qwen3_tts_custom_voice",
+    "edit/qwen_image_2_1_turbo_edit",
+    "edit/qwen_image_edit",
+    "image/qwen_image_2512",
+    "image/qwen_image_2_1_turbo",
+    "image/z_image_img2img",
+    "image/z_image_turbo",
+    "video/ltx2_3_i2v",
+    "video/ltx2_3_runexx_first_last_frame",
+    "video/ltx2_3_t2v"
+  ],
+  "picker_overrides": {
+    "LoadDACHunyuanVAE.vae_name": [
+      "hunyuan_foley\\vae_128d_48k.pth"
+    ]
+  }
+}
