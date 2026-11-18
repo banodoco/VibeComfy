@@ -36,11 +36,12 @@ def test_scalar_helper_holds_snapshot_then_detects_same_size_edit(tmp_path, monk
     with consume.class_entry_snapshot(["LS12Fixture"]):
         active = consume._reader_state["active"]
         pack = active / json.loads((active / "index.json").read_text())["LS12Fixture"]
-        original = pack.read_text()
+        original = pack.read_bytes()
         stamp = pack.stat()
-        edited = original.replace('"value"', '"other"').replace('"IMAGE"', '"VIDEO"')
-        assert edited != original and len(edited.encode()) == stamp.st_size
-        pack.write_text(edited)
+        edited = original.replace(b'"value"', b'"other"').replace(b'"IMAGE"', b'"VIDEO"')
+        assert edited != original and len(edited) == stamp.st_size
+        pack.write_bytes(edited)
+        assert pack.stat().st_size == stamp.st_size
         os.utime(pack, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
         assert call("LS12Fixture") == expected
         with pytest.raises(ObjectInfoCacheCorruptError, match="not captured"):
