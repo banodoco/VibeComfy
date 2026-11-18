@@ -22,6 +22,12 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         source: [base, candidate]
+    env:
+      GIT_CONFIG_COUNT: '2'
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: 'false'
+      GIT_CONFIG_KEY_1: core.eol
+      GIT_CONFIG_VALUE_1: lf
     defaults:
       run:
         shell: bash
@@ -39,6 +45,7 @@ jobs:
         run: |
           cp proof-source/tests/test_ls12_emission_snapshot.py tests/
           cp proof-source/tests/test_ls12_generation_bytes.py tests/
+          cp proof-source/tests/test_ls12_generation_witness.py tests/
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -52,11 +59,11 @@ jobs:
           git rev-parse 'HEAD^{tree}' >> proof/source.txt
           python -VV >> proof/source.txt
           python -m pip freeze > proof/dependencies.txt
-          sha256sum tests/test_ls12_emission_snapshot.py tests/test_ls12_generation_bytes.py > proof/probe-sha256.txt
+          sha256sum tests/test_ls12_emission_snapshot.py tests/test_ls12_generation_bytes.py tests/test_ls12_generation_witness.py > proof/probe-sha256.txt
       - name: Snapshot coherence and content-pass probes
         if: always() && steps.install.outcome == 'success'
         run: |
-          python -m pytest -n 0 -q -rA tests/test_ls12_emission_snapshot.py tests/test_ls12_generation_bytes.py \
+          python -m pytest -n 0 -q -rA tests/test_ls12_emission_snapshot.py tests/test_ls12_generation_bytes.py tests/test_ls12_generation_witness.py \
             --junitxml=proof/ls12.xml 2>&1 | tee proof/ls12.log
       - name: Existing object-info freshness and identity tests
         if: always() && steps.install.outcome == 'success'

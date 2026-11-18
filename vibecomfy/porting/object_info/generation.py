@@ -27,12 +27,14 @@ RESERVED_FILES = frozenset({CURRENT_FILE, MANIFEST_FILE, "index.json", "provenan
 # operation.  Re-validating and re-hashing every provider pack on every node
 # schema lookup made graph construction scale with ``packs × node fields`` and
 # could read tens of gigabytes before a prompt was queued.  Keep the successful
-# validation witness and use cheap stat checks on subsequent lookups; any file
-# replacement or metadata change falls back to the full content validation.
-_VALIDATED_GENERATIONS: dict[Path, tuple[tuple[str, int, int, int, int, int, int], ...]] = {}
+# validation witness rather than reparsing the entire generation on subsequent
+# lookups. The witness includes bytes: ctime may be creation time, and callers
+# can restore mtime after a same-size edit. Bounded class snapshots avoid these
+# checks within one operation; a public generation lookup still detects edits.
+_VALIDATED_GENERATIONS: dict[Path, tuple[tuple[str, int, int, int, int, int, int, str | None], ...]] = {}
 
 
-def _stat_fingerprint(path: Path) -> tuple[str, int, int, int, int, int, int]:
+def _stat_fingerprint(path: Path) -> tuple[str, int, int, int, int, int, int, str | None]:
     file_stat = path.lstat()
     return (
         path.name,
@@ -42,6 +44,7 @@ def _stat_fingerprint(path: Path) -> tuple[str, int, int, int, int, int, int]:
         int(file_stat.st_mtime_ns),
         int(file_stat.st_ctime_ns),
         int(file_stat.st_mode),
+        hashlib.sha256(path.read_bytes()).hexdigest() if stat.S_ISREG(file_stat.st_mode) else None,
     )
 
 
