@@ -25,7 +25,10 @@ from typing import Any, Iterable, Mapping
 
 from vibecomfy.errors import ObjectInfoIdentityAmbiguityError
 from vibecomfy.errors import ObjectInfoCacheCorruptError
-from vibecomfy.porting.object_info.generation import active_cache_root, cache_file_witness, read_json, safe_cache_filename
+from vibecomfy.porting.object_info.generation import (
+    active_cache_root, admitted_artifact_hashes, cache_file_witness, read_json,
+    safe_cache_filename,
+)
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -225,10 +228,14 @@ def _sync_reader() -> bool:
     if changed:
         _index = None
         _pack_cache.clear()
+    artifact_hashes = (
+        MappingProxyType(admitted_artifact_hashes(active)) if changed else prior["artifact_hashes"]
+    ) if committed else None
     pack_sigs = {} if changed else (prior["pack_sigs"] if prior else {})
     _reader_state = {"root": configured, "active": active, "committed": committed,
                      "marker_sig": marker_sig, "marker_text": marker_text,
-                     "index_sig": index_sig, "pack_sigs": pack_sigs}
+                     "index_sig": index_sig, "pack_sigs": pack_sigs,
+                     "artifact_hashes": artifact_hashes}
     return changed
 
 
@@ -278,7 +285,14 @@ def _read_pack_at_root(root: Path, filename: str) -> dict[str, dict[str, Any]]:
     """Read one provider file from a caller-pinned active root."""
     if not safe_cache_filename(filename):
         raise ObjectInfoCacheCorruptError(f"unsafe object_info provider filename: {filename!r}")
-    data = read_json(root, filename)
+    expected_hash = None
+    if _reader_state and _reader_state["active"] == root and _reader_state["committed"]:
+        expected_hash = _reader_state["artifact_hashes"].get(filename)
+        if expected_hash is None:
+            raise ObjectInfoCacheCorruptError(
+                f"object_info provider {filename!r} is absent from the admitted manifest"
+            )
+    data = read_json(root, filename, expected_sha256=expected_hash)
     if not isinstance(data, dict):
         raise ObjectInfoCacheCorruptError(f"object_info provider file must be an object: {root / filename}")
     return {

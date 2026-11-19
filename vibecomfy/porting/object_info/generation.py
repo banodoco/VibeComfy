@@ -143,6 +143,32 @@ def active_cache_root(cache_root: str | Path) -> Path:
     return generation_root
 
 
+def admitted_artifact_hashes(generation_root: str | Path) -> dict[str, str]:
+    """Read the manifest bound to the existing generation admission witness.
+
+    Consumers retain these expected digests when they select a generation.
+    A provider first requested later must match this manifest, rather than
+    merely matching its own before/after read witnesses.
+    """
+    root = Path(generation_root)
+    witness = _VALIDATED_GENERATIONS.get(root, ())
+    expected = next((row[-1] for row in witness if row[0] == MANIFEST_FILE), None)
+    if not isinstance(expected, str):
+        raise ObjectInfoCacheCorruptError(f"object_info generation has no admitted manifest: {root}")
+    path = _artifact_path(root, MANIFEST_FILE)
+    try:
+        payload = path.read_bytes()
+        if hashlib.sha256(payload).hexdigest() != expected:
+            raise ObjectInfoCacheCorruptError("object_info admitted manifest failed its hash check")
+        manifest = json.loads(payload.decode("utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ObjectInfoCacheCorruptError(f"object_info admitted manifest is corrupt: {path} ({exc})") from exc
+    files = manifest.get("files") if isinstance(manifest, dict) else None
+    if not isinstance(files, dict) or not all(isinstance(value, str) for value in files.values()):
+        raise ObjectInfoCacheCorruptError(f"object_info admitted manifest has invalid artifact hashes: {path}")
+    return dict(files)
+
+
 def validate_generation(generation_root: str | Path) -> dict[str, Any]:
     """Validate one committed generation and return its manifest."""
     root = Path(generation_root)
@@ -223,8 +249,11 @@ def validate_generation(generation_root: str | Path) -> dict[str, Any]:
     return manifest
 
 
-def read_json(root: str | Path, filename: str, *, required: bool = True) -> Any:
-    """Read one cache artifact with absent-versus-corrupt semantics."""
+def read_json(
+    root: str | Path, filename: str, *, required: bool = True,
+    expected_sha256: str | None = None,
+) -> Any:
+    """Read one artifact, checking admitted bytes before parsing when bound."""
     if not safe_cache_filename(filename) and filename not in {"index.json", "provenance.json"}:
         raise ObjectInfoCacheCorruptError(f"unsafe object_info provider filename: {filename!r}")
     path = _artifact_path(Path(root), filename)
@@ -233,6 +262,13 @@ def read_json(root: str | Path, filename: str, *, required: bool = True) -> Any:
             raise ObjectInfoCacheCorruptError(f"object_info cache artifact is missing: {path}")
         return None
     try:
+        if expected_sha256 is not None:
+            payload = path.read_bytes()
+            if hashlib.sha256(payload).hexdigest() != expected_sha256:
+                raise ObjectInfoCacheCorruptError(
+                    f"object_info generation artifact {filename!r} failed its hash check"
+                )
+            return json.loads(payload.decode("utf-8"))
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ObjectInfoCacheCorruptError(f"object_info cache artifact is corrupt: {path} ({exc})") from exc

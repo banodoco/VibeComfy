@@ -21,7 +21,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        source: [base, candidate]
+        # Keep the original destination comparison and isolate the reviewed
+        # first-use repair against the exact prior candidate as a second pair.
+        source: [base, review-base, candidate]
     env:
       GIT_CONFIG_COUNT: '2'
       GIT_CONFIG_KEY_0: core.autocrlf
@@ -34,18 +36,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ matrix.source == 'base' && 'd8e61a507f7eb0c133db9d39a41bc429cb12f54b' || github.event.pull_request.head.sha }}
+          ref: ${{ matrix.source == 'base' && 'd8e61a507f7eb0c133db9d39a41bc429cb12f54b' || matrix.source == 'review-base' && 'b24a814fc7865ffd0c483135a428f4851fb7fced' || github.event.pull_request.head.sha }}
       - uses: actions/checkout@v4
-        if: matrix.source == 'base'
+        if: matrix.source != 'candidate'
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           path: proof-source
-      - name: Copy the identical new probes to the unchanged base
-        if: matrix.source == 'base'
+      - name: Copy the identical new probes to both unchanged comparison sources
+        if: matrix.source != 'candidate'
         run: |
           cp proof-source/tests/test_ls12_emission_snapshot.py tests/
           cp proof-source/tests/test_ls12_generation_bytes.py tests/
           cp proof-source/tests/test_ls12_generation_witness.py tests/
+          cp proof-source/tests/test_ls12_first_provider_load.py tests/
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -59,11 +62,11 @@ jobs:
           git rev-parse 'HEAD^{tree}' >> proof/source.txt
           python -VV >> proof/source.txt
           python -m pip freeze > proof/dependencies.txt
-          sha256sum tests/test_ls12_emission_snapshot.py tests/test_ls12_generation_bytes.py tests/test_ls12_generation_witness.py > proof/probe-sha256.txt
+          sha256sum tests/test_ls12_emission_snapshot.py tests/test_ls12_generation_bytes.py tests/test_ls12_generation_witness.py tests/test_ls12_first_provider_load.py > proof/probe-sha256.txt
       - name: Snapshot coherence and content-pass probes
         if: always() && steps.install.outcome == 'success'
         run: |
-          python -m pytest -n 0 -q -rA tests/test_ls12_emission_snapshot.py tests/test_ls12_generation_bytes.py tests/test_ls12_generation_witness.py \
+          python -m pytest -n 0 -q -rA tests/test_ls12_emission_snapshot.py tests/test_ls12_generation_bytes.py tests/test_ls12_generation_witness.py tests/test_ls12_first_provider_load.py \
             --junitxml=proof/ls12.xml 2>&1 | tee proof/ls12.log
       - name: Existing object-info freshness and identity tests
         if: always() && steps.install.outcome == 'success'
