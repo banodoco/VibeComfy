@@ -1,0 +1,129 @@
+{
+  "archive": {
+    "bytes": 68227,
+    "file": "observations.zip",
+    "sha256": "4a60330a26f58cb737eb025928795668fc3e7b7d75d14112ffb7b35538c32847"
+  },
+  "artifacts": [
+    {
+      "bytes": 209264,
+      "file": "vibe-receipt-base-isolated.log",
+      "sha256": "6b9f59a7b71845dbcb64721743a4ced9cf5e4dac9300eac83d2efabc8ac57e18"
+    },
+    {
+      "bytes": 204760,
+      "file": "vibe-receipt-base-isolated.xml",
+      "nonpassing": [
+        {
+          "classname": "tests.test_runtime_run",
+          "name": "test_run_external_server_emits_managed_result_from_shared_output",
+          "outcome": "failed"
+        },
+        {
+          "classname": "tests.test_runtime_run",
+          "name": "test_bound_runpod_uses_lifecycle_adapter_and_same_attempt_receipt[False]",
+          "outcome": "failed"
+        },
+        {
+          "classname": "tests.test_runtime_run",
+          "name": "test_bound_runpod_uses_lifecycle_adapter_and_same_attempt_receipt[True]",
+          "outcome": "failed"
+        },
+        {
+          "classname": "tests.test_runtime_run",
+          "name": "test_bound_runpod_retrieval_failure_preserves_generation_and_delivery_evidence",
+          "outcome": "failed"
+        }
+      ],
+      "outcomes": {
+        "errors": 0,
+        "failed": 4,
+        "passed": 20,
+        "skipped": 0
+      },
+      "sha256": "31e0d1b5ec74b5d8ca34781b9d036a634d6a180fe591fbd8505c5f40650550e5"
+    },
+    {
+      "bytes": 211491,
+      "file": "vibe-receipt-head.log",
+      "sha256": "fa7ec03004cb7a0f1b96be426228a41fbf07ca684d4030044f03b61306739343"
+    },
+    {
+      "bytes": 207524,
+      "file": "vibe-receipt-head.xml",
+      "nonpassing": [
+        {
+          "classname": "tests.test_runtime_run",
+          "name": "test_managed_generation_result_is_deterministic_and_preserves_video_output",
+          "outcome": "failed"
+        },
+        {
+          "classname": "tests.test_runtime_run",
+          "name": "test_run_external_server_emits_managed_result_from_shared_output",
+          "outcome": "failed"
+        },
+        {
+          "classname": "tests.test_runtime_run",
+          "name": "test_bound_runpod_uses_lifecycle_adapter_and_same_attempt_receipt[False]",
+          "outcome": "failed"
+        },
+        {
+          "classname": "tests.test_runtime_run",
+          "name": "test_bound_runpod_uses_lifecycle_adapter_and_same_attempt_receipt[True]",
+          "outcome": "failed"
+        },
+        {
+          "classname": "tests.test_runtime_run",
+          "name": "test_bound_runpod_retrieval_failure_preserves_generation_and_delivery_evidence",
+          "outcome": "failed"
+        }
+      ],
+      "outcomes": {
+        "errors": 0,
+        "failed": 5,
+        "passed": 19,
+        "skipped": 0
+      },
+      "sha256": "c327d99d35de98338675e3dba7c794329fe9a64a6797593931f153c3fccd390d"
+    }
+  ],
+  "base": "d8e61a507f7eb0c133db9d39a41bc429cb12f54b",
+  "branch": "p55/ls-6-remainder",
+  "destination": "release/14/plan-55",
+  "evidence_kind": "Incremental local observations, not final pinned qualification",
+  "limits": [
+    "No test was skipped or deleted; the only existing test edit is the authorized delivery hash-count assertion3 to1.",
+    "Raw early failures, interrupted/no-result runs, collection errors and corrected new-test setup iterations remain in the archive.",
+    "Agent generated-client refresh and isolated proposed dependency re-pins are not complete.",
+    "New Agent full-path receipt/hash counter tests were written but not executed before the stop.",
+    "End-to-end generic-host restart-to-preview proof and hosted CI qualification are not complete.",
+    "No merge, tasks.md edit, Plan38 guard change, outside-packet fix or second packet."
+  ],
+  "other_blocker": {
+    "baseline": "17 passed in census selection",
+    "candidate": "16 passed/1 failed in same selection",
+    "cause": "New ordinary thumbnail action requires inventory52; preserved exact count assertion remains51.",
+    "mailbox": "https://github.com/banodoco/astrid-dev/issues/796#issuecomment-6986656021",
+    "test": "tests/test_capability_ledger.py::test_shipped_ledger_reconciles_historical_capability_sets"
+  },
+  "packet": "R14-P55-12",
+  "repository": "VibeComfy",
+  "row": "Plan55 LS-6 remainder",
+  "session": "r14-P55-12-1",
+  "source_commit": "c3213f2553252790693aed2869edda70ab90cd15",
+  "source_sha256": {
+    "vibecomfy/runtime/output_receipts.py": "0ebed7fe9b7331a697be0e3137df2e6a3a755f62afd557417602208278eae200",
+    "vibecomfy/runtime/run.py": "c9227aa1638b5f59726ba94ce5e4759c1ffbed5fd7aee8cbe8926f226ec4a50d",
+    "vibecomfy/runtime/session.py": "42996dd94a8a80727bfbe2c0c2a0cb7088e024735460b75a0ad2557edde1b19b"
+  },
+  "source_tree": "182e9b669d30f215dbde4a3a91d1f9924380f490",
+  "state": "BLOCKED; implementation stopped on existing-test product regression",
+  "stop_reason": {
+    "assertion": "assert again == payload",
+    "baseline": "passed; selection20 passed/4 known setup failures",
+    "candidate": "failed; selection19 passed/5 failed",
+    "cause": "A copied file identity including mtime_ns and ctime_ns is serialized into the managed result, so repeated assembly changes evidence.producer even when output bytes match.",
+    "test": "tests/test_runtime_run.py::test_managed_generation_result_is_deterministic_and_preserves_video_output",
+    "test_unchanged": true
+  }
+}
