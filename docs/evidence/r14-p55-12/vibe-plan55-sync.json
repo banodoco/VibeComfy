@@ -1,0 +1,72 @@
+{
+  "packet": "R14-P55-12",
+  "row": "LS-6 remainder",
+  "session": "r14-P55-12-2",
+  "authority": "https://github.com/banodoco/astrid-dev/issues/796#issuecomment-6997221040",
+  "tested_source": "158d6f144bb59407c8162edd4f0364f4434ba387",
+  "merge": {
+    "tree": "d26d2af01a5788362f94f7035308e4afa867dd90",
+    "parents": [
+      "8fd40d3314e5d460d1d9ae238db48338ce667fc1",
+      "a56a19b107ba819f7994b48b9b7e9983fa819903"
+    ],
+    "incoming_paths_byte_identical": 9,
+    "prior_packet_paths_byte_identical": 20,
+    "manual_conflict_resolution": false
+  },
+  "results": {
+    "passed": 17,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "same17_ids": true,
+    "base_passed": 13,
+    "base_failed": 4
+  },
+  "publication_note": "The connector created this actual two-parent commit; fetched Git object matched the tested tree and exact parents. Earlier local merge has the same tree; this fresh17 run tested the returned connector commit directly. No ref update during proof.",
+  "historical_evidence": "rework-final.json and its370-member archive are preserved unchanged.",
+  "archive": {
+    "path": "docs/evidence/r14-p55-12/observations-vibe-plan55-sync.tar.xz",
+    "bytes": 3144,
+    "sha256": "d713063568d4348bf7b1e454cc0de823380a37ab2ec4c2f1a5d9b3ba11a499a4",
+    "members": 7,
+    "inventory": [
+      {
+        "path": "connector-source-readback.json",
+        "sha256": "6f814753a9b39978d9b0fc173d8a79c8efa64e9ccf4503db71449a06c5b8bd59",
+        "bytes": 950
+      },
+      {
+        "path": "connector-vibe17-comparison.json",
+        "sha256": "b103dd807e49c84c2273c693450544948c338ecf5ee823ee38cc4f18a1ae616e",
+        "bytes": 4670
+      },
+      {
+        "path": "earlier-local-merge-byte-audit.json",
+        "sha256": "06adacde2f5706382f571d60a7311b07dee81f45a6b0b385bfbc21b0351ae056",
+        "bytes": 2177
+      },
+      {
+        "path": "connector-vibe17-1.before.json",
+        "sha256": "b53d0c350763467df5ef8dbf15fa4db0287a8cde4f9d1cf8a2255de5951b89de",
+        "bytes": 1435
+      },
+      {
+        "path": "connector-vibe17-1.json",
+        "sha256": "f3c421522ef701d5aab11840754899c95b6ee5b23e61678c7335bff42dd99afc",
+        "bytes": 2078
+      },
+      {
+        "path": "connector-vibe17-1.xml",
+        "sha256": "cc05f927318354ede4b0e0923bd57827ca478a6beb9f2117d0c211b6c0700952",
+        "bytes": 2800
+      },
+      {
+        "path": "connector-vibe17-1.log",
+        "sha256": "d62de80c04894ed7abf0527e1fcc75298cffb65b6e5edd44169269462af2bb9f",
+        "bytes": 3160
+      }
+    ]
+  },
+  "integration": "Agent pin selects the evidence-only child of this source after GitHub returns its actual commit ID; coordinated final evidence is linked from Agent410 and Runtime68."
+}

@@ -1,0 +1,660 @@
+{
+  "archive": {
+    "bytes": 35160,
+    "path": "observations-resume.zip",
+    "sha256": "03fac23206803f0d211eb6de7f7b9923c1d3500dffc98f7a4d5037de19d7dd78"
+  },
+  "artifacts": [
+    {
+      "bytes": 2318,
+      "name": "vibe-receipt-new-head-1.log",
+      "sha256": "a9ddf53cd6bb47ca8871aa3f3b192ad7872d21429774186f7aee78285a16c58f"
+    },
+    {
+      "bytes": 1370,
+      "junit": {
+        "counts": {
+          "error": 0,
+          "failed": 0,
+          "passed": 8,
+          "skipped": 0
+        },
+        "test_ids": [
+          {
+            "id": "tests.test_output_receipts::test_rebuilt_result_keeps_stat_changes_outside_all_producer_evidence",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_output_receipts::test_stale_or_misattributed_receipt_is_rejected_without_rehash[same_length_bytes]",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_output_receipts::test_stale_or_misattributed_receipt_is_rejected_without_rehash[replacement]",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_output_receipts::test_stale_or_misattributed_receipt_is_rejected_without_rehash[prompt]",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_output_receipts::test_stale_or_misattributed_receipt_is_rejected_without_rehash[descriptor]",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_output_receipts::test_collection_hash_is_reused_for_content_receipt_and_copy",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_output_receipts::test_change_between_receipt_check_and_copy_is_rejected",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_output_receipts::test_missing_optional_observations_do_not_prevent_result_emission",
+            "status": "passed"
+          }
+        ]
+      },
+      "name": "vibe-receipt-new-head-1.xml",
+      "sha256": "d91cea2165e5f5829e3eea169688ee83adc75bd840e42b1511eb0dfe5db88a07"
+    },
+    {
+      "bytes": 209299,
+      "name": "vibe-receipt-resume-head-1.log",
+      "sha256": "49b1757b4357b3cfff8460dad3f6ad4225bea97ae1f133de6233cbbed4becec0"
+    },
+    {
+      "bytes": 204795,
+      "junit": {
+        "counts": {
+          "error": 0,
+          "failed": 4,
+          "passed": 20,
+          "skipped": 0
+        },
+        "test_ids": [
+          {
+            "id": "tests.test_runtime_server_client::test_sync_runner_forwards_the_bound_client",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_server_client::test_runner_rejects_a_client_for_another_target[None]",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_server_client::test_runner_rejects_a_client_for_another_target[http://127.0.0.1:8189]",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_server_client::test_runner_rejects_artifacts_for_another_target[None]",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_server_client::test_runner_rejects_artifacts_for_another_target[http://127.0.0.1:8189]",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_server_client::test_history_uses_the_supplied_client_and_keeps_terminal_validation",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_server_client::test_bound_transport_retrieves_artifacts_and_keeps_external_completion[success]",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_server_client::test_bound_transport_retrieves_artifacts_and_keeps_external_completion[missing]",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_server_client::test_bound_transport_retrieves_artifacts_and_keeps_external_completion[wrong-root]",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_run::test_managed_generation_result_is_deterministic_and_preserves_video_output",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_run::test_managed_generation_result_keeps_producer_evidence_namespaced_and_identity_stable",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_run::test_managed_generation_result_refuses_unavailable_and_failed_verification_evidence",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_run::test_external_server_shared_output_is_custodied_for_managed_result",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_run::test_run_external_server_emits_managed_result_from_shared_output",
+            "status": "failed"
+          },
+          {
+            "id": "tests.test_runtime_run::test_artifact_records_keep_mixed_descriptors_and_paths_paired",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_run::test_artifact_records_deduplicate_comfy_video_descriptor_views",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_run::test_artifact_records_keep_distinct_nested_paths_and_record_information_conflicts",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_run::test_live_image_descriptor_variants_preserve_information",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_run::test_nested_output_descriptor_resolves_under_configured_root_only",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_run::test_duplicate_paths_with_different_routing_are_rejected",
+            "status": "passed"
+          },
+          {
+            "id": "tests.test_runtime_run::test_bound_runpod_uses_lifecycle_adapter_and_same_attempt_receipt[False]",
+            "status": "failed"
+          },
+          {
+            "id": "tests.test_runtime_run::test_bound_runpod_uses_lifecycle_adapter_and_same_attempt_receipt[True]",
+            "status": "failed"
+          },
+          {
+            "id": "tests.test_runtime_run::test_bound_runpod_retrieval_failure_preserves_generation_and_delivery_evidence",
+            "status": "failed"
+          },
+          {
+            "id": "tests.test_runtime_run::test_retry_delivery_reuses_attempt_without_queueing",
+            "status": "passed"
+          }
+        ]
+      },
+      "name": "vibe-receipt-resume-head-1.xml",
+      "sha256": "b0044392e4ca2e069f28e66b88e5a7b7d56c48f77556e0544c841b392293120b"
+    }
+  ],
+  "base_commit": "d8e61a507f7eb0c133db9d39a41bc429cb12f54b",
+  "blocked_report": "https://github.com/banodoco/astrid-dev/issues/796#issuecomment-6987488171",
+  "blocker": "Actual installed thumbnail action returns one thumbnail plus ordinary durable job.stdout/job.stderr logs; existing Runtime attach validator requires len(all outputs)==1. Both real host recovery tests fail unchanged. Awaiting Lead routing; no fix applied.",
+  "comparisons": [
+    {
+      "base": "agent-caller-base-isolated.xml",
+      "base_ids": 22,
+      "changed": [],
+      "head": "agent-caller-frozen.xml",
+      "head_ids": 35,
+      "missing": [],
+      "new": [
+        "tests.core.generation.test_ls6_receipt_pipeline::test_caller_refuses_changed_in_process_verified_file",
+        "tests.core.generation.test_ls6_receipt_pipeline::test_changed_file_cannot_reuse_a_producer_receipt",
+        "tests.core.generation.test_ls6_receipt_pipeline::test_one_fetch_one_producer_hash_and_independent_runtime_and_caller[37]",
+        "tests.core.generation.test_ls6_receipt_pipeline::test_one_fetch_one_producer_hash_and_independent_runtime_and_caller[9437197]",
+        "tests.core.generation.test_ls6_receipt_pipeline::test_transforming_hook_mints_a_fresh_receipt",
+        "tests.test_output_receipt_observations::test_same_length_change_cannot_rebind_an_old_observation",
+        "tests.test_output_receipt_observations::test_stable_content_receipt_reuses_only_the_current_local_observation",
+        "tests.test_output_receipt_observations::test_unusable_sidecar_keeps_independent_output_hash[logical-path]",
+        "tests.test_output_receipt_observations::test_unusable_sidecar_keeps_independent_output_hash[malformed]",
+        "tests.test_output_receipt_observations::test_unusable_sidecar_keeps_independent_output_hash[missing]",
+        "tests.test_output_receipt_observations::test_unusable_sidecar_keeps_independent_output_hash[prompt]",
+        "tests.test_output_receipt_observations::test_unusable_sidecar_keeps_independent_output_hash[symlink]",
+        "tests.test_output_receipt_observations::test_unusable_sidecar_keeps_independent_output_hash[task]"
+      ]
+    },
+    {
+      "base": "agent-receipt-base-isolated.xml",
+      "base_ids": 149,
+      "changed": [],
+      "head": "agent-receipts-frozen.xml",
+      "head_ids": 149,
+      "missing": [],
+      "new": []
+    },
+    {
+      "base": "agent-census-base.xml",
+      "base_ids": 17,
+      "changed": [],
+      "head": "agent-census-approved-runtimepath.xml",
+      "head_ids": 17,
+      "missing": [],
+      "new": []
+    },
+    {
+      "base": "vibe-receipt-base-isolated.xml",
+      "base_ids": 24,
+      "changed": [],
+      "head": "vibe-receipt-resume-head-1.xml",
+      "head_ids": 24,
+      "missing": [],
+      "new": []
+    },
+    {
+      "base": "runtime-stream-base.xml",
+      "base_ids": 17,
+      "changed": [],
+      "head": "runtime-stream-coherent.xml",
+      "head_ids": 31,
+      "missing": [],
+      "new": [
+        "tests.test_verified_object_transfer::test_claimed_success_cannot_install_bad_or_incomplete_bytes[equal-length]",
+        "tests.test_verified_object_transfer::test_claimed_success_cannot_install_bad_or_incomplete_bytes[extra]",
+        "tests.test_verified_object_transfer::test_claimed_success_cannot_install_bad_or_incomplete_bytes[missing-marker]",
+        "tests.test_verified_object_transfer::test_claimed_success_cannot_install_bad_or_incomplete_bytes[short]",
+        "tests.test_verified_object_transfer::test_claimed_success_cannot_install_bad_or_incomplete_bytes[wrong-identity]",
+        "tests.test_verified_object_transfer::test_claimed_success_cannot_install_bad_or_incomplete_bytes[wrong-length]",
+        "tests.test_verified_object_transfer::test_large_transfer_reads_bounded_chunks_on_server_and_caller",
+        "tests.test_verified_object_transfer::test_legacy_and_range_delivery_keep_independent_caller_hash[False]",
+        "tests.test_verified_object_transfer::test_legacy_and_range_delivery_keep_independent_caller_hash[True]",
+        "tests.test_verified_object_transfer::test_runtime_mutation_while_transmitting_withholds_completion",
+        "tests.test_verified_object_transfer::test_sender_does_not_mark_equal_length_corrupted_transmitted_chunks",
+        "tests.test_verified_object_transfer::test_streamed_object_installs_independent_verified_file[0]",
+        "tests.test_verified_object_transfer::test_streamed_object_installs_independent_verified_file[17]",
+        "tests.test_verified_object_transfer::test_streamed_object_installs_independent_verified_file[9437197]"
+      ]
+    },
+    {
+      "base": "runtime-thumbnail-base-workspace.xml",
+      "base_ids": 83,
+      "changed": [],
+      "head": "runtime-thumbnail-coherent.xml",
+      "head_ids": 93,
+      "missing": [],
+      "new": [
+        "tests.test_durable_thumbnail_intents::test_effect_rollback_leaves_no_thumbnail_intent",
+        "tests.test_durable_thumbnail_intents::test_existing_thumbnail_does_not_create_pending_intent",
+        "tests.test_durable_thumbnail_intents::test_failed_thumbnail_remains_retryable_without_repeating_generation",
+        "tests.test_durable_thumbnail_intents::test_intent_admission_cannot_change_owner_epoch_or_source[actor]",
+        "tests.test_durable_thumbnail_intents::test_intent_admission_cannot_change_owner_epoch_or_source[epoch]",
+        "tests.test_durable_thumbnail_intents::test_intent_admission_cannot_change_owner_epoch_or_source[extra]",
+        "tests.test_durable_thumbnail_intents::test_intent_admission_cannot_change_owner_epoch_or_source[source-change]",
+        "tests.test_durable_thumbnail_intents::test_primary_reply_precedes_admission_and_restart_admits_once",
+        "tests.test_durable_thumbnail_intents::test_scoped_http_worker_admits_only_its_stored_intent",
+        "tests.test_durable_thumbnail_intents::test_worker_cannot_supply_a_thumbnail_intent"
+      ]
+    }
+  ],
+  "full_path_measurements": {
+    "base": [
+      {
+        "bytes": 37,
+        "caller": {
+          "bytes_hashed": 185,
+          "completed_streams": 5,
+          "coverage_gaps": []
+        },
+        "cas_unchanged_after_caller_mutation": true,
+        "features": {
+          "binder_receipt_kwargs": [],
+          "harvest_receipt_option": false
+        },
+        "fetch_count": 1,
+        "fetch_urls": [
+          "http://127.0.0.1:8188/view?filename=final.png&subfolder=&type=output"
+        ],
+        "independent_caller_file": true,
+        "producer": {
+          "bytes_hashed": 259,
+          "completed_streams": 7,
+          "coverage_gaps": []
+        },
+        "producer_checkpoints": {
+          "correlated_result": {
+            "bytes_hashed": 111,
+            "completed_streams": 3,
+            "coverage_gaps": []
+          },
+          "download": {
+            "bytes_hashed": 37,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          },
+          "harvest": {
+            "bytes_hashed": 222,
+            "completed_streams": 6,
+            "coverage_gaps": []
+          },
+          "host_validation": {
+            "bytes_hashed": 259,
+            "completed_streams": 7,
+            "coverage_gaps": []
+          },
+          "materialized_result": {
+            "bytes_hashed": 185,
+            "completed_streams": 5,
+            "coverage_gaps": []
+          },
+          "settled": {
+            "bytes_hashed": 259,
+            "completed_streams": 7,
+            "coverage_gaps": []
+          },
+          "typed_outputs": {
+            "bytes_hashed": 259,
+            "completed_streams": 7,
+            "coverage_gaps": []
+          },
+          "uploaded_outputs": {
+            "bytes_hashed": 259,
+            "completed_streams": 7,
+            "coverage_gaps": []
+          },
+          "vibe_result": {
+            "bytes_hashed": 74,
+            "completed_streams": 2,
+            "coverage_gaps": []
+          }
+        },
+        "runtime_pre_delivery": {
+          "bytes_hashed": 222,
+          "completed_streams": 6,
+          "coverage_gaps": []
+        },
+        "runtime_primary_open_count": 1,
+        "runtime_transmit": {
+          "bytes_hashed": 74,
+          "completed_streams": 2,
+          "coverage_gaps": []
+        },
+        "settlement_state": "succeeded",
+        "sha256": "17f98bea63cd486d0c7186ded02888b4e5f0dcdf0174105f9f6fe1798a76a35c",
+        "task_status": "completed",
+        "thumbnail_intent_count": 0
+      },
+      {
+        "bytes": 9437197,
+        "caller": {
+          "bytes_hashed": 47185985,
+          "completed_streams": 5,
+          "coverage_gaps": []
+        },
+        "cas_unchanged_after_caller_mutation": true,
+        "features": {
+          "binder_receipt_kwargs": [],
+          "harvest_receipt_option": false
+        },
+        "fetch_count": 1,
+        "fetch_urls": [
+          "http://127.0.0.1:8188/view?filename=final.png&subfolder=&type=output"
+        ],
+        "independent_caller_file": true,
+        "producer": {
+          "bytes_hashed": 66060379,
+          "completed_streams": 7,
+          "coverage_gaps": []
+        },
+        "producer_checkpoints": {
+          "correlated_result": {
+            "bytes_hashed": 28311591,
+            "completed_streams": 3,
+            "coverage_gaps": []
+          },
+          "download": {
+            "bytes_hashed": 9437197,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          },
+          "harvest": {
+            "bytes_hashed": 56623182,
+            "completed_streams": 6,
+            "coverage_gaps": []
+          },
+          "host_validation": {
+            "bytes_hashed": 66060379,
+            "completed_streams": 7,
+            "coverage_gaps": []
+          },
+          "materialized_result": {
+            "bytes_hashed": 47185985,
+            "completed_streams": 5,
+            "coverage_gaps": []
+          },
+          "settled": {
+            "bytes_hashed": 66060379,
+            "completed_streams": 7,
+            "coverage_gaps": []
+          },
+          "typed_outputs": {
+            "bytes_hashed": 66060379,
+            "completed_streams": 7,
+            "coverage_gaps": []
+          },
+          "uploaded_outputs": {
+            "bytes_hashed": 66060379,
+            "completed_streams": 7,
+            "coverage_gaps": []
+          },
+          "vibe_result": {
+            "bytes_hashed": 18874394,
+            "completed_streams": 2,
+            "coverage_gaps": []
+          }
+        },
+        "runtime_pre_delivery": {
+          "bytes_hashed": 28311591,
+          "completed_streams": 3,
+          "coverage_gaps": []
+        },
+        "runtime_primary_open_count": 1,
+        "runtime_transmit": {
+          "bytes_hashed": 9437197,
+          "completed_streams": 1,
+          "coverage_gaps": []
+        },
+        "settlement_state": "succeeded",
+        "sha256": "aba8b0a34943135e22abbd448299091a839913609e3711ef8a9a941b7d51555b",
+        "task_status": "completed",
+        "thumbnail_intent_count": 0
+      }
+    ],
+    "head": [
+      {
+        "bytes": 37,
+        "caller": {
+          "bytes_hashed": 37,
+          "completed_streams": 1,
+          "coverage_gaps": []
+        },
+        "cas_unchanged_after_caller_mutation": true,
+        "features": {
+          "binder_receipt_kwargs": [
+            "output_receipts",
+            "prompt_id"
+          ],
+          "harvest_receipt_option": true
+        },
+        "fetch_count": 1,
+        "fetch_urls": [
+          "http://127.0.0.1:8188/view?filename=final.png&subfolder=&type=output"
+        ],
+        "independent_caller_file": true,
+        "producer": {
+          "bytes_hashed": 37,
+          "completed_streams": 1,
+          "coverage_gaps": []
+        },
+        "producer_checkpoints": {
+          "correlated_result": {
+            "bytes_hashed": 37,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          },
+          "download": {
+            "bytes_hashed": 37,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          },
+          "harvest": {
+            "bytes_hashed": 37,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          },
+          "host_validation": {
+            "bytes_hashed": 37,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          },
+          "materialized_result": {
+            "bytes_hashed": 37,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          },
+          "settled": {
+            "bytes_hashed": 37,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          },
+          "typed_outputs": {
+            "bytes_hashed": 37,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          },
+          "uploaded_outputs": {
+            "bytes_hashed": 37,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          },
+          "vibe_result": {
+            "bytes_hashed": 37,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          }
+        },
+        "runtime_pre_delivery": {
+          "bytes_hashed": 222,
+          "completed_streams": 6,
+          "coverage_gaps": []
+        },
+        "runtime_primary_open_count": 1,
+        "runtime_transmit": {
+          "bytes_hashed": 37,
+          "completed_streams": 1,
+          "coverage_gaps": []
+        },
+        "settlement_state": "succeeded",
+        "sha256": "17f98bea63cd486d0c7186ded02888b4e5f0dcdf0174105f9f6fe1798a76a35c",
+        "task_status": "completed",
+        "thumbnail_intent_count": 1
+      },
+      {
+        "bytes": 9437197,
+        "caller": {
+          "bytes_hashed": 9437197,
+          "completed_streams": 1,
+          "coverage_gaps": []
+        },
+        "cas_unchanged_after_caller_mutation": true,
+        "features": {
+          "binder_receipt_kwargs": [
+            "output_receipts",
+            "prompt_id"
+          ],
+          "harvest_receipt_option": true
+        },
+        "fetch_count": 1,
+        "fetch_urls": [
+          "http://127.0.0.1:8188/view?filename=final.png&subfolder=&type=output"
+        ],
+        "independent_caller_file": true,
+        "producer": {
+          "bytes_hashed": 9437197,
+          "completed_streams": 1,
+          "coverage_gaps": []
+        },
+        "producer_checkpoints": {
+          "correlated_result": {
+            "bytes_hashed": 9437197,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          },
+          "download": {
+            "bytes_hashed": 9437197,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          },
+          "harvest": {
+            "bytes_hashed": 9437197,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          },
+          "host_validation": {
+            "bytes_hashed": 9437197,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          },
+          "materialized_result": {
+            "bytes_hashed": 9437197,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          },
+          "settled": {
+            "bytes_hashed": 9437197,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          },
+          "typed_outputs": {
+            "bytes_hashed": 9437197,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          },
+          "uploaded_outputs": {
+            "bytes_hashed": 9437197,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          },
+          "vibe_result": {
+            "bytes_hashed": 9437197,
+            "completed_streams": 1,
+            "coverage_gaps": []
+          }
+        },
+        "runtime_pre_delivery": {
+          "bytes_hashed": 28311591,
+          "completed_streams": 3,
+          "coverage_gaps": []
+        },
+        "runtime_primary_open_count": 1,
+        "runtime_transmit": {
+          "bytes_hashed": 9437197,
+          "completed_streams": 1,
+          "coverage_gaps": []
+        },
+        "settlement_state": "succeeded",
+        "sha256": "aba8b0a34943135e22abbd448299091a839913609e3711ef8a9a941b7d51555b",
+        "task_status": "completed",
+        "thumbnail_intent_count": 1
+      }
+    ]
+  },
+  "lead_ruling": "https://github.com/banodoco/astrid-dev/issues/796#issuecomment-6987022689",
+  "limits": [
+    "Incremental local observations; not complete LS-6 qualification or Lead approval.",
+    "No existing tests skipped, deleted or relaxed. Existing test changes limited to authorized caller count3to1 and strict census51to52.",
+    "Base/head hash observations intentionally include proposed dependency changes; no dependency guard disabled and no latency gate claimed.",
+    "Python SHA instrumentation only; fixture Comfy response, real product custody/Runtime HTTP/SDK paths. No live model/GPU or cross-process hashing measurement.",
+    "Four identical Vibe SOCKS setup failures and one identical Agent /workspace ancestry refusal remain executed.",
+    "Early failed new-fixture setups and missing-Runtime collection attempt remain in raw artifacts.",
+    "Original checkpoint.json/observations.zip remain unchanged historical records."
+  ],
+  "observed_candidate_product_commits": {
+    "agent_local": "585cc048e90787d354358e22f90b9645116611f7",
+    "agent_published_equal_tree": "2fdf06a903b0fecaf9f70f1453e993119dccfd5e",
+    "runtime": "1a28101869bffcdb84cc2271307a7f55978def7b",
+    "vibecomfy": "08b770d9493a1d1c567b2c4d2166c2b1d794784b"
+  },
+  "packet": "R14-P55-12",
+  "pins_proposed_for_lead_review": {
+    "runtime": "1a28101869bffcdb84cc2271307a7f55978def7b",
+    "vibecomfy": "08b770d9493a1d1c567b2c4d2166c2b1d794784b"
+  },
+  "schema_version": 1,
+  "session": "r14-P55-12-1",
+  "source_commit_before_evidence": "a55336ba61ac680be35569e9ccf30ae440dd1a50",
+  "source_file_sha256": {
+    "tests/test_output_receipts.py": "ecea6e12e7c92ba62e1f2fc5ef09f9adfcdb869a1eb0512d7f8c691b8c9f4080",
+    "vibecomfy/runtime/output_receipts.py": "a504a1010b68ac8e9e2f61fa49247635ef5a3678a7cdde3e6ea872e8082a26cc",
+    "vibecomfy/runtime/run.py": "c9227aa1638b5f59726ba94ce5e4759c1ffbed5fd7aee8cbe8926f226ec4a50d",
+    "vibecomfy/runtime/session.py": "d4ab7efd2d74ee537778f4795755c2c53c5c0da08ffd32de270bef1291da305d"
+  },
+  "source_tree_before_evidence": "5e4420bfd1f15a0a031f170e1eaf1f819aa80356",
+  "status": "blocked_on_thumbnail_log_settlement"
+}

@@ -3108,6 +3108,9 @@ def _format_available_names(names: Any) -> str:
 
 
 def _is_ui_only_prompt_input(key: str, value: Any) -> bool:
+    from vibecomfy._compile._slots import literal_sample
+
+    value = literal_sample(value)
     if value is None:
         return True
     if key == "control_after_generate" or key.endswith(".control_after_generate"):

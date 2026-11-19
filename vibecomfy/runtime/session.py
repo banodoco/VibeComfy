@@ -56,6 +56,7 @@ from .attempt import build_attempt_bundle, build_shared_fields, write_attempt_js
 from .run_context import RunContext
 from .run_logs import declare_log
 from .client import ComfyClient
+from .transport import ComfyTransport
 from .drift import enforce_strict_drift
 from .execution import (
     authorized_queue_payload,
@@ -89,7 +90,16 @@ _MODEL_FINGERPRINT_DEFAULTS: dict[str, dict[str, str]] = {
 def _require_runtime_boundary(
     record: ApprovedProjectionRecord,
     bundle: WorkflowBundle,
+    *,
+    allow_prepared: bool = False,
 ) -> VibeWorkflow:
+    from vibecomfy.prepared import PreparedProjectionRecord, PreparedWorkflowUnavailable
+
+    if isinstance(record, PreparedProjectionRecord) and not allow_prepared:
+        raise PreparedWorkflowUnavailable(
+            "session-managed and embedded entry points require full approval; "
+            "submit a prepared record through its admitted server_url"
+        )
     if not isinstance(record, ApprovedProjectionRecord):
         raise WorkflowBundleError(
             "runtime session requires an ApprovedProjectionRecord"
@@ -901,6 +911,8 @@ def _build_managed_generation_result(
     indexed.sort(key=lambda item: item[:3])
 
     output_rows: list[dict[str, Any]] = []
+    output_receipts: dict[str, Any] = {}
+    source_receipts: dict[str, Any] = {}
     unavailable: list[dict[str, Any]] = []
     custody_root = run_dir.resolve(strict=False)
     for ordinal, (_declaration_ordinal, _reported, _index, artifact, declaration) in enumerate(indexed):
@@ -915,6 +927,10 @@ def _build_managed_generation_result(
             source = Path(raw_path).expanduser().resolve(strict=True)
             if not source.is_file():
                 raise OSError("artifact path is not a file")
+            from .output_receipts import collect_receipt, copied_receipt, _identity
+            receipt = collect_receipt(source, prompt_id=metadata.get("prompt_id"),
+                descriptor=artifact.get("descriptor"), receipt=artifact.get("output_receipt"))
+            source_receipt = receipt
             try:
                 relative = source.relative_to(custody_root)
             except ValueError:
@@ -927,16 +943,16 @@ def _build_managed_generation_result(
                 destination = destination.resolve(strict=False)
                 destination.relative_to(custody_root)
                 destination.parent.mkdir(parents=True, exist_ok=True)
+                before_copy = _identity(source)
+                if before_copy != receipt["file_identity"]:
+                    raise OSError("artifact changed before copying")
                 shutil.copyfile(source, destination)
+                if _identity(source) != before_copy:
+                    raise OSError("artifact changed while copying")
+                receipt = copied_receipt(destination, receipt)
                 relative = destination.relative_to(custody_root)
             staged = custody_root / relative
-            size_before = staged.stat().st_size
-            digest = hashlib.sha256()
-            with staged.open("rb") as handle:
-                for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-                    digest.update(chunk)
-            if staged.stat().st_size != size_before:
-                raise OSError("artifact changed while hashing")
+            size_before = receipt["bytes"]
         except (OSError, ValueError, UnicodeError, RuntimeNodeError) as exc:
             unavailable.append({
                 "reported_path": artifact.get("reported_path"),
@@ -957,6 +973,8 @@ def _build_managed_generation_result(
             })
             continue
         producer_output_id = f"vibecomfy:{output_port}:{ordinal}"
+        output_receipts[relative.as_posix()] = receipt
+        source_receipts[relative.as_posix()] = source_receipt
         output_rows.append({
             "producer_output_id": producer_output_id,
             "output_port": output_port,
@@ -964,7 +982,7 @@ def _build_managed_generation_result(
             "path": relative.as_posix(),
             "media_type": media_type,
             "bytes": size_before,
-            "sha256": digest.hexdigest(),
+            "sha256": receipt["sha256"],
         })
 
     if unavailable or len(output_rows) != len(indexed):
@@ -988,6 +1006,7 @@ def _build_managed_generation_result(
         if key not in {"managed_generation_result"}
     }
     producer = {
+        "output_receipts": output_receipts,
         "runtime": dict(evidence),
         "prompt_history": {
             "prompt_id": metadata.get("prompt_id"),
@@ -1007,6 +1026,30 @@ def _build_managed_generation_result(
         "log": dict(metadata.get("log_provenance") or {}),
         "media_verification": metadata.get("media_validation"),
     }
+    from .output_receipts import RECEIPT_OBSERVATIONS_FILENAME, project_evidence_receipts
+
+    try:
+        producer = project_evidence_receipts(
+            producer, output_receipts, source_observations=source_receipts,
+        )
+    except ValueError as exc:
+        return None, {"reason": str(exc)}
+    result_identity = {
+        "task_id": str(metadata.get("task_id") or metadata.get("workflow_id") or "vibecomfy-task"),
+        "attempt_id": str(metadata.get("attempt_id") or metadata.get("run_id")),
+        "producer_run_id": str(metadata.get("run_id")),
+    }
+    # The sidecar is an optional local optimization, not output authority. Its
+    # timestamps must not change the result's serialized content identity.
+    # Consumers independently hash if it is absent, stale or mismatched.
+    try:
+        atomic_write_json(run_dir / RECEIPT_OBSERVATIONS_FILENAME, {
+            "schema_version": 1,
+            **result_identity,
+            "output_receipts": output_receipts,
+        })
+    except OSError as exc:
+        logger.warning("Could not persist local output receipt observations: %s", exc)
     return {
         "schema_version": 1,
         "kind": "managed-generation-result.v1",
@@ -1014,9 +1057,7 @@ def _build_managed_generation_result(
         "outputs": output_rows,
         "created": str(metadata.get("created") or datetime.datetime.now(datetime.timezone.utc).isoformat()),
         "warnings": [],
-        "task_id": str(metadata.get("task_id") or metadata.get("workflow_id") or "vibecomfy-task"),
-        "attempt_id": str(metadata.get("attempt_id") or metadata.get("run_id")),
-        "producer_run_id": str(metadata.get("run_id")),
+        **result_identity,
         "outcomes": {
             "execution": {"status": "succeeded"},
             "retrieval": {"status": "succeeded"},
@@ -2141,6 +2182,7 @@ class ServerSession:
         self._schema_provider: Any | None = None
         self._schema_warning_emitted = False
         self._inflight_run: asyncio.Task[Any] | None = None
+        self._transport: ComfyTransport | None = None
 
     def _on_schema_unavailable(self, msg: str) -> None:
         if self._schema_warning_emitted and "schema validation skipped for class types" not in msg:
@@ -2309,6 +2351,7 @@ class ServerSession:
         queue_acceptance = {"status": "not_attempted", "prompt_id": None}
         phase = "preflight"
         watchdog = None
+        attempt = None
         stop_reason: str | None = None
         try:
             if ensure_models:
@@ -2420,11 +2463,14 @@ class ServerSession:
                 enforce_strict_drift(workflow, lockfile_path=self.config.extra.get("lockfile"))
             phase = "queue"
             phase_start = time.monotonic()
+            if self._transport is None:
+                self._transport = ComfyTransport(self.url)
+            attempt = self._transport.attempt()
             try:
                 queued_execution = await queue_server_prompt(
                     record,
                     bundle,
-                    client=ComfyClient(self.url),
+                    client=attempt,
                 )
                 queued = queued_execution.queued
             except asyncio.TimeoutError:
@@ -2449,7 +2495,7 @@ class ServerSession:
             timings["queue_prompt_sec"] = round(time.monotonic() - phase_start, 3)
             phase = "history"
             phase_start = time.monotonic()
-            history = await _wait_for_server_history(self.url, prompt_id, config=self.config)
+            history = await _wait_for_server_history(self.url, prompt_id, config=self.config, client=attempt)
             attempt_bundle["comfy_history_observation"] = _history_observation(history, prompt_id)
             write_attempt_json(run_dir, attempt_bundle)
             output_verification = _validate_declared_output_contract(workflow, history, prompt_id)
@@ -2554,6 +2600,8 @@ class ServerSession:
             )
             raise
         finally:
+            if attempt is not None:
+                attempt.release()
             if watchdog is not None:
                 await _finalize_watchdog(
                     watchdog, run_dir=run_dir, reason=stop_reason or "exception",
@@ -2584,6 +2632,9 @@ class ServerSession:
 
     async def stop(self, wait_for_inflight: bool = True) -> None:
         await _resolve_inflight_before_stop(self, wait_for_inflight)
+        if self._transport is not None:
+            await self._transport.close()
+            self._transport = None
         process = self.process
         if process is not None and process.returncode is None:
             await _stop_managed_process(process)
@@ -3501,6 +3552,16 @@ async def _prepare_prompt_async(
     on_unavailable,
     cache_only: bool = False,
 ) -> dict[str, Any]:
+    from vibecomfy.prepared import PreparedProjectionRecord, prepared_queue_payload
+
+    if isinstance(record, PreparedProjectionRecord):
+        if backend != "api":
+            raise WorkflowBuildError("runtime execution accepts only the approved API projection")
+        return PreparedPrompt(
+            prepared_queue_payload(record, bundle), schema_validation_skipped=[],
+            normalization=None,
+            schema_provenance=record.preparation_provenance(),
+        )
     effective = await _warm_schema_provider(
         schema_provider,
         on_unavailable=on_unavailable,
@@ -3566,6 +3627,10 @@ def _prepare_runtime_prompt_with_evidence(
     schema_provider: Any | None,
 ) -> tuple[dict[str, Any], list[str]]:
     """Validate the already-approved API projection without rewriting it."""
+    from vibecomfy.prepared import PreparedProjectionRecord, prepared_queue_payload
+
+    if isinstance(record, PreparedProjectionRecord):
+        return prepared_queue_payload(record, bundle), []
     if not isinstance(record, ApprovedProjectionRecord) or not isinstance(bundle, WorkflowBundle):
         raise WorkflowBundleError("runtime preparation requires an approved record and bundle")
     record.assert_matches(
@@ -3631,7 +3696,7 @@ def _run_metadata(
     run_context: RunContext | None = None,
     identity_config: SessionConfig | None = None,
 ) -> dict[str, Any]:
-    workflow = _require_runtime_boundary(record, bundle)
+    workflow = _require_runtime_boundary(record, bundle, allow_prepared=True)
     approved = record.to_dict()
     api_dict = approved["api_projection"]
     if comfy_outputs is None:
@@ -4206,6 +4271,15 @@ async def _wait_for_server_history(
     )
     deadline = time.monotonic() + timeout_sec
     client = client if client is not None else ComfyClient(server_url)
+    history_ready = getattr(client, "history_ready", None)
+    ready_event = False
+    if callable(history_ready):
+        try:
+            ready_event = await asyncio.wait_for(history_ready(prompt_id), timeout=max(0, deadline - time.monotonic()))
+        except asyncio.TimeoutError as exc:
+            raise TimeoutError(
+                f"Comfy prompt {_bounded_terminal_value(prompt_id)} did not complete within {timeout_sec:.3g}s"
+            ) from exc
     while True:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
@@ -4225,6 +4299,8 @@ async def _wait_for_server_history(
                 f"history response must be an object, got {type(history).__name__}",
             )
         if prompt_id not in history:
+            if ready_event and not history:
+                raise _malformed_terminal_result(prompt_id, "history-ready event had no history entry")
             if history:
                 raise _malformed_terminal_result(
                     prompt_id,
@@ -4244,6 +4320,8 @@ async def _wait_for_server_history(
             _decode_terminal_result(entry, prompt_id=prompt_id, status_required=True)
         status_str = _terminal_field(status, "status_str")
         if isinstance(status_str, str) and status_str in {"pending", "queued", "running"}:
+            if ready_event:
+                raise _malformed_terminal_result(prompt_id, "history-ready event had a non-terminal status")
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 break

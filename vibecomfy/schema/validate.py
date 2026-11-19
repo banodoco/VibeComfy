@@ -333,108 +333,11 @@ def validate_api_against_schema(
             value = payload_inputs[name]
             if _is_schema_api_link(value, api_dict):
                 continue
-            spec = raw_schema_inputs[name]
-            choices = getattr(spec, "choices", None) or []
-            if (
-                choices
-                and value not in choices
-                and _coerce_choice_value(value, choices, class_type=class_type, input_name=name) is _NO_MATCH
-                and not _field_compatible(class_type, name, "value_not_in_enum")
-                and not _is_dynamic_file_choice(class_type, name)
-            ):
-                choice_scope = _choice_scope(class_type, name, value)
-                if choice_scope == "environment_asset":
-                    # Apply-time parity: checkpoint/model/embedding pickers
-                    # enumerate the assets installed when object_info was
-                    # fetched. A request for a not-yet-installed asset is a
-                    # warning (the value is still structurally valid), not a
-                    # hard schema error. Semantic enums stay hard errors below.
-                    strict_target_choices = bool(
-                        getattr(provider, "requires_fresh_target", False)
-                    )
-                    issues.append(
-                        ValidationIssue(
-                            "value_not_in_enum",
-                            (
-                                f"Node {node_id} ({class_type}) input {name} value {_truncate(value)} "
-                                "is not among the target ComfyUI asset choices."
-                                if strict_target_choices
-                                else f"Node {node_id} ({class_type}) input {name} value {_truncate(value)} is not among the locally installed asset choices."
-                            ),
-                            severity="error" if strict_target_choices else "warning",
-                            detail={
-                                "node_id": str(node_id),
-                                "class_type": class_type,
-                                "input": name,
-                                "value": _truncate(value),
-                                "choices": choices,
-                                "choice_scope": choice_scope,
-                            },
-                        )
-                    )
-                else:
-                    issues.append(
-                        ValidationIssue(
-                            "value_not_in_enum",
-                            f"Node {node_id} ({class_type}) input {name} value {_truncate(value)} is not one of the declared choices.",
-                            severity="error",
-                            detail={
-                                "node_id": str(node_id),
-                                "class_type": class_type,
-                                "input": name,
-                                "value": _truncate(value),
-                                "choices": choices,
-                                "choice_scope": choice_scope,
-                            },
-                        )
-                    )
-
-            min_value = getattr(spec, "min", None)
-            max_value = getattr(spec, "max", None)
-            if (min_value is not None or max_value is not None) and not _field_compatible(class_type, name, "value_out_of_range"):
-                try:
-                    numeric_value = float(value)
-                except (TypeError, ValueError, OverflowError):
-                    continue
-                if (min_value is not None and numeric_value < float(min_value)) or (
-                    max_value is not None and numeric_value > float(max_value)
-                ):
-                    issues.append(
-                        ValidationIssue(
-                            "value_out_of_range",
-                            f"Node {node_id} ({class_type}) input {name} value {_truncate(value)} is outside the declared range.",
-                            severity="error",
-                            detail={
-                                "node_id": str(node_id),
-                                "class_type": class_type,
-                                "input": name,
-                                "value": _truncate(value),
-                                "min": min_value,
-                                "max": max_value,
-                            },
-                        )
-                    )
-            expected_type = _primitive_expected_type(getattr(spec, "type", None))
-            if expected_type and not _field_compatible(class_type, name, "value_type_mismatch"):
-                if not _matches_primitive_type(value, expected_type):
-                    issues.append(
-                        ValidationIssue(
-                            "value_type_mismatch",
-                            (
-                                f"Node {node_id} ({class_type}) input {name} value {_truncate(value)} "
-                                f"does not match declared type {expected_type}."
-                            ),
-                            severity="error",
-                            detail={
-                                "node_id": str(node_id),
-                                "class_type": class_type,
-                                "input": name,
-                                "value": _truncate(value),
-                                "expected_type": expected_type,
-                                "actual_type": type(value).__name__,
-                            },
-                        )
-                    )
+            issues.extend(validate_literal_against_schema(
+                node_id=str(node_id), class_type=class_type, name=name,
+                value=value, spec=raw_schema_inputs[name],
+                strict_target_choices=bool(getattr(provider, "requires_fresh_target", False)),
+            ))
 
     for to_node_id, node in api_dict.items():
         if not isinstance(node, dict):
@@ -499,6 +402,118 @@ def validate_api_against_schema(
                     )
                 )
 
+    return issues
+
+
+def validate_literal_against_schema(
+    *, node_id: str, class_type: str, name: str, value: Any, spec: Any,
+    strict_target_choices: bool = False,
+) -> list[ValidationIssue]:
+    """Apply the ordinary literal rules to a captured input constraint.
+
+    Graph validation and prepared fills share the same field policy, error
+    ordering and text. The caller has already established that this is a
+    literal input; this function never reads a provider or traverses a graph.
+    """
+    issues: list[ValidationIssue] = []
+    choices = getattr(spec, "choices", None) or []
+    if (
+        choices
+        and value not in choices
+        and _coerce_choice_value(value, choices, class_type=class_type, input_name=name) is _NO_MATCH
+        and not _field_compatible(class_type, name, "value_not_in_enum")
+        and not _is_dynamic_file_choice(class_type, name)
+    ):
+        choice_scope = _choice_scope(class_type, name, value)
+        if choice_scope == "environment_asset":
+            # Apply-time parity: checkpoint/model/embedding pickers
+            # enumerate the assets installed when object_info was
+            # fetched. A request for a not-yet-installed asset is a
+            # warning (the value is still structurally valid), not a
+            # hard schema error. Semantic enums stay hard errors below.
+            issues.append(
+                ValidationIssue(
+                    "value_not_in_enum",
+                    (
+                        f"Node {node_id} ({class_type}) input {name} value {_truncate(value)} "
+                        "is not among the target ComfyUI asset choices."
+                        if strict_target_choices
+                        else f"Node {node_id} ({class_type}) input {name} value {_truncate(value)} is not among the locally installed asset choices."
+                    ),
+                    severity="error" if strict_target_choices else "warning",
+                    detail={
+                        "node_id": str(node_id),
+                        "class_type": class_type,
+                        "input": name,
+                        "value": _truncate(value),
+                        "choices": choices,
+                        "choice_scope": choice_scope,
+                    },
+                )
+            )
+        else:
+            issues.append(
+                ValidationIssue(
+                    "value_not_in_enum",
+                    f"Node {node_id} ({class_type}) input {name} value {_truncate(value)} is not one of the declared choices.",
+                    severity="error",
+                    detail={
+                        "node_id": str(node_id),
+                        "class_type": class_type,
+                        "input": name,
+                        "value": _truncate(value),
+                        "choices": choices,
+                        "choice_scope": choice_scope,
+                    },
+                )
+            )
+
+    min_value = getattr(spec, "min", None)
+    max_value = getattr(spec, "max", None)
+    if (min_value is not None or max_value is not None) and not _field_compatible(class_type, name, "value_out_of_range"):
+        try:
+            numeric_value = float(value)
+        except (TypeError, ValueError, OverflowError):
+            return issues
+        if (min_value is not None and numeric_value < float(min_value)) or (
+            max_value is not None and numeric_value > float(max_value)
+        ):
+            issues.append(
+                ValidationIssue(
+                    "value_out_of_range",
+                    f"Node {node_id} ({class_type}) input {name} value {_truncate(value)} is outside the declared range.",
+                    severity="error",
+                    detail={
+                        "node_id": str(node_id),
+                        "class_type": class_type,
+                        "input": name,
+                        "value": _truncate(value),
+                        "min": min_value,
+                        "max": max_value,
+                    },
+                )
+            )
+    expected_type = _primitive_expected_type(getattr(spec, "type", None))
+    if expected_type and not _field_compatible(class_type, name, "value_type_mismatch"):
+        if not _matches_primitive_type(value, expected_type):
+            issues.append(
+                ValidationIssue(
+                    "value_type_mismatch",
+                    (
+                        f"Node {node_id} ({class_type}) input {name} value {_truncate(value)} "
+                        f"does not match declared type {expected_type}."
+                    ),
+                    severity="error",
+                    detail={
+                        "node_id": str(node_id),
+                        "class_type": class_type,
+                        "input": name,
+                        "value": _truncate(value),
+                        "expected_type": expected_type,
+                        "actual_type": type(value).__name__,
+                    },
+                )
+            )
     return issues
 
 
