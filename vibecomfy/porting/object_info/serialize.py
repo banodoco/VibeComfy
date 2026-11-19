@@ -743,8 +743,11 @@ def _publish_cache_state(
         serialized["index.json"] = json.dumps({**index, CAPTURES: indexed_captures(pack_files)}, indent=2, sort_keys=True, ensure_ascii=False)
         serialized["provenance.json"] = json.dumps(provenance, indent=2, sort_keys=True, ensure_ascii=False)
         for filename, text in serialized.items():
-            (staging / filename).write_text(text, encoding="utf-8")
-            artifacts[filename] = hashlib.sha256(text.encode("utf-8")).hexdigest()
+            # The manifest witnesses published bytes. Text-mode newline
+            # translation on Windows must not change them after hashing.
+            encoded = text.encode("utf-8")
+            (staging / filename).write_bytes(encoded)
+            artifacts[filename] = hashlib.sha256(encoded).hexdigest()
         (staging / MANIFEST_FILE).write_text(
             json.dumps(
                 {"format_version": 1, "generation": generation, "files": artifacts},
