@@ -912,6 +912,7 @@ def _build_managed_generation_result(
 
     output_rows: list[dict[str, Any]] = []
     output_receipts: dict[str, Any] = {}
+    source_receipts: dict[str, Any] = {}
     unavailable: list[dict[str, Any]] = []
     custody_root = run_dir.resolve(strict=False)
     for ordinal, (_declaration_ordinal, _reported, _index, artifact, declaration) in enumerate(indexed):
@@ -929,6 +930,7 @@ def _build_managed_generation_result(
             from .output_receipts import collect_receipt, copied_receipt, _identity
             receipt = collect_receipt(source, prompt_id=metadata.get("prompt_id"),
                 descriptor=artifact.get("descriptor"), receipt=artifact.get("output_receipt"))
+            source_receipt = receipt
             try:
                 relative = source.relative_to(custody_root)
             except ValueError:
@@ -972,6 +974,7 @@ def _build_managed_generation_result(
             continue
         producer_output_id = f"vibecomfy:{output_port}:{ordinal}"
         output_receipts[relative.as_posix()] = receipt
+        source_receipts[relative.as_posix()] = source_receipt
         output_rows.append({
             "producer_output_id": producer_output_id,
             "output_port": output_port,
@@ -1026,7 +1029,9 @@ def _build_managed_generation_result(
     from .output_receipts import RECEIPT_OBSERVATIONS_FILENAME, project_evidence_receipts
 
     try:
-        producer = project_evidence_receipts(producer, output_receipts)
+        producer = project_evidence_receipts(
+            producer, output_receipts, source_observations=source_receipts,
+        )
     except ValueError as exc:
         return None, {"reason": str(exc)}
     result_identity = {

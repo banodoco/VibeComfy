@@ -70,28 +70,45 @@ def content_receipt(receipt: Mapping, *, logical_path: str) -> dict:
     }
 
 
-def project_evidence_receipts(value: object, observations: Mapping[str, Mapping]) -> object:
+def project_evidence_receipts(
+    value: object,
+    observations: Mapping[str, Mapping],
+    *,
+    source_observations: Mapping[str, Mapping] | None = None,
+) -> object:
     """Project receipt copies in producer evidence without changing their inputs.
 
     Retrieval records, artifact records and attempt metadata can each contain
     the same receipt. They all name the final logical output; only the private
     observations sidecar retains the inode and timestamp checks used locally.
+    Source observations bind receipts from before a custody copy to that same
+    output path. Equal content alone does not identify a collected output.
     """
-    if isinstance(value, Mapping):
-        if (value.get("version") == 1 and "file_identity" in value
-                and "sha256" in value and "bytes" in value):
-            matches = [
-                path for path, observed in observations.items()
-                if all(value.get(key) == observed.get(key)
-                       for key in ("version", "sha256", "bytes", "prompt_id", "producer"))
-                and _routing_descriptor(value.get("descriptor"))
-                == _routing_descriptor(observed.get("descriptor"))
-            ]
-            if len(matches) != 1:
-                raise ValueError("evidence receipt does not identify one collected output")
-            return content_receipt(value, logical_path=matches[0])
-        return {key: project_evidence_receipts(item, observations)
-                for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [project_evidence_receipts(item, observations) for item in value]
-    return value
+    source_observations = source_observations or {}
+
+    def project(item: object, logical_path: str | None = None) -> object:
+        if isinstance(item, Mapping):
+            if (item.get("version") == 1 and "file_identity" in item
+                    and "sha256" in item and "bytes" in item):
+                matches = [
+                    path for path, observed in observations.items()
+                    if (logical_path is None or path == logical_path)
+                    and all(item.get(key) == observed.get(key)
+                            for key in ("version", "sha256", "bytes", "prompt_id", "producer"))
+                    and _routing_descriptor(item.get("descriptor"))
+                    == _routing_descriptor(observed.get("descriptor"))
+                    and item.get("file_identity") in (
+                        observed["file_identity"],
+                        source_observations.get(path, observed)["file_identity"],
+                    )
+                ]
+                if len(matches) != 1:
+                    raise ValueError("evidence receipt does not identify one collected output")
+                return content_receipt(item, logical_path=matches[0])
+            return {key: project(child, key if key in observations else None)
+                    for key, child in item.items()}
+        if isinstance(item, (list, tuple)):
+            return [project(child) for child in item]
+        return item
+
+    return project(value)
