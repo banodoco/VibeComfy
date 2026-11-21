@@ -145,6 +145,18 @@ class_schema_sha256 = "80187858cc6ec371c9860fd9ca5fcf5174324d75782046657e2524925
 class_set = ["CreateCFGScheduleFloatList", "LoadWanVideoT5TextEncoder", "WanVideoBlockSwap", "WanVideoControlEmbeds", "WanVideoDecode", "WanVideoEasyCache", "WanVideoEmptyEmbeds", "WanVideoEncode", "WanVideoExperimentalArgs", "WanVideoImageToVideoEncode", "WanVideoLoraSelect", "WanVideoLoraSelectMulti", "WanVideoModelLoader", "WanVideoSLG", "WanVideoSampler", "WanVideoSetBlockSwap", "WanVideoSetLoRAs", "WanVideoTextEmbedBridge", "WanVideoTextEncode", "WanVideoTextEncodeCached", "WanVideoTorchCompileSettings", "WanVideoVACEEncode", "WanVideoVACEModelSelect", "WanVideoVACEStartToEndFrame", "WanVideoVAELoader"]
 pip_packages = ["onnx", "opencv-python-headless"]
 
+[nodepacks.ComfyUI-Whisper]
+name = "ComfyUI-Whisper"
+slug = "ComfyUI-Whisper"
+source = "git"
+commit = "006a709848259ed3d69e2f9fcfd7a75f6c860ddd"
+git_commit_sha = "006a709848259ed3d69e2f9fcfd7a75f6c860ddd"
+url = "https://github.com/yuvraj108c/ComfyUI-Whisper.git"
+schema_hash = "f3933350d1e63c45f36fe1dac1d56691b388c2faaee37e65ff458a5cd5200029"
+class_schema_sha256 = "f3933350d1e63c45f36fe1dac1d56691b388c2faaee37e65ff458a5cd5200029"
+class_set = ["Apply Whisper"]
+pip_packages = ["openai-whisper", "soundfile"]
+
 [nodepacks.ComfyUI-segment-anything-2]
 name = "ComfyUI-segment-anything-2"
 slug = "ComfyUI-segment-anything-2"

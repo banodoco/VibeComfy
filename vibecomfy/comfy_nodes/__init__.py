@@ -38,6 +38,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from .exec_node import EXEC_CLASS_TYPE, VibeComfyExec
+from .transcript_output import VibeComfySaveTranscript
 from vibecomfy.contracts.intent_nodes import KIND_TO_CLASS_TYPE
 
 _MAX_DYNAMIC_PORTS = 16
@@ -775,6 +776,7 @@ class VibeComfyLoopIntent(_VibeComfyIntentNodeBase):
 
 
 NODE_CLASS_MAPPINGS = {
+    "VibeComfySaveTranscript": VibeComfySaveTranscript,
     # Lowercase canonical key (what the agent edit engine emits) plus the
     # CamelCase legacy alias; both resolve to the same class.
     "vibecomfy.strip_conditioning_keys": VibeComfyStripConditioningKeys,
@@ -785,6 +787,7 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
+    "VibeComfySaveTranscript": "Save Transcript JSON",
     "vibecomfy.strip_conditioning_keys": "VibeComfy Strip Conditioning Keys",
     "VibeComfyStripConditioningKeys": "VibeComfy Strip Conditioning Keys",
     EXEC_CLASS_TYPE: "VibeComfy Exec",
