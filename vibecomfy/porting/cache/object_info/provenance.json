@@ -261,8 +261,8 @@
       "locked_commit": "006a709848259ed3d69e2f9fcfd7a75f6c860ddd",
       "pack": "ComfyUI-Whisper",
       "pack_version": "local-006a709",
-      "schema_sha256": "e2b586e54c6aa5e2175c9fc27024664e0eb74e4e1d409c48946c911e1f51c9d2",
-      "source_kind": "runtime_object_info"
+      "schema_sha256": "531e6ddfe5c8cb7071c74dc27c961cf491db856ea2e5993acaf5194a788bcda1",
+      "source_kind": "on_demand_static"
     },
     "ComfyUI-Whisper@local-006a709.json": {
       "classes": 5,

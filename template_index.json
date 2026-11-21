@@ -943,13 +943,34 @@
       "indexed": true,
       "capability": "audio",
       "coverage_tier": "",
-      "custom_nodes": [],
-      "model_count": 0,
-      "public_inputs": [],
+      "custom_nodes": [
+        "ComfyUI-Whisper"
+      ],
+      "model_count": 1,
+      "public_inputs": [
+        {
+          "name": "audio_ref",
+          "target": {
+            "node_id": "load_audio",
+            "field": "audio"
+          },
+          "node_id": "load_audio",
+          "field": "audio",
+          "value": "input.wav",
+          "type": "COMBO",
+          "default": "input.wav",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "audio",
+          "status": "static",
+          "source": "InputSpec"
+        }
+      ],
       "public_outputs": [
         {
           "name": "transcript_json",
-          "node_id": "3",
+          "node_id": "save_transcript",
           "output_type": "VibeComfySaveTranscript",
           "artifact_kind": "json",
           "mime_type": "application/json",
@@ -963,7 +984,7 @@
       "artifact_expectations": [
         {
           "name": "transcript_json",
-          "node_id": "3",
+          "node_id": "save_transcript",
           "output_type": "VibeComfySaveTranscript",
           "artifact_kind": "json",
           "mime_type": "application/json",
@@ -980,9 +1001,9 @@
           "message": "finalize has dynamic 'output_node'"
         }
       ],
-      "public_input_status": "partial",
+      "public_input_status": "declared",
       "public_output_status": "declared",
-      "custom_node_count": 0,
+      "custom_node_count": 1,
       "strict_ready_diagnostic_counts": {},
       "readiness_class": "ready",
       "marker": "manual",
@@ -992,12 +1013,28 @@
       "supplemental": false,
       "vibecomfy_version": "2.8.0",
       "comfy_core": {
-        "version": "0.43.0",
-        "commit": "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24",
+        "version": "0.36.0",
+        "commit": "6bfaacc67c2103481e5f0c84d75257cd0581d86a",
         "status": "static_source_schema_only"
       },
       "source_workflow": null,
-      "source_sha256": null
+      "source_sha256": null,
+      "custom_node_refs": [
+        {
+          "slug": "ComfyUI-Whisper",
+          "source": "git",
+          "commit": "006a709848259ed3d69e2f9fcfd7a75f6c860ddd",
+          "class_schema_sha256": "a035372485b38b70022c249aa4cfb2034a832b27b683069b8de7762597c1115e",
+          "url": "https://github.com/yuvraj108c/ComfyUI-Whisper.git",
+          "class_set": [
+            "Apply Whisper"
+          ],
+          "pip_packages": [
+            "openai-whisper==20250625",
+            "soundfile"
+          ]
+        }
+      ]
     },
     {
       "id": "edit/flux2_klein_4b_image_edit_base",
