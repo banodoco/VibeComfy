@@ -103,7 +103,7 @@ _STATIC_NODE_PACKS: tuple[CustomNodePack, ...] = (
         repo="https://github.com/yuvraj108c/ComfyUI-Whisper.git",
         classes=frozenset({"Apply Whisper"}),
         pip_packages=("openai-whisper", "soundfile"),
-        class_schema_sha256="f3933350d1e63c45f36fe1dac1d56691b388c2faaee37e65ff458a5cd5200029",
+        class_schema_sha256="a035372485b38b70022c249aa4cfb2034a832b27b683069b8de7762597c1115e",
     ),
     CustomNodePack(
         name="ComfyUI-WanVideoWrapper",

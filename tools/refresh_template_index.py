@@ -106,6 +106,29 @@ def build_template_index(*, generated_at: str | None = None) -> dict[str, Any]:
             or ("manual" if coverage_row.get("path") == "manual" else None),
             "source_sha256": _extract_source_sha256(source_path),
         }
+        model_assets = _list_items(metadata.get("model_assets")) or _list_items(requirements.get("models"))
+        if not model_assets and isinstance(metadata.get("models"), dict):
+            model_assets = [
+                {"name": name, "filename": Path(asset.get("url", "")).name, **asset}
+                for name, asset in metadata["models"].items()
+                if isinstance(asset, dict)
+            ]
+        elif isinstance(metadata.get("models"), dict):
+            by_digest = {
+                asset.get("sha256"): (name, Path(asset.get("url") or "").name)
+                for name, asset in metadata["models"].items()
+                if isinstance(asset, dict)
+            }
+            for asset in model_assets:
+                if isinstance(asset, dict):
+                    name, filename = by_digest.get(asset.get("sha256"), ("", ""))
+                    if name:
+                        asset["name"] = name
+                    if filename:
+                        asset["filename"] = filename
+        if model_assets:
+            row["model_assets"] = model_assets
+            row["model_count"] = len(model_assets)
         if metadata.get("license_notice"):
             row["license_notice"] = metadata["license_notice"]
         custom_node_refs = static_contract.get("custom_node_refs") or _list_items(requirements.get("custom_node_refs"))
@@ -141,6 +164,9 @@ _KNOWN_TOP_LEVEL_NAMES = frozenset({
     "MODELS",
     "OUTPUT_PREFIX",
     "PRIVATE_KNOBS",
+    # Referenced by ModelAsset(url=MODEL_URL, ...); retaining literal string
+    # constants lets the static evaluator recover the real URL basename.
+    "MODEL_URL",
 })
 
 
