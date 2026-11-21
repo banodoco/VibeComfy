@@ -256,6 +256,14 @@
       "repo": "https://github.com/kijai/ComfyUI-WanVideoWrapper.git",
       "schema_sha256": "80187858cc6ec371c9860fd9ca5fcf5174324d75782046657e252492512d115f"
     },
+    "ComfyUI-Whisper@local-006a709-a73ea02875944b579722b5475f64c82b94755469f5cc374cb69663276fc289b4.json": {
+      "classes": 5,
+      "locked_commit": "006a709848259ed3d69e2f9fcfd7a75f6c860ddd",
+      "pack": "ComfyUI-Whisper",
+      "pack_version": "local-006a709",
+      "schema_sha256": "e2b586e54c6aa5e2175c9fc27024664e0eb74e4e1d409c48946c911e1f51c9d2",
+      "source_kind": "runtime_object_info"
+    },
     "ComfyUI-Whisper@local-006a709.json": {
       "classes": 5,
       "locked_commit": "006a709848259ed3d69e2f9fcfd7a75f6c860ddd",

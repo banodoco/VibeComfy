@@ -69,8 +69,8 @@
   "AceStepSFTSaveAudio": "ComfyUI-AceStep_SFT@local-c2cfe8e.json",
   "AceStepSFTTextEncode": "ComfyUI-AceStep_SFT@local-c2cfe8e.json",
   "AceStepSFTTurboTagAdapter": "ComfyUI-AceStep_SFT@local-c2cfe8e.json",
-  "Add Subtitles To Background": "ComfyUI-Whisper@local-006a709.json",
-  "Add Subtitles To Frames": "ComfyUI-Whisper@local-006a709.json",
+  "Add Subtitles To Background": "ComfyUI-Whisper@local-006a709-a73ea02875944b579722b5475f64c82b94755469f5cc374cb69663276fc289b4.json",
+  "Add Subtitles To Frames": "ComfyUI-Whisper@local-006a709-a73ea02875944b579722b5475f64c82b94755469f5cc374cb69663276fc289b4.json",
   "AddLabel": "ComfyUI-KJNodes@runpod-snapshot.json",
   "AddNoise": "comfy_core@object_info_comfyui_0.24.0.1.json",
   "AddNoiseToTrackPath": "ComfyUI-KJNodes@runpod-snapshot.json",
@@ -91,7 +91,7 @@
   "Any Switch (rgthree)": "rgthree-comfy@runpod-snapshot.json",
   "AppendInstanceDiffusionTracking": "ComfyUI-KJNodes@runpod-snapshot.json",
   "AppendStringsToList": "ComfyUI-KJNodes@runpod-snapshot.json",
-  "Apply Whisper": "ComfyUI-Whisper@local-006a709.json",
+  "Apply Whisper": "ComfyUI-Whisper@local-006a709-a73ea02875944b579722b5475f64c82b94755469f5cc374cb69663276fc289b4.json",
   "ApplyLBW //Inspire": "ComfyUI-Inspire-Pack@on_demand_import-d23db9a.json",
   "ApplyRegionalIPAdapters //Inspire": "ComfyUI-Inspire-Pack@on_demand_import-d23db9a.json",
   "ApplyRifleXRoPE_HunuyanVideo": "ComfyUI-KJNodes@runpod-snapshot.json",
@@ -1335,7 +1335,7 @@
   "ReplaceVideoLatentFrames": "comfy_core@object_info_comfyui_0.24.0.1.json",
   "Reroute": "comfy_core@runpod-snapshot.json",
   "RescaleCFG": "comfy_core@object_info_comfyui_0.24.0.1.json",
-  "Resize Cropped Subtitles": "ComfyUI-Whisper@local-006a709.json",
+  "Resize Cropped Subtitles": "ComfyUI-Whisper@local-006a709-a73ea02875944b579722b5475f64c82b94755469f5cc374cb69663276fc289b4.json",
   "ResizeAndPadImage": "comfy_core@object_info_comfyui_0.24.0.1.json",
   "ResizeImageMaskNode": "comfy_core@object_info_comfyui_0.24.0.1.json",
   "ResizeImagesByLongerEdge": "comfy_core@object_info_comfyui_0.24.0.1.json",
@@ -1407,7 +1407,7 @@
   "SamplerSEEDS2": "comfy_core@object_info_comfyui_0.24.0.1.json",
   "SamplerSelfRefineVideo": "ComfyUI-KJNodes@runpod-snapshot.json",
   "SamplingPercentToSigma": "comfy_core@object_info_comfyui_0.24.0.1.json",
-  "Save SRT": "ComfyUI-Whisper@local-006a709.json",
+  "Save SRT": "ComfyUI-Whisper@local-006a709-a73ea02875944b579722b5475f64c82b94755469f5cc374cb69663276fc289b4.json",
   "SaveAnimatedPNG": "comfy_core@object_info_comfyui_0.24.0.1.json",
   "SaveAnimatedWEBP": "comfy_core@object_info_comfyui_0.24.0.1.json",
   "SaveAudio": "comfy_core@object_info_comfyui_0.24.0.1.json",
@@ -2022,6 +2022,9 @@
     ],
     "[\"ComfyUI-WanVideoWrapper\",\"legacy\",\"ComfyUI-WanVideoWrapper@runpod-snapshot.json\"]": [
       "ComfyUI-WanVideoWrapper@runpod-snapshot.json"
+    ],
+    "[\"ComfyUI-Whisper\",\"git_commit\",\"006a709848259ed3d69e2f9fcfd7a75f6c860ddd\"]": [
+      "ComfyUI-Whisper@local-006a709-a73ea02875944b579722b5475f64c82b94755469f5cc374cb69663276fc289b4.json"
     ],
     "[\"ComfyUI-Whisper\",\"legacy\",\"ComfyUI-Whisper@local-006a709.json\"]": [
       "ComfyUI-Whisper@local-006a709.json"
