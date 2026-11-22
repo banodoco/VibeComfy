@@ -3235,12 +3235,17 @@ def _destination_path(destination: str | Path, workflow: VibeWorkflow) -> Path:
 def _with_bundle_class_memo(func):
     @functools.wraps(func)
     def wrapped(*args, **kwargs):
-        from vibecomfy.porting.object_info.consume import _BUNDLE_CLASS_MEMO
+        from vibecomfy.porting.object_info.consume import _BUNDLE_CLASS_MEMO, _BundleClassMemo
 
-        token = _BUNDLE_CLASS_MEMO.set({})
+        owner = _BUNDLE_CLASS_MEMO.get()
+        if owner is not None and owner.active:
+            return func(*args, **kwargs)
+        owner = _BundleClassMemo()
+        token = _BUNDLE_CLASS_MEMO.set(owner)
         try:
             return func(*args, **kwargs)
         finally:
+            owner.revoke()
             _BUNDLE_CLASS_MEMO.reset(token)
 
     return wrapped

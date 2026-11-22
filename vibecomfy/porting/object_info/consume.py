@@ -307,14 +307,25 @@ def _all_pack_filenames() -> list[str]:
 
 # Bound only for a bundle emission. Values are the raw pack-cache objects,
 # matching the identity and mutation behavior of the scalar reader.
-_BUNDLE_CLASS_MEMO: ContextVar[dict[str, Any] | None] = ContextVar(
+class _BundleClassMemo:
+    def __init__(self) -> None:
+        self.entries: dict[str, Any] = {}
+        self.active = True
+
+    def revoke(self) -> None:
+        self.active = False
+        self.entries.clear()
+
+
+_BUNDLE_CLASS_MEMO: ContextVar[_BundleClassMemo | None] = ContextVar(
     "_BUNDLE_CLASS_MEMO", default=None
 )
 
 
 def _resolve_class_type(class_type: str) -> dict[str, Any] | None:
     # A separately captured operation snapshot keeps its existing semantics.
-    memo = _BUNDLE_CLASS_MEMO.get() if _CLASS_ENTRY_SNAPSHOT.get() is None else None
+    owner = _BUNDLE_CLASS_MEMO.get() if _CLASS_ENTRY_SNAPSHOT.get() is None else None
+    memo = (owner.entries if owner.active else None) if isinstance(owner, _BundleClassMemo) else owner
     if memo is not None and class_type in memo:
         return memo[class_type]
     with _reader_lock:
@@ -322,7 +333,7 @@ def _resolve_class_type(class_type: str) -> dict[str, Any] | None:
         filename = idx.get(class_type)
         result = None if filename is None else _load_pack(filename).get(class_type)
     # Failed reads never reach this assignment and are retried on the next call.
-    if memo is not None:
+    if memo is not None and (not isinstance(owner, _BundleClassMemo) or owner.active):
         memo[class_type] = result
     return result
 
