@@ -3251,6 +3251,14 @@ def _with_bundle_class_memo(func):
     return wrapped
 
 
+def _validate_bundle_cache_witness():
+    from vibecomfy.porting.object_info.consume import _BUNDLE_CLASS_MEMO
+
+    owner = _BUNDLE_CLASS_MEMO.get()
+    if owner is not None and owner.active:
+        owner.validate()
+
+
 @_with_bundle_class_memo
 def emit_bundle(
     workflow: VibeWorkflow,
@@ -3300,6 +3308,7 @@ def emit_bundle(
         provenance=_source_provenance(bundle.provenance),
         external_custody=True,
     )
+    _validate_bundle_cache_witness()
     _atomic_publish_pair(path, source, bundle.ui_sidecar, expected=bundle)
     return bundle
 
@@ -4096,6 +4105,7 @@ def emit_bundle_with_candidate(
         )
     if preserved_python_source is not None:
         source = _preserve_python_source_with_marker(preserved_python_source, source)
+    _validate_bundle_cache_witness()
     _atomic_publish_pair(
         path,
         source,

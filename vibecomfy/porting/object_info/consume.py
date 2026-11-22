@@ -229,6 +229,10 @@ def _sync_reader() -> bool:
     _reader_state = {"root": configured, "active": active, "committed": committed,
                      "marker_sig": marker_sig, "marker_text": marker_text,
                      "index_sig": index_sig, "pack_sigs": pack_sigs}
+    owner = _BUNDLE_CLASS_MEMO.get()
+    if isinstance(owner, _BundleClassMemo) and owner.active:
+        owner.observe(configured / "CURRENT", marker_sig)
+        owner.observe(active / "index.json", index_sig)
     return changed
 
 
@@ -268,6 +272,10 @@ def _load_pack(filename: str) -> dict[str, dict[str, Any]]:
                 _pack_cache[filename] = data
                 _reader_state["pack_sigs"][filename] = cache_file_witness(root / filename)
             if not _sync_reader():
+                owner = _BUNDLE_CLASS_MEMO.get()
+                if isinstance(owner, _BundleClassMemo) and owner.active:
+                    owner.observe(_reader_state["active"] / filename, _reader_state["pack_sigs"][filename])
+                    owner.packs.add(filename)
                 return _pack_cache[filename]
             if attempt:
                 raise ObjectInfoCacheCorruptError("object_info cache changed during pack load")
@@ -279,6 +287,10 @@ def _read_pack_at_root(root: Path, filename: str) -> dict[str, dict[str, Any]]:
     if not safe_cache_filename(filename):
         raise ObjectInfoCacheCorruptError(f"unsafe object_info provider filename: {filename!r}")
     data = read_json(root, filename)
+    owner = _BUNDLE_CLASS_MEMO.get()
+    if isinstance(owner, _BundleClassMemo) and owner.active:
+        owner.observe(root / filename, cache_file_witness(root / filename))
+        owner.packs.add(filename)
     if not isinstance(data, dict):
         raise ObjectInfoCacheCorruptError(f"object_info provider file must be an object: {root / filename}")
     return {
@@ -311,10 +323,29 @@ class _BundleClassMemo:
     def __init__(self) -> None:
         self.entries: dict[str, Any] = {}
         self.active = True
+        self.witnesses: dict[Path, Any] = {}
+        self.packs: set[str] = set()
+
+    def observe(self, path: Path, witness: Any) -> None:
+        self.witnesses.setdefault(path, witness)
+
+    def validate(self) -> None:
+        with _reader_lock:
+            changed = any(cache_file_witness(path) != witness
+                          for path, witness in self.witnesses.items())
+            if not changed:
+                return
+            # Reuse the scalar reader to surface its original corruption errors.
+            _load_index()
+            for filename in sorted(self.packs):
+                _load_pack(filename)
+            raise ObjectInfoCacheCorruptError("object_info cache changed during bundle emission")
 
     def revoke(self) -> None:
         self.active = False
         self.entries.clear()
+        self.witnesses.clear()
+        self.packs.clear()
 
 
 _BUNDLE_CLASS_MEMO: ContextVar[_BundleClassMemo | None] = ContextVar(
