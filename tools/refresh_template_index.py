@@ -35,10 +35,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Refresh template_index.json from ready_templates discovery.")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--check", action="store_true", help="Fail if the output file is stale.")
+    parser.add_argument(
+        "--full-catalog-assets",
+        action="store_true",
+        help="Include model asset fixes across the full catalog (default: preserve existing catalog assets).",
+    )
     args = parser.parse_args(argv)
 
     generated_at = _existing_generated_at(args.output)
-    payload = build_template_index(generated_at=generated_at)
+    payload = build_template_index(
+        generated_at=generated_at,
+        include_full_catalog_asset_fixes=args.full_catalog_assets,
+    )
     rendered = json.dumps(payload, indent=2, sort_keys=False) + "\n"
 
     if args.check:
@@ -53,7 +61,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0
 
 
-def build_template_index(*, generated_at: str | None = None) -> dict[str, Any]:
+def build_template_index(
+    *, generated_at: str | None = None, include_full_catalog_asset_fixes: bool = False,
+) -> dict[str, Any]:
     generated_at = generated_at or _existing_generated_at(DEFAULT_OUTPUT)
     coverage = _load_coverage_by_template_id(DEFAULT_COVERAGE)
     templates: list[dict[str, Any]] = []
@@ -106,60 +116,76 @@ def build_template_index(*, generated_at: str | None = None) -> dict[str, Any]:
             or ("manual" if coverage_row.get("path") == "manual" else None),
             "source_sha256": _extract_source_sha256(source_path),
         }
-        model_assets = _list_items(metadata.get("model_assets")) or _list_items(requirements.get("models"))
-        if isinstance(metadata.get("models"), dict):
-            metadata_models_by_url: dict[str, list[tuple[str, dict[str, Any]]]] = {}
-            for name, asset in metadata["models"].items():
-                if isinstance(asset, dict) and asset.get("url"):
-                    metadata_models_by_url.setdefault(asset["url"], []).append((name, asset))
-            by_url = {
-                url: (models[0][0], models[0][1].get("filename"))
-                for url, models in metadata_models_by_url.items()
-                if len(models) == 1
-            }
-            if not model_assets:
-                model_assets = [
-                    {
-                        **asset,
-                        "name": name,
-                        "filename": asset.get("filename") or Path(asset.get("url") or "").name or asset.get("name"),
-                    }
-                    for name, asset in metadata["models"].items()
-                    if isinstance(asset, dict)
-                ]
+        if (
+            include_full_catalog_asset_fixes
+            or template_id == "audio/transcribe"
+        ):
+            model_assets = _list_items(metadata.get("model_assets")) or _list_items(requirements.get("models"))
+            if isinstance(metadata.get("models"), dict):
+                metadata_models_by_url: dict[str, list[tuple[str, dict[str, Any]]]] = {}
+                for name, asset in metadata["models"].items():
+                    if isinstance(asset, dict) and asset.get("url"):
+                        metadata_models_by_url.setdefault(asset["url"], []).append((name, asset))
+                by_url = {
+                    url: (models[0][0], models[0][1].get("filename"))
+                    for url, models in metadata_models_by_url.items()
+                    if len(models) == 1
+                }
+                if not model_assets:
+                    model_assets = [
+                        {
+                            **asset,
+                            "name": name,
+                            "filename": asset.get("filename") or Path(asset.get("url") or "").name or asset.get("name"),
+                        }
+                        for name, asset in metadata["models"].items()
+                        if isinstance(asset, dict)
+                    ]
+                else:
+                    matched_assets = []
+                    for declared in model_assets:
+                        if not isinstance(declared, dict):
+                            matched_assets.append(declared)
+                            continue
+                        asset = dict(declared)
+                        name, metadata_filename = by_url.get(asset.get("url"), (None, None))
+                        if name:
+                            asset["name"] = name
+                        asset["filename"] = (
+                            metadata_filename
+                            or asset.get("filename")
+                            or Path(asset.get("url") or "").name
+                            or asset.get("name")
+                        )
+                        matched_assets.append(asset)
+                    model_assets = matched_assets
             else:
-                matched_assets = []
-                for declared in model_assets:
-                    if not isinstance(declared, dict):
-                        matched_assets.append(declared)
-                        continue
-                    asset = dict(declared)
-                    name, metadata_filename = by_url.get(asset.get("url"), (None, None))
-                    if name:
-                        asset["name"] = name
-                    asset["filename"] = (
-                        metadata_filename
-                        or asset.get("filename")
-                        or Path(asset.get("url") or "").name
-                        or asset.get("name")
-                    )
-                    matched_assets.append(asset)
-                model_assets = matched_assets
-        else:
-            model_assets = [
-                {**asset, "filename": asset.get("filename") or Path(asset.get("url") or "").name or asset.get("name")}
-                if isinstance(asset, dict) else asset
-                for asset in model_assets
-            ]
-        if model_assets:
-            row["model_assets"] = model_assets
-            row["model_count"] = len(model_assets)
+                model_assets = [
+                    {**asset, "filename": asset.get("filename") or Path(asset.get("url") or "").name or asset.get("name")}
+                    if isinstance(asset, dict) else asset
+                    for asset in model_assets
+                ]
+            if model_assets:
+                row["model_assets"] = model_assets
+                row["model_count"] = len(model_assets)
         if metadata.get("license_notice"):
             row["license_notice"] = metadata["license_notice"]
         custom_node_refs = static_contract.get("custom_node_refs") or _list_items(requirements.get("custom_node_refs"))
         if custom_node_refs:
             row["custom_node_refs"] = custom_node_refs
         templates.append(row)
+
+    # Preserve the checked-in catalog's existing asset declarations in the
+    # default narrow refresh. Full-catalog fixes remain an explicit opt-in.
+    if not include_full_catalog_asset_fixes:
+        existing_rows = _existing_asset_rows(DEFAULT_OUTPUT)
+        for row in templates:
+            if row["id"] == "audio/transcribe":
+                continue
+            previous = existing_rows.get(row["id"], {})
+            if "model_assets" in previous:
+                row["model_assets"] = previous["model_assets"]
+                row["model_count"] = previous.get("model_count", row["model_count"])
 
     return {
         "generated_at": generated_at or datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
@@ -169,6 +195,14 @@ def build_template_index(*, generated_at: str | None = None) -> dict[str, Any]:
         "template_count": len(templates),
         "templates": templates,
     }
+
+
+def _existing_asset_rows(path: Path) -> dict[str, dict[str, Any]]:
+    try:
+        rows = json.loads(path.read_text(encoding="utf-8")).get("templates", [])
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return {row["id"]: row for row in rows if isinstance(row, dict) and isinstance(row.get("id"), str)}
 
 
 def _extract_source_sha256(path: Path) -> str | None:

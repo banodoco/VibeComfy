@@ -475,7 +475,10 @@ def test_template_index_keeps_distinct_digestless_asset_identity(
         ),
     )
 
-    row = refresh.build_template_index(generated_at="2026-01-01T00:00:00+00:00")["templates"][0]
+    row = refresh.build_template_index(
+        generated_at="2026-01-01T00:00:00+00:00",
+        include_full_catalog_asset_fixes=True,
+    )["templates"][0]
 
     assert [(asset["name"], asset["filename"]) for asset in row["model_assets"]] == [
         ("logical-first", "renamed-first.bin"),
