@@ -443,6 +443,71 @@ def test_template_index_matches_ready_template_discovery() -> None:
     assert actual["templates"] == expected["templates"]
 
 
+def test_template_index_keeps_distinct_digestless_asset_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from tools import refresh_template_index as refresh
+
+    candidate = tmp_path / "ready_templates" / "image" / "digestless.py"
+    candidate.parent.mkdir(parents=True)
+    candidate.write_text(
+        "READY_METADATA = {'ready_template': 'image/digestless'}\n",
+        encoding="utf-8",
+    )
+    discovery = ready_registry._discover_ready_templates(roots=[candidate.parents[1]])
+    monkeypatch.setattr(refresh, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(refresh, "repo_ready_template_discovery", lambda: discovery)
+    monkeypatch.setattr(refresh, "_load_coverage_by_template_id", lambda _path: {})
+    monkeypatch.setattr(
+        refresh,
+        "_ready_template_metadata",
+        lambda _path: (
+            {
+                "models": {
+                    "logical-first": {"sha256": None, "url": "https://example.test/first.bin", "filename": "renamed-first.bin"},
+                    "logical-second": {"sha256": None, "url": "https://example.test/second.bin"},
+                }
+            },
+            {"models": [
+                {"sha256": None, "url": "https://example.test/first.bin", "name": "first-requirement", "filename": "asset-first.bin"},
+                {"sha256": None, "url": "https://example.test/second.bin", "name": "second-requirement", "filename": "asset-second.bin"},
+            ]},
+        ),
+    )
+
+    row = refresh.build_template_index(generated_at="2026-01-01T00:00:00+00:00")["templates"][0]
+
+    assert [(asset["name"], asset["filename"]) for asset in row["model_assets"]] == [
+        ("logical-first", "renamed-first.bin"),
+        ("logical-second", "asset-second.bin"),
+    ]
+
+
+def test_indexed_model_filenames_match_template_declarations() -> None:
+    from tools.refresh_template_index import _ready_template_metadata
+
+    index = json.loads(Path("template_index.json").read_text(encoding="utf-8"))
+    for row in index["templates"]:
+        source = Path(row["path"])
+        metadata, requirements = _ready_template_metadata(source)
+        declarations = metadata.get("model_assets") or requirements.get("models") or []
+        metadata_models = metadata.get("models") if isinstance(metadata.get("models"), dict) else {}
+        indexed_url_assets = [
+            asset for asset in row.get("model_assets", [])
+            if isinstance(asset, dict) and asset.get("url")
+        ]
+        for url in {asset["url"] for asset in indexed_url_assets}:
+            matching = [asset for asset in declarations if isinstance(asset, dict) and asset.get("url") == url]
+            metadata_matches = [asset for asset in metadata_models.values() if isinstance(asset, dict) and asset.get("url") == url]
+            assert matching or metadata_matches, (row["id"], url)
+            declared = matching or metadata_matches
+            override = metadata_matches[0].get("filename") if len(metadata_matches) == 1 else None
+            expected = sorted(override or asset.get("filename") or Path(url).name for asset in declared)
+            actual = sorted(asset.get("filename") or "" for asset in indexed_url_assets if asset["url"] == url)
+            assert actual == expected, (row["id"], url, actual, expected)
+
+
+
 def test_static_contract_extractor_reads_manual_and_helper_public_contracts(tmp_path: Path) -> None:
     source = tmp_path / "sample.py"
     source.write_text(

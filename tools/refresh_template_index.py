@@ -107,25 +107,50 @@ def build_template_index(*, generated_at: str | None = None) -> dict[str, Any]:
             "source_sha256": _extract_source_sha256(source_path),
         }
         model_assets = _list_items(metadata.get("model_assets")) or _list_items(requirements.get("models"))
-        if not model_assets and isinstance(metadata.get("models"), dict):
-            model_assets = [
-                {"name": name, "filename": Path(asset.get("url", "")).name, **asset}
-                for name, asset in metadata["models"].items()
-                if isinstance(asset, dict)
-            ]
-        elif isinstance(metadata.get("models"), dict):
-            by_digest = {
-                asset.get("sha256"): (name, Path(asset.get("url") or "").name)
-                for name, asset in metadata["models"].items()
-                if isinstance(asset, dict)
+        if isinstance(metadata.get("models"), dict):
+            metadata_models_by_url: dict[str, list[tuple[str, dict[str, Any]]]] = {}
+            for name, asset in metadata["models"].items():
+                if isinstance(asset, dict) and asset.get("url"):
+                    metadata_models_by_url.setdefault(asset["url"], []).append((name, asset))
+            by_url = {
+                url: (models[0][0], models[0][1].get("filename"))
+                for url, models in metadata_models_by_url.items()
+                if len(models) == 1
             }
-            for asset in model_assets:
-                if isinstance(asset, dict):
-                    name, filename = by_digest.get(asset.get("sha256"), ("", ""))
+            if not model_assets:
+                model_assets = [
+                    {
+                        **asset,
+                        "name": name,
+                        "filename": asset.get("filename") or Path(asset.get("url") or "").name or asset.get("name"),
+                    }
+                    for name, asset in metadata["models"].items()
+                    if isinstance(asset, dict)
+                ]
+            else:
+                matched_assets = []
+                for declared in model_assets:
+                    if not isinstance(declared, dict):
+                        matched_assets.append(declared)
+                        continue
+                    asset = dict(declared)
+                    name, metadata_filename = by_url.get(asset.get("url"), (None, None))
                     if name:
                         asset["name"] = name
-                    if filename:
-                        asset["filename"] = filename
+                    asset["filename"] = (
+                        metadata_filename
+                        or asset.get("filename")
+                        or Path(asset.get("url") or "").name
+                        or asset.get("name")
+                    )
+                    matched_assets.append(asset)
+                model_assets = matched_assets
+        else:
+            model_assets = [
+                {**asset, "filename": asset.get("filename") or Path(asset.get("url") or "").name or asset.get("name")}
+                if isinstance(asset, dict) else asset
+                for asset in model_assets
+            ]
         if model_assets:
             row["model_assets"] = model_assets
             row["model_count"] = len(model_assets)
