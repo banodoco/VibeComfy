@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import ast
 import copy
+import functools
 import hashlib
 import json
 import logging
@@ -3231,6 +3232,21 @@ def _destination_path(destination: str | Path, workflow: VibeWorkflow) -> Path:
     return path
 
 
+def _with_bundle_class_memo(func):
+    @functools.wraps(func)
+    def wrapped(*args, **kwargs):
+        from vibecomfy.porting.object_info.consume import _BUNDLE_CLASS_MEMO
+
+        token = _BUNDLE_CLASS_MEMO.set({})
+        try:
+            return func(*args, **kwargs)
+        finally:
+            _BUNDLE_CLASS_MEMO.reset(token)
+
+    return wrapped
+
+
+@_with_bundle_class_memo
 def emit_bundle(
     workflow: VibeWorkflow,
     destination: str | Path,
@@ -3944,6 +3960,7 @@ def _preserve_python_source_with_marker(
     return result
 
 
+@_with_bundle_class_memo
 def emit_bundle_with_candidate(
     workflow: VibeWorkflow,
     destination: str | Path,

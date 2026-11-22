@@ -305,13 +305,26 @@ def _all_pack_filenames() -> list[str]:
         return _pack_filenames_at_root(root)
 
 
+# Bound only for a bundle emission. Values are the raw pack-cache objects,
+# matching the identity and mutation behavior of the scalar reader.
+_BUNDLE_CLASS_MEMO: ContextVar[dict[str, Any] | None] = ContextVar(
+    "_BUNDLE_CLASS_MEMO", default=None
+)
+
+
 def _resolve_class_type(class_type: str) -> dict[str, Any] | None:
+    # A separately captured operation snapshot keeps its existing semantics.
+    memo = _BUNDLE_CLASS_MEMO.get() if _CLASS_ENTRY_SNAPSHOT.get() is None else None
+    if memo is not None and class_type in memo:
+        return memo[class_type]
     with _reader_lock:
         idx = _load_index()
         filename = idx.get(class_type)
-        if filename is None:
-            return None
-        return _load_pack(filename).get(class_type)
+        result = None if filename is None else _load_pack(filename).get(class_type)
+    # Failed reads never reach this assignment and are retried on the next call.
+    if memo is not None:
+        memo[class_type] = result
+    return result
 
 
 def _identity_matches(
