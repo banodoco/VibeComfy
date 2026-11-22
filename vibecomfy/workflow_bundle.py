@@ -3233,6 +3233,7 @@ def _destination_path(destination: str | Path, workflow: VibeWorkflow) -> Path:
 
 
 def _with_bundle_class_memo(func):
+    """within one emit the object-info evidence is read as of first lookup and witnessed once more at the end, before any output file is written; a change during the emit refuses with the base's error; where the base would have used a new value mid-emit, this refuses instead"""
     @functools.wraps(func)
     def wrapped(*args, **kwargs):
         from vibecomfy.porting.object_info.consume import _BUNDLE_CLASS_MEMO, _BundleClassMemo

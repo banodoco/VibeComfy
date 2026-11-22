@@ -559,6 +559,10 @@ def get_classes(class_types: Iterable[str]) -> dict[str, dict[str, Any]]:
                     _pack_cache[filename] = pack
                     _reader_state["pack_sigs"][filename] = witness_after
                 pack = _pack_cache[filename]
+                owner = _BUNDLE_CLASS_MEMO.get()
+                if isinstance(owner, _BundleClassMemo) and owner.active:
+                    owner.observe(root / filename, _reader_state["pack_sigs"][filename])
+                    owner.packs.add(filename)
                 for class_type in names:
                     entry = pack.get(class_type)
                     if isinstance(entry, dict):
