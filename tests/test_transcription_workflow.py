@@ -12,6 +12,14 @@ from vibecomfy.workflow_bundle import WorkflowBundleError, load_bundle
 
 def test_transcription_preflight_with_declared_inventory(tmp_path):
     workflow = workflow_from_ready('audio/transcribe')
+    assert workflow.requirements.custom_nodes == ['ComfyUI-Whisper']
+    from vibecomfy.custom_node_refs import workflow_lock_entries
+    lock_entries = workflow_lock_entries(workflow)
+    assert len(lock_entries) == 1
+    assert lock_entries[0].name == 'ComfyUI-Whisper'
+    assert lock_entries[0].git_commit_sha == '006a709848259ed3d69e2f9fcfd7a75f6c860ddd'
+    assert lock_entries[0].class_set == ('Apply Whisper',)
+    assert lock_entries[0].class_schema_sha256 == 'a035372485b38b70022c249aa4cfb2034a832b27b683069b8de7762597c1115e'
     assets = workflow.metadata['requirements']['models']
     assert len(assets) == 1
     asset = assets[0]
@@ -39,6 +47,40 @@ def test_transcription_preflight_with_declared_inventory(tmp_path):
     bad = {**inventory, 'sha256': '0' * 64}
     with pytest.raises(WorkflowBundleError):
         load_bundle(workflow).compile(schema_provider=provider([bad]), models_root=tmp_path)
+
+
+def test_transcription_strict_drift_uses_workflow_pin_without_external_lock(tmp_path, monkeypatch):
+    import copy
+
+    from vibecomfy.runtime.drift import _invalidate_cache_entry, enforce_strict_drift
+    from vibecomfy.errors import DriftError
+    from vibecomfy.porting.object_info import get_class_by_identity
+
+    monkeypatch.chdir(tmp_path)
+    workflow = workflow_from_ready('audio/transcribe')
+    monkeypatch.setattr('vibecomfy.node_packs.read_lockfile', lambda path=None: [])
+    monkeypatch.setattr('vibecomfy.runtime.drift._nodepack_dir', lambda name: tmp_path)
+    monkeypatch.setattr('vibecomfy.runtime.drift._git_head', lambda path: '006a709848259ed3d69e2f9fcfd7a75f6c860ddd')
+    monkeypatch.setattr('vibecomfy.runtime.drift._git_origin', lambda path: 'https://github.com/yuvraj108c/ComfyUI-Whisper.git')
+    def drifted_indexed_schema(class_type, *, pack_slug, git_commit=None, evidence_identity=None):
+        schema = get_class_by_identity(
+            class_type, pack_slug=pack_slug, git_commit=git_commit,
+            evidence_identity=evidence_identity,
+        )
+        if schema is not None and class_type == 'Apply Whisper':
+            schema = copy.deepcopy(schema)
+            schema['inputs']['required']['__strict_drift_probe__'] = 'STRING'
+        return schema
+
+    monkeypatch.setattr(
+        'vibecomfy.porting.object_info.get_class_by_identity',
+        drifted_indexed_schema,
+    )
+    monkeypatch.setattr('vibecomfy.runtime.drift._comfyui_git_head', lambda: None)
+    _invalidate_cache_entry(workflow)
+
+    with pytest.raises(DriftError, match='schema hash'):
+        enforce_strict_drift(workflow)
 
 
 def test_transcription_draft_entry():

@@ -943,9 +943,30 @@
       "indexed": true,
       "capability": "audio",
       "coverage_tier": "",
-      "custom_nodes": [],
-      "model_count": 0,
-      "public_inputs": [],
+      "custom_nodes": [
+        "ComfyUI-Whisper"
+      ],
+      "model_count": 1,
+      "public_inputs": [
+        {
+          "name": "audio_ref",
+          "target": {
+            "node_id": "1",
+            "field": "audio"
+          },
+          "node_id": "1",
+          "field": "audio",
+          "value": "input.wav",
+          "type": "COMBO",
+          "default": "input.wav",
+          "required": true,
+          "range": null,
+          "aliases": [],
+          "media_semantics": "audio",
+          "status": "static",
+          "source": "InputSpec"
+        }
+      ],
       "public_outputs": [
         {
           "name": "transcript_json",
@@ -980,9 +1001,9 @@
           "message": "finalize has dynamic 'output_node'"
         }
       ],
-      "public_input_status": "partial",
+      "public_input_status": "declared",
       "public_output_status": "declared",
-      "custom_node_count": 0,
+      "custom_node_count": 1,
       "strict_ready_diagnostic_counts": {},
       "readiness_class": "ready",
       "marker": "manual",
@@ -997,7 +1018,34 @@
         "status": "static_source_schema_only"
       },
       "source_workflow": null,
-      "source_sha256": null
+      "source_sha256": null,
+      "model_assets": [
+        {
+          "name": "large-v3-turbo",
+          "filename": "large-v3-turbo.pt",
+          "url": "https://openaipublic.azureedge.net/main/whisper/models/aff26ae408abcba5fbf8813c21e62b0941638c5f6eebfb145be0c9839262a19a/large-v3-turbo.pt",
+          "subdir": "stt/whisper",
+          "sha256": "aff26ae408abcba5fbf8813c21e62b0941638c5f6eebfb145be0c9839262a19a",
+          "size_bytes": 1617941637
+        }
+      ],
+      "custom_node_refs": [
+        {
+          "slug": "ComfyUI-Whisper",
+          "source": "git",
+          "name": "ComfyUI-Whisper",
+          "commit": "006a709848259ed3d69e2f9fcfd7a75f6c860ddd",
+          "class_schema_sha256": "a035372485b38b70022c249aa4cfb2034a832b27b683069b8de7762597c1115e",
+          "url": "https://github.com/yuvraj108c/ComfyUI-Whisper.git",
+          "class_set": [
+            "Apply Whisper"
+          ],
+          "pip_packages": [
+            "openai-whisper",
+            "soundfile"
+          ]
+        }
+      ]
     },
     {
       "id": "edit/flux2_klein_4b_image_edit_base",
