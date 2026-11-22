@@ -286,10 +286,14 @@ def _read_pack_at_root(root: Path, filename: str) -> dict[str, dict[str, Any]]:
     """Read one provider file from a caller-pinned active root."""
     if not safe_cache_filename(filename):
         raise ObjectInfoCacheCorruptError(f"unsafe object_info provider filename: {filename!r}")
-    data = read_json(root, filename)
     owner = _BUNDLE_CLASS_MEMO.get()
+    before = cache_file_witness(root / filename) if isinstance(owner, _BundleClassMemo) and owner.active else None
+    data = read_json(root, filename)
     if isinstance(owner, _BundleClassMemo) and owner.active:
-        owner.observe(root / filename, cache_file_witness(root / filename))
+        after = cache_file_witness(root / filename)
+        if before != after:
+            raise ObjectInfoCacheCorruptError("object_info cache changed during pack load")
+        owner.observe(root / filename, after)
         owner.packs.add(filename)
     if not isinstance(data, dict):
         raise ObjectInfoCacheCorruptError(f"object_info provider file must be an object: {root / filename}")
