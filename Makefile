@@ -148,7 +148,7 @@ install-dev:
 	$(PIP_INSTALL) --extra-index-url "$(COMFY_INDEX_URL)" -e ".[dev,comfy]"
 
 install-ci:
-	$(PIP_INSTALL) --extra-index-url "$(COMFY_INDEX_URL)" -e ".[dev,runpod-launch,comfy]"
+	$(PIP_INSTALL) --extra-index-url "$(COMFY_INDEX_URL)" --find-links vendor/wheels -e ".[dev,runpod-launch,comfy]"
 	$(PIP_INSTALL) "lazy-object-proxy>=1.10" "frozendict>=2.4" "pillow>=10" "ConfigArgParse>=1.7.1"
 
 prune-empty-runtime-root:
