@@ -18,6 +18,7 @@ import httpx
 
 API_BASE_URL = "https://api.comfy.org"
 MANAGER_NODE_MAP_URL = "https://raw.githubusercontent.com/ltdrdata/ComfyUI-Manager/main/custom-node-map.json"
+MANAGER_EXTENSION_MAP_URL = "https://raw.githubusercontent.com/ltdrdata/ComfyUI-Manager/main/extension-node-map.json"
 MANAGER_NODE_LIST_URL = "https://raw.githubusercontent.com/ltdrdata/ComfyUI-Manager/main/custom-node-list.json"
 GITHUB_API_BASE_URL = "https://api.github.com"
 DEFAULT_CACHE_ROOT = Path(os.environ.get("VIBECOMFY_REGISTRY_CACHE", "~/.cache/vibecomfy/registry")).expanduser()
@@ -253,8 +254,10 @@ class MissingNodeResolution:
     warnings: tuple[str, ...] = ()
     source_tiers_attempted: tuple[str, ...] = ()
     runnable: bool = False
+    source_tier_status: Mapping[str, str] | None = None
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "source_tier_status", MappingProxyType(dict(self.source_tier_status or {})))
         object.__setattr__(self, "candidates", tuple(self.candidates))
         object.__setattr__(self, "warnings", _dedupe_strings(self.warnings))
         object.__setattr__(self, "source_tiers_attempted", _dedupe_strings(self.source_tiers_attempted))
@@ -267,8 +270,25 @@ class MissingNodeResolution:
             "candidates": [candidate.to_dict() for candidate in self.candidates],
             "warnings": list(self.warnings),
             "source_tiers_attempted": list(self.source_tiers_attempted),
+            "source_tier_status": dict(self.source_tier_status or {}),
             "runnable": False,
         }
+
+
+# Do not turn programming errors into false negative lookup evidence.
+_LOOKUP_ERRORS = (httpx.HTTPError, ValueError, OSError)
+
+
+def _lookup_failure(label: str, exc: Exception) -> str:
+    if isinstance(exc, httpx.HTTPStatusError):
+        return f"{label} unavailable (HTTP {exc.response.status_code})."
+    return f"{label} unavailable ({type(exc).__name__})."
+
+
+def _tier_status(matched: bool, incomplete: bool) -> str:
+    if incomplete:
+        return "degraded" if matched else "unavailable"
+    return "matched" if matched else "no_match"
 
 
 class RegistryHTTPClient(Protocol):
@@ -694,60 +714,96 @@ def resolve_missing_nodes(
     attempted: list[str] = []
     candidates: dict[str, ResolverCandidate] = {}
 
+    statuses: dict[str, str] = {}
     attempted.append("comfyui-manager")
+    manager_candidates: list[ResolverCandidate] = []
+    manager_incomplete = False
     if _budget_exceeded(budget_end):
         warnings.append("registry sub-budget exceeded before ComfyUI-Manager lookup; partial evidence.")
+        manager_incomplete = True
     else:
         try:
-            for candidate in manager.resolve(normalized_query, query_intent=intent):
-                _merge_candidate(candidates, candidate)
+            manager_candidates = manager.resolve(normalized_query, query_intent=intent)
         except _BudgetExceeded:
             warnings.append("registry sub-budget exceeded during ComfyUI-Manager lookup; partial evidence.")
+            manager_incomplete = True
+        except _LOOKUP_ERRORS as exc:
+            warnings.append(_lookup_failure("ComfyUI-Manager lookup", exc))
+            manager_incomplete = True
+    warnings.extend(manager.lookup_warnings)
+    for candidate in manager_candidates:
+        _merge_candidate(candidates, candidate)
+    statuses["comfyui-manager"] = _tier_status(
+        bool(manager_candidates), manager_incomplete or bool(manager.lookup_warnings)
+    )
 
     attempted.append("comfy-registry")
     registry_refs: list[PackRef] = []
+    registry_incomplete = False
     if _budget_exceeded(budget_end):
         warnings.append("registry sub-budget exceeded before Comfy Registry lookup; partial evidence.")
+        registry_incomplete = True
     else:
         try:
             if intent == "class_name":
                 resolution = registry.resolve_class(normalized_query)
-                if resolution is not None:
-                    registry_refs = [resolution.ref, *resolution.candidates]
             else:
                 resolution = registry.resolve_slug_or_name(normalized_query)
-                if resolution is not None:
-                    registry_refs = [resolution.ref, *resolution.candidates]
+            if resolution is not None:
+                registry_refs = [resolution.ref, *resolution.candidates]
         except _BudgetExceeded:
             warnings.append("registry sub-budget exceeded during Comfy Registry lookup; partial evidence.")
+            registry_incomplete = True
         except AmbiguousPackError as exc:
             registry_refs = list(exc.candidates)
             warnings.append(f"Comfy Registry returned ambiguous candidates for {normalized_query!r}.")
-        except Exception as exc:
-            warnings.append(f"Comfy Registry lookup failed: {type(exc).__name__}: {exc}")
+        except _LOOKUP_ERRORS as exc:
+            warnings.append(_lookup_failure("Comfy Registry lookup", exc))
+            registry_incomplete = True
+    registry_matched = False
     for ref in registry_refs:
-        if _budget_exceeded(budget_end):
-            warnings.append("registry sub-budget exceeded before schema fetch; partial evidence.")
-            break
         try:
-            _merge_candidate(candidates, registry.candidate_for_ref(ref))
+            candidate = registry.candidate_for_ref(ref)
         except _BudgetExceeded:
             warnings.append("registry sub-budget exceeded during schema fetch; partial evidence.")
-            break
+            registry_incomplete = True
+            candidate = ResolverCandidate(ref=ref, warnings=("Schema lookup budget exhausted.",))
+        except _LOOKUP_ERRORS as exc:
+            warning = _lookup_failure("Comfy Registry enrichment", exc)
+            candidate = ResolverCandidate(ref=ref, warnings=(warning,))
+            registry_incomplete = True
+        registry_matched = True
+        registry_incomplete = registry_incomplete or bool(candidate.warnings)
+        _merge_candidate(candidates, candidate)
+    warnings.extend(registry.lookup_warnings)
+    statuses["comfy-registry"] = _tier_status(
+        registry_matched, registry_incomplete or bool(registry.lookup_warnings)
+    )
 
     attempted.append("github")
     github = _GitHubEvidenceClient(cache_root=cache, client=github_client, token=github_token, deadline=budget_end)
+    github_candidates: Any = ()
+    github_warnings: Any = ()
+    github_incomplete = False
     if _budget_exceeded(budget_end):
         warnings.append("registry sub-budget exceeded before GitHub lookup; partial evidence.")
+        github_incomplete = True
     else:
         try:
             github_candidates, github_warnings = github.resolve(normalized_query, candidates.values())
         except _BudgetExceeded:
             warnings.append("registry sub-budget exceeded during GitHub lookup; partial evidence.")
-        else:
-            warnings.extend(github_warnings)
-            for candidate in github_candidates:
-                _merge_candidate(candidates, candidate)
+            github_incomplete = True
+        except _LOOKUP_ERRORS as exc:
+            warnings.append(_lookup_failure("GitHub lookup", exc))
+            github_incomplete = True
+    warnings.extend(github_warnings)
+    warnings.extend(github.lookup_warnings)
+    for candidate in github_candidates:
+        _merge_candidate(candidates, candidate)
+    statuses["github"] = _tier_status(
+        bool(github_candidates), github_incomplete or bool(github_warnings) or bool(github.lookup_warnings)
+    )
 
     raw_candidates = list(candidates.values())
     if intent != "class_name":
@@ -770,6 +826,7 @@ def resolve_missing_nodes(
         candidates=tuple(ordered),
         warnings=tuple(warnings),
         source_tiers_attempted=tuple(attempted),
+        source_tier_status=statuses,
     )
 
 
@@ -786,6 +843,7 @@ class _ComfyRegistryClient:
         self.client = client or httpx.Client(timeout=timeout_seconds, follow_redirects=True)
         self.timeout_seconds = timeout_seconds
         self.deadline = deadline
+        self.lookup_warnings: list[str] = []
 
     def _check_budget(self) -> None:
         if _budget_exceeded(self.deadline):
@@ -856,7 +914,11 @@ class _ComfyRegistryClient:
         version = _concrete_registry_version(ref.version)
         version_record: Mapping[str, Any] | None = None
         if ref.source == "comfy-registry" or version is None:
-            payload, cache_hit = self._get_json(versions_path)
+            try:
+                payload, cache_hit = self._get_json(versions_path)
+            except (_BudgetExceeded, httpx.HTTPError, ValueError, OSError) as exc:
+                warnings.append(_lookup_failure("Comfy Registry version list", exc))
+                payload, cache_hit = None, False
             version_record = _version_record_from_versions_payload(payload, version)
             version = version or _version_from_versions_payload(payload)
             if version_record is None:
@@ -878,7 +940,11 @@ class _ComfyRegistryClient:
             return ResolverCandidate(ref=ref, evidence=tuple(evidence), warnings=tuple(warnings))
 
         schema_path = f"/nodes/{quote(ref.registry_id or ref.slug, safe='')}/versions/{quote(version, safe='')}/schema"
-        payload, cache_hit = self._get_json(schema_path)
+        try:
+            payload, cache_hit = self._get_json(schema_path)
+        except (_BudgetExceeded, httpx.HTTPError, ValueError, OSError) as exc:
+            warnings.append(_lookup_failure("Comfy Registry schema", exc))
+            payload, cache_hit = None, False
         if payload is None:
             warnings.append(f"Comfy Registry has no schema for {ref.slug} at {version}.")
         else:
@@ -926,7 +992,10 @@ class _ComfyRegistryClient:
         else:
             response.raise_for_status()
             payload = response.json()
-        _atomic_write_json(cache_file, payload)
+        try:
+            _atomic_write_json(cache_file, payload)
+        except (OSError, ValueError) as exc:
+            self.lookup_warnings.append(_lookup_failure("Comfy Registry cache write", exc))
         return payload, False
 
     def _cache_file(self, path: str, params: dict[str, str] | None) -> Path:
@@ -950,6 +1019,7 @@ class _ExternalJsonCache:
         self.client = client or httpx.Client(timeout=timeout_seconds, follow_redirects=True)
         self.timeout_seconds = timeout_seconds
         self.deadline = deadline
+        self.lookup_warnings: list[str] = []
 
     def _check_budget(self) -> None:
         if _budget_exceeded(self.deadline):
@@ -990,7 +1060,10 @@ class _ExternalJsonCache:
             if response.status_code >= 400:
                 return None, False, response.status_code, response.headers
             payload = response.json()
-        _atomic_write_json(cache_file, payload)
+        try:
+            _atomic_write_json(cache_file, payload)
+        except (OSError, ValueError) as exc:
+            self.lookup_warnings.append(_lookup_failure("External lookup cache write", exc))
         return payload, False, response.status_code, response.headers
 
     def _read_cached_json_url(
@@ -1011,7 +1084,8 @@ class _ExternalJsonCache:
             if expires_at > time.time():
                 return None, True, 422, httpx.Headers()
             return None
-        return cached, True, 200, httpx.Headers()
+        # A cached JSON null records an earlier HTTP 404, not an empty successful search.
+        return cached, True, 404 if cached is None else 200, httpx.Headers()
 
     def _cache_file_for_url(self, url: str, params: dict[str, str] | None) -> Path:
         query = urlencode(sorted((params or {}).items()))
@@ -1025,10 +1099,43 @@ class _ExternalJsonCache:
 
 class _ManagerEvidenceClient(_ExternalJsonCache):
     def resolve(self, query: str, *, query_intent: str) -> list[ResolverCandidate]:
-        node_map, map_cache_hit, _, _ = self._get_json_url(MANAGER_NODE_MAP_URL)
-        node_list, list_cache_hit, _, _ = self._get_json_url(MANAGER_NODE_LIST_URL)
+        def fetch(url: str, *, missing_ok: bool = False) -> tuple[Any, bool]:
+            try:
+                payload, cache_hit, status, _ = self._get_json_url(url)
+            except _LOOKUP_ERRORS as exc:
+                self.lookup_warnings.append(_lookup_failure(f"ComfyUI-Manager {url}", exc))
+                return None, False
+            if status == 404 and missing_ok:
+                return None, cache_hit
+            if status >= 400:
+                self.lookup_warnings.append(f"ComfyUI-Manager {url} unavailable (HTTP {status}).")
+                return None, False
+            return payload, cache_hit
+
+        map_url = MANAGER_NODE_MAP_URL
+        # Retain old snapshots/clients. The public Manager feed now uses
+        # extension-node-map.json, with repository URLs as keys.
+        node_map, map_cache_hit = fetch(map_url, missing_ok=True)
+        if node_map is None:
+            map_url = MANAGER_EXTENSION_MAP_URL
+            node_map, map_cache_hit = fetch(map_url)
+        node_list, list_cache_hit = fetch(MANAGER_NODE_LIST_URL)
         class_to_packs = _manager_class_to_packs(node_map)
         metadata = _manager_pack_metadata(node_list)
+        if map_url == MANAGER_EXTENSION_MAP_URL:
+            # The extension map is direct repository evidence even if the
+            # metadata feed is unavailable. Match metadata by repository URL,
+            # not display title, which is neither unique nor stable.
+            class_to_packs, extension_metadata = _manager_extension_records(node_map, metadata)
+            # Extension records already include matching list metadata. Keep
+            # list-only evidence for packages that have no map row.
+            mapped_urls = {key.lower() for key in extension_metadata}
+            metadata = {
+                key: record for key, record in metadata.items()
+                if (_manager_record_url(record) or "").rstrip("/").removesuffix(".git").lower()
+                not in mapped_urls
+            }
+            metadata.update(extension_metadata)
         matched_slugs: set[str] = set()
         exact_classes: dict[str, list[str]] = {}
         normalized_query = _normalize_lookup_key(query)
@@ -1067,8 +1174,8 @@ class _ManagerEvidenceClient(_ExternalJsonCache):
                 evidence_detail["description"] = description
             evidence = ResolverEvidence(
                 tier="comfyui-manager",
-                source="custom-node-map" if expected else "custom-node-list",
-                endpoint=MANAGER_NODE_MAP_URL if expected else MANAGER_NODE_LIST_URL,
+                source=Path(urlparse(map_url).path).stem if expected else "custom-node-list",
+                endpoint=map_url if expected else MANAGER_NODE_LIST_URL,
                 cache_hit=map_cache_hit if expected else list_cache_hit,
                 matched_classes=expected,
                 detail=evidence_detail,
@@ -1195,7 +1302,7 @@ class _GitHubEvidenceClient(_ExternalJsonCache):
                 params={"q": f"{query} ComfyUI"},
                 headers=headers,
             )
-        except httpx.HTTPError as exc:
+        except _LOOKUP_ERRORS as exc:
             warnings.append(f"GitHub repository search failed ({type(exc).__name__}).")
             return (), warnings
         if repo_status >= 400:
@@ -1240,7 +1347,7 @@ class _GitHubEvidenceClient(_ExternalJsonCache):
                 time.monotonic() - started, http_request=False
             )
             raise
-        except httpx.HTTPError as exc:
+        except _LOOKUP_ERRORS as exc:
             _finish_github_code_search(time.monotonic() - started, http_request=True)
             warnings.append(f"GitHub code search failed ({type(exc).__name__}); falling back to repository search.")
             return None, False, 599, httpx.Headers()
@@ -1332,7 +1439,56 @@ def _manager_slugs_from_value(value: Any) -> list[str]:
     ]
 
 
+def _manager_extension_records(
+    payload: Any, metadata: Mapping[str, dict[str, Any]]
+) -> tuple[dict[str, tuple[str, ...]], dict[str, dict[str, Any]]]:
+    """Invert the repository-keyed Manager feed; preserve the actual URL."""
+    classes: dict[str, list[str]] = {}
+    records: dict[str, dict[str, Any]] = {}
+    by_url = {
+        url.rstrip("/").removesuffix(".git").lower(): record
+        for record in metadata.values()
+        if (url := _manager_record_url(record))
+    }
+    if not isinstance(payload, dict):
+        return {}, {}
+    for url, entry in payload.items():
+        if not isinstance(url, str) or not isinstance(entry, list) or not entry:
+            continue
+        parsed = urlparse(url)
+        if parsed.scheme not in {"https", "http"} or not parsed.netloc:
+            continue
+        if not isinstance(entry[0], list):
+            continue
+        slug = _slug_from_manager_url(url)
+        if slug is None:
+            continue
+        # Use the URL as the lookup key, not a display title.
+        key = url.rstrip("/").removesuffix(".git")
+        record = dict(by_url.get(key.lower(), {}))
+        extra = entry[1] if len(entry) > 1 and isinstance(entry[1], dict) else {}
+        record.setdefault("title", extra.get("title_aux") or slug)
+        record["repository"] = url
+        record["_extension_slug"] = slug
+        records[key] = record
+        for class_name in entry[0]:
+            if isinstance(class_name, str) and class_name.strip():
+                classes.setdefault(class_name, []).append(key)
+    return {name: _dedupe_strings(keys) for name, keys in classes.items()}, records
+
+
+def _manager_record_url(record: Mapping[str, Any]) -> str | None:
+    if url := _first_string(dict(record), "repository", "repo", "url"):
+        return url
+    files = record.get("files")
+    if isinstance(files, list) and files and isinstance(files[0], str):
+        return files[0]
+    return _first_string(dict(record), "reference", "files")
+
+
 def _manager_pack_metadata(payload: Any) -> dict[str, dict[str, Any]]:
+    if isinstance(payload, dict) and isinstance(payload.get("custom_nodes"), list):
+        payload = payload["custom_nodes"]
     metadata: dict[str, dict[str, Any]] = {}
     records = _iter_records(payload)
     if isinstance(payload, dict) and not records:
@@ -1351,9 +1507,9 @@ def _manager_pack_metadata(payload: Any) -> dict[str, dict[str, Any]]:
 
 
 def _pack_ref_from_manager_record(slug: str, record: Mapping[str, Any]) -> PackRef:
-    url = _first_string(dict(record), "repository", "repo", "url", "reference", "files")
+    url = _manager_record_url(record)
     return PackRef(
-        slug=slug,
+        slug=_first_string(dict(record), "_extension_slug") or slug,
         source="comfyui-manager",
         url=url,
         name=_first_string(dict(record), "title", "name", "display_name", "displayName") or slug,
