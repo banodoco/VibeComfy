@@ -280,3 +280,51 @@ def test_doctor_suggested_patches_preserve_json_shape(
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "ok"
     assert payload["suggested_patches"] == [{"name": "fake_patch", "rationale": "fake rationale"}]
+
+
+@pytest.mark.parametrize("matching,expected", [(True, 0), (False, 1)])
+def test_doctor_explicit_managed_lock_is_used_for_both_gates(tmp_path, monkeypatch, capsys, matching, expected):
+    from vibecomfy.node_packs import write_lockfile
+
+    monkeypatch.chdir(tmp_path)
+    approved = "a" * 40
+    repo = "https://example.test/ApprovedPack.git"
+    lock = tmp_path / "managed-custom-nodes.lock"
+    write_lockfile([LockEntry(name="ApprovedPack", url=repo, git_commit_sha=approved)], lock)
+    (tmp_path / "custom_nodes" / "ApprovedPack").mkdir(parents=True)
+    workflow = VibeWorkflow(id="managed", source=WorkflowSource(id="managed"))
+    workflow.nodes["1"] = VibeNode(id="1", class_type="SaveImage", uid="1", inputs={"images": "image", "filename_prefix": "ok"})
+    # Use the actual pin checker with a ref absent from the packaged lock.
+    from vibecomfy.workflow import WorkflowRequirements
+    workflow.requirements = WorkflowRequirements(custom_node_refs=[{
+        "name": "ApprovedPack", "slug": "ApprovedPack", "url": repo,
+        "commit": approved, "source": "git",
+    }])
+    monkeypatch.setattr(doctor_cmd, "get_schema_provider", lambda _mode: None)
+    monkeypatch.setattr(doctor_cmd, "load_bundle", lambda _path: SimpleNamespace(
+        workflow=workflow, require_canonical_authority=lambda _what: None,
+        compile=lambda **kwargs: object(),
+    ))
+    monkeypatch.setattr(doctor_cmd, "_patch_suggestions", lambda _wf: [])
+    monkeypatch.setattr(doctor_cmd, "_missing_model_findings", lambda *_args: [])
+    monkeypatch.setattr(doctor_cmd, "_doctor_warnings", lambda _wf: [])
+    monkeypatch.setattr(doctor_cmd, "git_head", lambda *_args, **_kwargs: approved if matching else "b" * 40)
+    real_read = doctor_cmd.read_lockfile
+    reads = []
+
+    def target_only(path=None):
+        reads.append(path)
+        assert path == lock, "must never read shipped lock for explicit managed target"
+        return real_read(path)
+
+    monkeypatch.setattr(doctor_cmd, "read_lockfile", target_only)
+    assert doctor_cmd._cmd_doctor(argparse.Namespace(path="unused", lockfile=str(lock))) == expected
+    assert reads == [lock]
+    out = capsys.readouterr().out
+    if not matching:
+        assert "does not match lockfile" in out
+
+
+def test_doctor_explicit_missing_lock_fails_closed(tmp_path):
+    with pytest.raises(FileNotFoundError, match="Explicit doctor lockfile"):
+        doctor_cmd._read_doctor_lockfile(tmp_path / "missing.lock")

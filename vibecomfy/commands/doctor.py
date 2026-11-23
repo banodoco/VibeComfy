@@ -81,10 +81,25 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
         for warning in _lint_untyped_raw_refs(bundle.python_path or Path(args.path)):
             print(f"- untyped_raw_ref: {warning}")
     suggested_patches = patch_suggestions_payload(_patch_suggestions(workflow))
-    drift_warning_findings, drift_error_findings = _nodepack_lockfile_drift()
+    lockfile_arg = getattr(args, "lockfile", None)
+    try:
+        # Both gates must inspect the same snapshot, not the packaged default
+        # for pins and a separate target lock for drift.
+        lock_entries = (_read_doctor_lockfile(Path(lockfile_arg))
+                        if lockfile_arg is not None else _read_doctor_lockfile())
+    except (OSError, ValueError) as exc:
+        payload = {
+            "status": "error",
+            "layer": "nodepack lockfile drift",
+            "errors": [f"Unable to read doctor lockfile: {type(exc).__name__}: {exc}"],
+            "suggested_patches": suggested_patches,
+        }
+        emit(payload, json=json_output, text_renderer=_render_doctor_error)
+        return 1
+    drift_warning_findings, drift_error_findings = _nodepack_lockfile_drift(lock_entries)
     drift_warnings = finding_messages(drift_warning_findings)
     drift_errors = finding_messages(drift_error_findings)
-    pin_issues = check_pack_pin_compatibility(workflow, read_lockfile())
+    pin_issues = check_pack_pin_compatibility(workflow, lock_entries)
     pin_warnings = [issue.message for issue in pin_issues if issue.severity == "warning"]
     pin_errors = [issue.message for issue in pin_issues if issue.severity == "error"]
     drift_warnings.extend(pin_warnings)
@@ -229,14 +244,20 @@ def _validation_findings(report: Any) -> list[DiagnosticFinding]:
     return findings
 
 
-def _read_doctor_lockfile() -> list[LockEntry]:
-    return read_lockfile()
+def _read_doctor_lockfile(path: Path | None = None) -> list[LockEntry]:
+    if path is None:
+        return read_lockfile()
+    if not path.is_file():
+        raise FileNotFoundError(f"Explicit doctor lockfile does not exist: {path}")
+    return read_lockfile(path)
 
 
-def _nodepack_lockfile_drift() -> tuple[list[DiagnosticFinding], list[DiagnosticFinding]]:
+def _nodepack_lockfile_drift(
+    entries: list[LockEntry] | None = None,
+) -> tuple[list[DiagnosticFinding], list[DiagnosticFinding]]:
     warnings: list[DiagnosticFinding] = []
     errors: list[DiagnosticFinding] = []
-    for entry in _read_doctor_lockfile():
+    for entry in entries if entries is not None else _read_doctor_lockfile():
         pack_dir = _doctor_nodepack_dir(entry.name)
         if pack_dir is None:
             warnings.append(
@@ -623,6 +644,7 @@ def register(subparsers) -> None:
     doctor.add_argument("path")
     doctor.add_argument("--lint", action="store_true", default=False)
     doctor.add_argument("--allow-drift", action="store_true", default=False)
+    doctor.add_argument("--lockfile", help="Use the selected target custom-node lock for drift and pin checks")
     doctor.add_argument("--models", action="store_true", default=False)
     doctor.add_argument("--json", action="store_true")
     doctor.set_defaults(func=_cmd_doctor)
