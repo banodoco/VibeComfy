@@ -468,17 +468,17 @@ def _pack_from_lock_entry(entry: LockEntry) -> CustomNodePack | None:
     )
 
 
-def _rich_lock_packs(lockfile_path: Path = Path("custom_nodes.lock")) -> tuple[CustomNodePack, ...]:
+def _rich_lock_packs(lockfile_path: Path | None = None) -> tuple[CustomNodePack, ...]:
     from vibecomfy.node_packs import read_lockfile  # see module-level comment
 
     # Missing/empty locks are represented by read_lockfile as an explicit
     # empty result. Parser errors must remain observable; turning corruption
     # into an empty catalog would silently unregister installed packs.
-    entries = read_lockfile(lockfile_path)
+    entries = read_lockfile(resolve_lockfile_path(lockfile_path))
     return tuple(pack for entry in entries if (pack := _pack_from_lock_entry(entry)) is not None)
 
 
-def _known_node_packs(lockfile_path: Path = Path("custom_nodes.lock")) -> tuple[CustomNodePack, ...]:
+def _known_node_packs(lockfile_path: Path | None = None) -> tuple[CustomNodePack, ...]:
     by_name = {pack.name: pack for pack in _STATIC_NODE_PACKS}
     for pack in _rich_lock_packs(lockfile_path):
         by_name[pack.name] = pack

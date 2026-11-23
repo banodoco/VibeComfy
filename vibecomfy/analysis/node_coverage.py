@@ -20,7 +20,7 @@ from typing import Any
 
 from vibecomfy.blocks import registered_blocks
 from vibecomfy.blocks._utils import add_block_node
-from vibecomfy.node_packs import LockEntry, read_lockfile
+from vibecomfy.node_packs import LockEntry, read_lockfile, resolve_lockfile_path
 from vibecomfy.workflow import VibeWorkflow
 
 
@@ -74,7 +74,7 @@ def build_workflow_coverage(
         lock_path: Path to the custom_nodes.lock file.
     """
     if lock_entries is None:
-        lock_entries = _safe_read_lock(lock_path)
+        lock_entries = read_lockfile(resolve_lockfile_path(lock_path))
 
     # Build the set of class_types that have typed wrappers
     typed_wrapper_classes = _build_typed_wrapper_set()
@@ -237,14 +237,6 @@ def _pack_in_lock(pack: str | None, lock_entries: list[LockEntry]) -> bool:
         if entry.name == pack:
             return True
     return False
-
-
-def _safe_read_lock(lock_path: Path | None = None) -> list[LockEntry]:
-    """Read lock entries, returning empty list on any error."""
-    try:
-        return read_lockfile(lock_path or Path("custom_nodes.lock"))
-    except (OSError, ValueError):
-        return []
 
 
 __all__ = [

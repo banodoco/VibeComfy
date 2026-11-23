@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from vibecomfy.commands import runpod_setup
+from vibecomfy.node_packs import resolve_lockfile_path
 from vibecomfy.runtime.session_binding import load_binding, write_binding
 
 
@@ -424,7 +425,7 @@ def _cmd_runpod_install_nodes(args: argparse.Namespace) -> int:
         print(f"VibeComfy custom node link skipped: {exc}")
     installed = runpod_setup.install_node_packs(
         custom_nodes=args.custom_nodes,
-        lockfile=args.lockfile,
+        lockfile=resolve_lockfile_path(args.lockfile),
         node_packs=args.node_pack or runpod_setup.LTX_NODE_PACKS,
         install_requirements=not args.no_requirements,
         dry_run=args.dry_run,
@@ -536,7 +537,7 @@ def _cmd_runpod_bootstrap_comfy(args: argparse.Namespace) -> int:
     try:
         installed = runpod_setup.install_node_packs(
             custom_nodes=runtime_root / "custom_nodes",
-            lockfile=args.lockfile,
+            lockfile=resolve_lockfile_path(args.lockfile),
             node_packs=args.node_pack or runpod_setup.LTX_NODE_PACKS,
             python=str(managed_python) if managed_python is not None else sys.executable,
             install_requirements=not args.no_requirements,
@@ -660,7 +661,7 @@ def register(subparsers) -> None:
 
     install_nodes = runpod_sub.add_parser("install-nodes")
     install_nodes.add_argument("--custom-nodes", type=Path, default=Path("/workspace/vibecomfy/custom_nodes"))
-    install_nodes.add_argument("--lockfile", type=Path, default=Path("custom_nodes.lock"))
+    install_nodes.add_argument("--lockfile", type=Path, default=None, help="Path to node-pack lock (default: shipped catalog)")
     install_nodes.add_argument(
         "--node-pack",
         action="append",
@@ -678,7 +679,7 @@ def register(subparsers) -> None:
 
     bootstrap = runpod_sub.add_parser("bootstrap-comfy")
     bootstrap.add_argument("--runtime-root", type=Path, default=Path("/workspace/vibecomfy"))
-    bootstrap.add_argument("--lockfile", type=Path, default=Path("custom_nodes.lock"))
+    bootstrap.add_argument("--lockfile", type=Path, default=None, help="Path to node-pack lock (default: shipped catalog)")
     bootstrap.add_argument("--registry", type=Path, default=None)
     bootstrap.add_argument("--port", type=int, default=19123)
     bootstrap.add_argument("--external-address")

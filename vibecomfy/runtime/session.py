@@ -1158,11 +1158,9 @@ async def _ensure_embedded_prerequisites(
         configured_lockfile = getattr(getattr(session, "config", None), "extra", {}).get("lockfile")
         from vibecomfy.node_packs import resolve_lockfile_path
 
-        lockfile_path = (
-            Path("custom_nodes.lock")
-            if configured_lockfile is None
-            else resolve_lockfile_path(configured_lockfile)
-        )
+        # Read catalog pins from the shipped lock unless a caller explicitly
+        # supplies a source. The installer independently writes its target lock.
+        lockfile_path = resolve_lockfile_path(configured_lockfile)
         lockfile_entries = effective_lock_entries(workflow, read_lockfile(lockfile_path))
         pin_issues = check_pack_pin_compatibility(workflow, lockfile_entries)
         pin_errors = [issue.message for issue in pin_issues if issue.severity == "error"]
