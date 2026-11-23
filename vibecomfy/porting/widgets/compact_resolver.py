@@ -156,6 +156,7 @@ def compact_widget_names_for_node(
     allow_object_info_fallback: bool = True,
     name_authority: Mapping[str, Sequence[str | None]] | None = None,
     linked_inputs: Collection[str] | None = None,
+    read_set=None,
 ) -> WidgetNameResolution:
     """Return names aligned 1:1 to compact ``widgets_values`` positions.
 
@@ -197,6 +198,7 @@ def compact_widget_names_for_node(
         count,
         schema_provider=schema_provider,
         allow_object_info_fallback=allow_object_info_fallback,
+        read_set=read_set,
     ):
         if not names:
             continue
@@ -256,6 +258,7 @@ def widget_index_for_field(
     *,
     schema_provider: Any | None = None,
     name_authority: Mapping[str, Sequence[str | None]] | None = None,
+    read_set=None,
 ) -> int | None:
     count = _compact_value_count(node, None)
     match = _WIDGET_KEY_RE.fullmatch(field_name)
@@ -263,7 +266,7 @@ def widget_index_for_field(
         index = int(match.group(1))
         if count is None or 0 <= index < count:
             resolution = compact_widget_names_for_node(
-                node, schema_provider=schema_provider, name_authority=name_authority
+                node, schema_provider=schema_provider, name_authority=name_authority, read_set=read_set
             )
             if _is_leading_null_padded_placeholder(node, resolution, index):
                 return None
@@ -271,7 +274,7 @@ def widget_index_for_field(
         return None
 
     resolution = compact_widget_names_for_node(
-        node, schema_provider=schema_provider, name_authority=name_authority
+        node, schema_provider=schema_provider, name_authority=name_authority, read_set=read_set
     )
     duplicates = {
         name
@@ -292,13 +295,14 @@ def widget_value_for_field(
     *,
     schema_provider: Any | None = None,
     name_authority: Mapping[str, Sequence[str | None]] | None = None,
+    read_set=None,
 ) -> Any:
     values = _compact_values(node)
     if isinstance(values, Mapping):
         return values[field_name] if field_name in values else _MISSING_WIDGET_VALUE
     if isinstance(values, list):
         index = widget_index_for_field(
-            node, field_name, schema_provider=schema_provider, name_authority=name_authority
+            node, field_name, schema_provider=schema_provider, name_authority=name_authority, read_set=read_set
         )
         if index is not None and 0 <= index < len(values):
             return values[index]
@@ -316,6 +320,7 @@ def _candidate_name_sources(
     *,
     schema_provider: Any | None,
     allow_object_info_fallback: bool,
+    read_set=None,
 ) -> list[tuple[str, list[str | None]]]:
     sources: list[tuple[str, list[str | None]]] = []
 
@@ -362,7 +367,7 @@ def _candidate_name_sources(
         is_workflow_stub = is_workflow_stub_schema(provider_schema)
     else:
         # Providerless legacy resolution retains its historical ambient seam.
-        is_workflow_stub = _object_info_entry_is_workflow_stub(class_type)
+        is_workflow_stub = _object_info_entry_is_workflow_stub(class_type, read_set=read_set)
 
     if not is_workflow_stub:
         provider_names = _provider_compact_aliases(schema_provider, class_type)
@@ -376,7 +381,7 @@ def _candidate_name_sources(
             try:
                 from vibecomfy.porting.object_info.consume import object_info_widget_value_order  # noqa: PLC0415
 
-                object_info_names = object_info_widget_value_order(class_type)
+                object_info_names = object_info_widget_value_order(class_type, read_set=read_set)
             except Exception:
                 object_info_names = []
             if object_info_names:
@@ -734,11 +739,11 @@ def _schema_from_provider(schema_provider: Any | None, class_type: str) -> Any |
         return None
 
 
-def _object_info_entry_is_workflow_stub(class_type: str) -> bool:
+def _object_info_entry_is_workflow_stub(class_type: str, *, read_set=None) -> bool:
     try:
         from vibecomfy.porting.object_info.consume import get_class  # noqa: PLC0415
 
-        entry = get_class(class_type)
+        entry = get_class(class_type, read_set=read_set)
     except Exception:
         entry = None
     if not isinstance(entry, Mapping):

@@ -694,6 +694,7 @@ def _hoist_constants(
     name_authority: Mapping[str, Sequence[str | None]] | None = None,
     *,
     resolve_graph_strings: bool = True,
+    read_set: Any = None,
 ) -> tuple[list[str], dict[tuple[str, str], str]]:
     """Scan workflow nodes for hoistable constants.
 
@@ -710,7 +711,7 @@ def _hoist_constants(
     for nid, node in workflow_nodes.items():
         cls = node.class_type
         schema = [name for name in WIDGET_SCHEMA.get(cls, []) if name is not None]
-        input_aliases = _compact_input_aliases_for_node(node, name_authority)
+        input_aliases = _compact_input_aliases_for_node(node, name_authority, read_set=read_set)
 
         for key, value in node.inputs.items():
             if _is_link(value):
@@ -803,7 +804,7 @@ def _hoist_constants(
     all_values: Counter[tuple[str, Any]] = Counter()
     for nid, node in workflow_nodes.items():
         cls = node.class_type
-        input_aliases = _compact_input_aliases_for_node(node, name_authority)
+        input_aliases = _compact_input_aliases_for_node(node, name_authority, read_set=read_set)
         for key, value in {**node.inputs, **node.widgets}.items():
             if _is_link(value):
                 continue
@@ -859,7 +860,7 @@ def _hoist_constants(
                 break
             node_meta: dict[str, Any] = getattr(node, "metadata", None) or {}
             val = constant_defs[name][0]  # emit_value
-            if not _is_schema_default(node.class_type, field, val, node_meta, node=node):
+            if not _is_schema_default(node.class_type, field, val, node_meta, node=node, read_set=read_set):
                 all_would_be_stripped = False
                 break
         if all_would_be_stripped:
@@ -901,11 +902,13 @@ def _translate_widget_for_key(
 def _compact_input_aliases_for_node(
     node: Any,
     name_authority: Mapping[str, Sequence[str | None]] | None = None,
+    *, read_set: Any = None,
 ) -> list[str | None] | None:
     names = compact_widget_names_for_node(
         node,
         str(getattr(node, "class_type", "")),
         name_authority=name_authority,
+        read_set=read_set,
     ).names
     return list(names) if names else None
 

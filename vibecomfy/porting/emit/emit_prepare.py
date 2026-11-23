@@ -75,6 +75,7 @@ def _prepare_workflow_for_emit(
     project_execution_edges: bool = True,
     omit_terminal_ui_only: bool = False,
     diagnostics: list[Any] | None = None,
+    read_set: Any = None,
 ) -> dict[str, Any]:
     # Preserve fully disconnected canvases. Dead-branch pruning is useful when
     # trimming a real graph, but on a no-edge workflow it collapses the emission
@@ -337,6 +338,7 @@ def _prepare_workflow_for_emit(
         workflow_nodes,
         var_names,
         [edge for edges in edges_in.values() for edge in edges] + extracted_edges_for_naming,
+        read_set=read_set,
     )
     return {
         # P0-WIDGET-CANON: sealed snapshot table rides with the prepared

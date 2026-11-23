@@ -1587,6 +1587,7 @@ def _canonicalize_for_v2_pair(
     operation: str,
     parent_revision: str,
     preserve_authored_graph: bool = False,
+    read_set=None,
 ) -> tuple[VibeWorkflow, Mapping[str, Any] | None]:
     """Materialize the clean Python identity before publishing its companion.
 
@@ -1606,6 +1607,7 @@ def _canonicalize_for_v2_pair(
         operation=operation,
         parent_revision=parent_revision,
         preserve_authored_graph=preserve_authored_graph,
+        read_set=read_set,
     )
     # Establish the semantic expectation before asking the generated source to
     # rebuild it.  The staged load is a publication preflight, not an
@@ -1701,6 +1703,7 @@ def _canonicalize_for_v2_pair(
         provenance=provenance_payload,
         external_custody=True,
         preserve_authored_graph=preserve_authored_graph,
+        read_set=read_set,
     )
     with tempfile.TemporaryDirectory(prefix="vibecomfy-v2-canonicalize-") as temp_dir:
         staged_path = Path(temp_dir) / path.name
@@ -1766,6 +1769,7 @@ def _build_v2_sidecar(
     parent_revision: str,
     preserve_authored_graph: bool = False,
     presentation_diagnostics: list[dict[str, Any]] | None = None,
+    read_set=None,
 ) -> dict[str, Any]:
     """Build one deterministic publication capsule around Python semantics."""
     from vibecomfy.porting.emit.emit_ready import canonical_v2_custody
@@ -1776,7 +1780,7 @@ def _build_v2_sidecar(
     # coordinates cannot produce a digest that immediately fails its own
     # companion validation.
     custody = _validate_v2_custody(
-        canonical_v2_custody(workflow, preserve_authored_graph=preserve_authored_graph)
+        canonical_v2_custody(workflow, preserve_authored_graph=preserve_authored_graph, read_set=read_set)
     )
     custody_digest = canonical_digest(custody)
     presentation = _presentation_payload(
@@ -3238,6 +3242,9 @@ def emit_bundle(
     parent_revision: str = "",
 ) -> WorkflowBundle:
     """Write a canonical ``build()`` source candidate and return its bundle."""
+    from vibecomfy.porting.object_info.consume import BundleReadSet
+
+    read_set = BundleReadSet()
     if not isinstance(workflow, VibeWorkflow):
         raise TypeError(f"emit_bundle requires VibeWorkflow, got {type(workflow).__name__}")
     path = _destination_path(destination, workflow)
@@ -3251,6 +3258,7 @@ def emit_bundle(
         provenance=provenance,
         operation="authored",
         parent_revision=parent_revision,
+        read_set=read_set,
     )
     sidecar = _build_v2_sidecar(
         workflow,
@@ -3258,6 +3266,7 @@ def emit_bundle(
         provenance=provenance,
         operation="authored",
         parent_revision=parent_revision,
+        read_set=read_set,
     )
     bundle = _make_bundle(
         workflow,
@@ -3278,8 +3287,9 @@ def emit_bundle(
         source_path=str(path),
         provenance=_source_provenance(bundle.provenance),
         external_custody=True,
+        read_set=read_set,
     )
-    _atomic_publish_pair(path, source, bundle.ui_sidecar, expected=bundle)
+    _atomic_publish_pair(path, source, bundle.ui_sidecar, expected=bundle, read_set=read_set)
     return bundle
 
 
@@ -3532,6 +3542,7 @@ def _atomic_publish_pair(
     expected: WorkflowBundle | None = None,
     expected_members: Mapping[str | Path, str | None] | None = None,
     extra_members: Mapping[str | Path, bytes] | None = None,
+    read_set=None,
 ) -> None:
     """Publish a complete pair under a lock with durable crash recovery."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -3544,6 +3555,7 @@ def _atomic_publish_pair(
             expected=expected,
             expected_members=expected_members,
             extra_members=extra_members,
+            read_set=read_set,
         )
 
 
@@ -3555,6 +3567,7 @@ def _atomic_publish_pair_unlocked(
     expected: WorkflowBundle | None = None,
     expected_members: Mapping[str | Path, str | None] | None = None,
     extra_members: Mapping[str | Path, bytes] | None = None,
+    read_set=None,
 ) -> None:
     """Validate staged bytes, then publish a complete bundle with rollback.
 
@@ -3747,6 +3760,8 @@ def _atomic_publish_pair_unlocked(
                 "members": transaction_members,
             },
         )
+        if read_set is not None:
+            read_set.verify()
         for temporary, destination in staged:
             _write_publish_transaction(
                 path,
@@ -3965,6 +3980,9 @@ def emit_bundle_with_candidate(
     ``source_format`` only selects the existing canonical renderer.  Pair
     construction, custody, validation, and publication stay shared.
     """
+    from vibecomfy.porting.object_info.consume import BundleReadSet
+
+    read_set = BundleReadSet()
     if source_format not in {"scratchpad", "ready_template"}:
         raise ValueError(f"unsupported canonical source format {source_format!r}")
     path = _destination_path(destination, workflow)
@@ -3992,6 +4010,7 @@ def emit_bundle_with_candidate(
         operation=operation,
         parent_revision=parent_revision,
         preserve_authored_graph=preserve_authored_graph,
+        read_set=read_set,
     )
     sidecar = _build_v2_sidecar(
         workflow,
@@ -4000,6 +4019,7 @@ def emit_bundle_with_candidate(
         operation=operation,
         parent_revision=parent_revision,
         preserve_authored_graph=preserve_authored_graph,
+        read_set=read_set,
     )
     bundle = _make_bundle(
         workflow,
@@ -4061,6 +4081,7 @@ def emit_bundle_with_candidate(
             external_custody=True,
             preserve_node_ids=preserve_authored_graph,
             preserve_authored_graph=preserve_authored_graph,
+            read_set=read_set,
         )
     else:
         source = emit_scratchpad_python(
@@ -4071,6 +4092,7 @@ def emit_bundle_with_candidate(
             external_custody=True,
             preserve_node_ids=preserve_authored_graph,
             preserve_authored_graph=preserve_authored_graph,
+            read_set=read_set,
         )
     if preserved_python_source is not None:
         source = _preserve_python_source_with_marker(preserved_python_source, source)
@@ -4081,6 +4103,7 @@ def emit_bundle_with_candidate(
         expected=bundle,
         expected_members=expected_members,
         extra_members=extra_members,
+        read_set=read_set,
     )
     return bundle
 

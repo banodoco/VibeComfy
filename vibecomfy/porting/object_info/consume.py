@@ -25,7 +25,10 @@ from typing import Any, Iterable, Mapping
 
 from vibecomfy.errors import ObjectInfoIdentityAmbiguityError
 from vibecomfy.errors import ObjectInfoCacheCorruptError
-from vibecomfy.porting.object_info.generation import active_cache_root, cache_file_witness, read_json, safe_cache_filename
+from vibecomfy.porting.object_info.generation import (
+    MANIFEST_FILE, _generation_validation_cached, active_cache_root,
+    cache_file_witness, read_json, safe_cache_filename,
+)
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -305,13 +308,187 @@ def _all_pack_filenames() -> list[str]:
         return _pack_filenames_at_root(root)
 
 
-def _resolve_class_type(class_type: str) -> dict[str, Any] | None:
+class BundleReadSet:
+    """One bundle invocation's content-witnessed object-info reads.
+
+    Ordinary callers do not use this object and retain scalar reader checks.
+    A path involving a symlink is left to those ordinary checks.
+    """
+
+    def __init__(self) -> None:
+        self.root: Path | None = None
+        self.configured: Path | None = None
+        self.witnesses: dict[Path, Any] = {}
+        self.index: tuple[dict[str, str], dict[str, list[str]]] | None = None
+        self.packs: dict[str, dict[str, dict[str, Any]]] = {}
+        self.disabled = False
+        self.failure: Exception | None = None
+        self.manifest_files: dict[str, str] | None = None
+
+    @staticmethod
+    def _safe(path: Path) -> bool:
+        return not any(part.is_symlink() for part in (path, *path.parents))
+
+    def _witness(self, path: Path) -> bool:
+        if not self._safe(path):
+            self.disabled = True
+            return False
+        if path not in self.witnesses:
+            self.witnesses[path] = cache_file_witness(path)
+        return True
+
+    def _setup(self) -> bool:
+        if self.disabled:
+            return False
+        configured = Path(CACHE_DIR).expanduser().absolute()
+        if self.configured is not None:
+            if configured != self.configured:
+                raise ObjectInfoCacheCorruptError("object_info cache root changed during bundle emission")
+            return True
+        marker = configured / "CURRENT"
+        if not self._witness(marker):
+            return False
+        with _reader_lock:
+            prior = _reader_state
+            if (self.witnesses[marker] is None and prior
+                    and prior["root"] == configured.resolve(strict=False)
+                    and prior["committed"]):
+                raise ObjectInfoCacheCorruptError(f"object_info cache marker disappeared: {marker}")
+
+        def observe_validation(path: Path, witness: Any) -> None:
+            self.witnesses[path] = witness
+
+        root = active_cache_root(configured, validation_observer=observe_validation)
+        self.root = root
+        if not self._safe(root):
+            self.disabled = True
+            return False
+        if root != configured:
+            manifest_path = root / MANIFEST_FILE
+            if not self._witness(manifest_path):
+                return False
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise ObjectInfoCacheCorruptError(f"object_info cache generation has unreadable manifest: {manifest_path} ({exc})") from exc
+            if not isinstance(manifest, dict) or not isinstance(manifest.get("files"), dict):
+                raise ObjectInfoCacheCorruptError(f"invalid object_info cache manifest: {manifest_path}")
+            # Bind this copy to the validation that active_cache_root just used.
+            # A changed generation must not be admitted through a stale warm cache.
+            if not _generation_validation_cached(root):
+                raise ObjectInfoCacheCorruptError(f"object_info cache changed during generation validation: {root}")
+            self.manifest_files = manifest["files"]
+        if not self._witness(root / "index.json"):
+            return False
+        self._check_manifest("index.json")
+        self.configured, self.root = configured, root
+        return True
+
+    def _check_manifest(self, filename: str) -> None:
+        if self.manifest_files is None:
+            return
+        witness = self.witnesses[self.root / filename]
+        expected = self.manifest_files.get(filename)
+        if not isinstance(expected, str) or witness is None or witness[-1] != expected:
+            raise ObjectInfoCacheCorruptError(
+                f"object_info generation artifact {filename!r} failed its hash check"
+            )
+
+    def _index(self) -> tuple[dict[str, str], dict[str, list[str]]] | None:
+        if not self._setup():
+            return None
+        if self.index is None:
+            path = self.root / "index.json"
+            data = read_json(self.root, "index.json") if path.exists() else {}
+            if not isinstance(data, dict):
+                raise ObjectInfoCacheCorruptError(f"object_info index must be an object: {self.root / 'index.json'}")
+            self.index = split_index(data)
+        return self.index
+
+    def _pack(self, filename: str) -> dict[str, dict[str, Any]] | None:
+        if not safe_cache_filename(filename):
+            raise ObjectInfoCacheCorruptError(f"unsafe object_info provider filename: {filename!r}")
+        if not self._witness(self.root / filename):
+            return None
+        self._check_manifest(filename)
+        if filename not in self.packs:
+            self.packs[filename] = _read_pack_at_root(self.root, filename)
+        return self.packs[filename]
+
+    def class_entry(self, class_type: str) -> tuple[bool, dict[str, Any] | None]:
+        try:
+            return self._class_entry(class_type)
+        except Exception as exc:
+            self.failure = exc
+            raise
+
+    def _class_entry(self, class_type: str) -> tuple[bool, dict[str, Any] | None]:
+        index = self._index()
+        if index is None:
+            return False, None
+        filename = index[0].get(class_type)
+        if filename is None:
+            return True, None
+        pack = self._pack(filename)
+        return (False, None) if pack is None else (True, pack.get(class_type))
+
+    def identity_matches(self, class_type: str, *, pack_slug: str, git_commit: str | None,
+                         evidence_identity: str | None) -> list[tuple[str, dict[str, Any]]] | None:
+        try:
+            return self._identity_matches(class_type, pack_slug=pack_slug, git_commit=git_commit,
+                                          evidence_identity=evidence_identity)
+        except Exception as exc:
+            self.failure = exc
+            raise
+
+    def _identity_matches(self, class_type: str, *, pack_slug: str, git_commit: str | None,
+                          evidence_identity: str | None) -> list[tuple[str, dict[str, Any]]] | None:
+        _identity_key(pack_slug, git_commit, evidence_identity)
+        index = self._index()
+        if index is None:
+            return None
+        held = index[1]
+        if git_commit is not None:
+            key = json.dumps([pack_slug, "git_commit", git_commit], separators=(",", ":"))
+            filenames = held.get(key, [])
+        else:
+            filenames = sorted({filename for key, files in held.items()
+                                if json.loads(key)[0] == pack_slug for filename in files})
+        matches = []
+        for filename in filenames:
+            pack = self._pack(filename)
+            if pack is None:
+                return None
+            entry = pack.get(class_type)
+            if isinstance(entry, dict) and _identity_matches(entry, pack_slug=pack_slug,
+                    git_commit=git_commit, evidence_identity=evidence_identity):
+                matches.append((filename, entry))
+        return matches
+
+    def verify(self) -> None:
+        """Refuse publication if any file read by this invocation changed."""
+        if self.failure is not None:
+            raise ObjectInfoCacheCorruptError("object_info read failed during bundle emission") from self.failure
+        for path, original in self.witnesses.items():
+            current = cache_file_witness(path) if self._safe(path) else None
+            try:
+                after = path.lstat()
+                metadata_after = (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_mode)
+            except FileNotFoundError:
+                metadata_after = None
+            if current != original or metadata_after != (original[:5] if original is not None else None):
+                raise ObjectInfoCacheCorruptError(f"object_info cache changed during bundle emission: {path}")
+
+
+def _resolve_class_type(class_type: str, *, read_set: BundleReadSet | None = None) -> dict[str, Any] | None:
+    if read_set is not None and _CLASS_ENTRY_SNAPSHOT.get() is None:
+        handled, result = read_set.class_entry(class_type)
+        if handled:
+            return result
     with _reader_lock:
         idx = _load_index()
         filename = idx.get(class_type)
-        if filename is None:
-            return None
-        return _load_pack(filename).get(class_type)
+        return None if filename is None else _load_pack(filename).get(class_type)
 
 
 def _identity_matches(
@@ -345,7 +522,12 @@ def _identity_lookup_matches(
     pack_slug: str,
     git_commit: str | None,
     evidence_identity: str | None,
+    read_set: BundleReadSet | None = None,
 ) -> list[tuple[str, dict[str, Any]]]:
+    if read_set is not None:
+        matches = read_set.identity_matches(class_type, pack_slug=pack_slug, git_commit=git_commit, evidence_identity=evidence_identity)
+        if matches is not None:
+            return matches
     _identity_key(pack_slug, git_commit, evidence_identity)
     matches: list[tuple[str, dict[str, Any]]] = []
     with _reader_lock:
@@ -374,7 +556,7 @@ def _identity_lookup_matches(
 # Public API
 # ---------------------------------------------------------------------------
 
-def get_class(class_type: str) -> dict[str, Any] | None:
+def get_class(class_type: str, *, read_set: BundleReadSet | None = None) -> dict[str, Any] | None:
     """Return the normalized cache entry for *class_type*, or ``None``.
 
     The returned dict has keys:
@@ -396,7 +578,7 @@ def get_class(class_type: str) -> dict[str, Any] | None:
             f"object_info class {class_type!r} was not captured for this operation"
         )
 
-    entry = _resolve_class_type(class_type)
+    entry = _resolve_class_type(class_type, read_set=read_set)
     if entry is not None:
         return entry
     curated_outputs = _CURATED_OUTPUTS.get(class_type)
@@ -541,6 +723,7 @@ def resolve_class_entry(
     identity: ObjectInfoIdentity | dict[str, Any] | None = None,
     *,
     allow_class_fallback: bool = True,
+    read_set: BundleReadSet | None = None,
 ) -> ObjectInfoLookupResult:
     """Resolve an object_info entry, preferring an explicit pack identity.
 
@@ -550,7 +733,7 @@ def resolve_class_entry(
     """
     normalized_identity = _coerce_identity(identity)
     if normalized_identity is None:
-        entry = get_class(class_type)
+        entry = get_class(class_type, read_set=read_set)
         return ObjectInfoLookupResult(
             entry=entry,
             source="class" if entry is not None else "miss",
@@ -569,6 +752,7 @@ def resolve_class_entry(
             pack_slug=normalized_identity.pack_slug,
             git_commit=normalized_identity.git_commit,
             evidence_identity=normalized_identity.evidence_identity,
+            read_set=read_set,
         )
     except ObjectInfoIdentityAmbiguityError:
         raise
@@ -589,7 +773,7 @@ def resolve_class_entry(
             ),
         )
 
-    fallback = get_class(class_type)
+    fallback = get_class(class_type, read_set=read_set)
     if fallback is None:
         return ObjectInfoLookupResult(
             entry=None,
@@ -630,6 +814,7 @@ def get_class_by_identity(
     pack_slug: str,
     git_commit: str | None = None,
     evidence_identity: str | None = None,
+    read_set: BundleReadSet | None = None,
 ) -> dict[str, Any] | None:
     """Return the cache entry for *class_type* keyed by explicit pack identity."""
     if _CLASS_ENTRY_SNAPSHOT.get() is not None:
@@ -642,6 +827,7 @@ def get_class_by_identity(
         pack_slug=pack_slug,
         git_commit=git_commit,
         evidence_identity=evidence_identity,
+        read_set=read_set,
     )
     if not matches:
         return None
@@ -722,7 +908,7 @@ def _entry_has_authoritative_identity(entry: dict[str, Any]) -> bool:
     }
 
 
-def object_info_widget_order(class_type: str) -> list[str | None]:
+def object_info_widget_order(class_type: str, *, read_set: BundleReadSet | None = None) -> list[str | None]:
     """Return the ordered widget names (excluding link-only sockets) for *class_type*.
 
     Returns an empty list when the class is not found in the cache.
@@ -730,9 +916,9 @@ def object_info_widget_order(class_type: str) -> list[str | None]:
     ``WIDGET_SCHEMA`` table and only use this when no curated entry exists.
     """
     entry = (
-        get_class(class_type)
+        get_class(class_type, read_set=read_set)
         if _CLASS_ENTRY_SNAPSHOT.get() is not None
-        else _resolve_class_type(class_type)
+        else _resolve_class_type(class_type, read_set=read_set)
     )
     if entry is None:
         return []
@@ -779,7 +965,7 @@ def _input_spec_has_control_after_generate(spec: list[Any] | None) -> bool:
     return "control_after_generate" in read_object_info_input(spec).metadata
 
 
-def object_info_widget_value_order(class_type: str) -> list[str]:
+def object_info_widget_value_order(class_type: str, *, read_set: BundleReadSet | None = None) -> list[str]:
     """Return object_info widget names aligned to UI ``widgets_values``.
 
     Older cache entries may preserve the full INPUT_TYPES order with ``None``
@@ -788,11 +974,11 @@ def object_info_widget_value_order(class_type: str) -> list[str]:
     so callers that write by field name need the compact literal-only order.
     """
 
-    entry = _resolve_class_type(class_type)
+    entry = _resolve_class_type(class_type, read_set=read_set)
     if entry is None:
         return [
             str(name)
-            for name in object_info_widget_order(class_type)
+            for name in object_info_widget_order(class_type, read_set=read_set)
             if isinstance(name, str) and name
         ]
     return compact_literal_widget_order(entry)
@@ -846,37 +1032,37 @@ def effective_widget_names_for_class(class_type: str, *, allow_object_info_fallb
     return []
 
 
-def output_names(class_type: str) -> list[str]:
+def output_names(class_type: str, *, read_set: BundleReadSet | None = None) -> list[str]:
     """Return ordered output names for *class_type* (e.g. ``["MODEL"]``).
 
     Returns an empty list when the class is not found in the cache.
     """
-    entry = _resolve_class_type(class_type)
+    entry = _resolve_class_type(class_type, read_set=read_set)
     if entry is None:
         return [o["name"] for o in _CURATED_OUTPUTS.get(class_type, [])]
     names = [o.get("name", "") for o in entry.get("outputs", [])]
     return names or [o["name"] for o in _CURATED_OUTPUTS.get(class_type, [])]
 
 
-def output_types(class_type: str) -> list[str]:
+def output_types(class_type: str, *, read_set: BundleReadSet | None = None) -> list[str]:
     """Return ordered output types for *class_type* (e.g. ``["MODEL"]``).
 
     Returns an empty list when the class is not found in the cache.
     """
-    entry = _resolve_class_type(class_type)
+    entry = _resolve_class_type(class_type, read_set=read_set)
     if entry is None:
         return [o["type"] for o in _CURATED_OUTPUTS.get(class_type, [])]
     types = [o.get("type", "") for o in entry.get("outputs", [])]
     return types or [o["type"] for o in _CURATED_OUTPUTS.get(class_type, [])]
 
 
-def class_defaults(class_type: str) -> dict[str, Any]:
+def class_defaults(class_type: str, *, read_set: BundleReadSet | None = None) -> dict[str, Any]:
     """Return schema default values by input name for *class_type*.
 
     Only inputs with an explicit object_info ``default`` are returned. The
     lookup is offline and deterministic; unknown classes return ``{}``.
     """
-    entry = get_class(class_type)
+    entry = get_class(class_type) if read_set is None else get_class(class_type, read_set=read_set)
     if entry is None:
         return {}
     defaults: dict[str, Any] = {}
@@ -897,7 +1083,7 @@ def class_input_types(class_type: str) -> dict[str, str]:
     }
 
 
-def class_output_count(class_type: str) -> int:
+def class_output_count(class_type: str, *, read_set: BundleReadSet | None = None) -> int:
     """Return the number of declared outputs for *class_type*.
 
     Fails OPEN: an unknown class (absent from both the object_info snapshot and
@@ -905,10 +1091,10 @@ def class_output_count(class_type: str) -> int:
     determine output arity must use :func:`require_class_output_count` instead so
     a genuinely-unknown node fails CLOSED with a named, actionable error.
     """
-    return len(output_names(class_type))
+    return len(output_names(class_type, read_set=read_set))
 
 
-def class_is_known(class_type: str) -> bool:
+def class_is_known(class_type: str, *, read_set: BundleReadSet | None = None) -> bool:
     """Return True when *class_type* has a usable output schema.
 
     A class is "known" when it resolves through the shared authoring schema
@@ -942,7 +1128,7 @@ def class_is_known(class_type: str) -> bool:
         if isinstance(exc, SchemaProviderError):
             raise
         pass
-    if _resolve_class_type(class_type) is not None:
+    if _resolve_class_type(class_type, read_set=read_set) is not None:
         return True
     return class_type in _CURATED_OUTPUTS
 
@@ -1002,9 +1188,9 @@ def require_class_output_count(class_type: str, ui_output_count: int | None = No
     return check_output_arity_consensus(class_type, ui_output_count)
 
 
-def class_has_list_output(class_type: str) -> bool:
+def class_has_list_output(class_type: str, *, read_set: BundleReadSet | None = None) -> bool:
     """Return True when any declared output is marked OUTPUT_IS_LIST."""
-    entry = get_class(class_type)
+    entry = get_class(class_type, read_set=read_set)
     if entry is None:
         return any(bool(o.get("is_list")) for o in _CURATED_OUTPUTS.get(class_type, []))
     return any(bool(o.get("is_list")) for o in entry.get("outputs", []))
