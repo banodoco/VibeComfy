@@ -664,7 +664,7 @@ def _install_required_packs_impl(
         preflight=preflight,
     )
 def missing_packs_for_workflow(
-    workflow: VibeWorkflow, *, lockfile_path: Path = Path("custom_nodes.lock")
+    workflow: VibeWorkflow, *, lockfile_path: Path | None = None
 ) -> tuple[list[CustomNodePack], list[str]]:
     missing_classes = missing_class_types_for_workflow(workflow)
     packs = resolve_node_packs(missing_classes, lockfile_path=lockfile_path)
@@ -824,7 +824,7 @@ def _merge_declared_requirement_packs(
     workflow: VibeWorkflow,
     packs: list[CustomNodePack],
     *,
-    lockfile_path: Path = Path("custom_nodes.lock"),
+    lockfile_path: Path | None = None,
 ) -> list[CustomNodePack]:
     by_name = {pack.name: pack for pack in get_known_node_packs(lockfile_path=lockfile_path)}
     merged = {pack.name: pack for pack in packs}
@@ -836,7 +836,9 @@ def _merge_declared_requirement_packs(
 
 
 def missing_class_types_for_workflow(workflow: VibeWorkflow) -> set[str]: return {node.class_type for node in workflow.nodes.values()} - _known_schema_classes() - CORE_COMFY_CLASSES
-def _pack_by_name(name: str | None) -> CustomNodePack | None: return next((pack for pack in get_known_node_packs() if pack.name == name), None)
+def _pack_by_name(name: str | None) -> CustomNodePack | None:
+    """Look up the shipped catalog, never an implicit writable target lock."""
+    return next((pack for pack in get_known_node_packs() if pack.name == name), None)
 def _lock_entry_for_pack(name: str, sha: str, repo_url: str, *, pack: CustomNodePack | None, pack_ref: PackRef | None = None) -> LockEntry | None:
     class_set = tuple(sorted(pack.classes)) if pack is not None and pack.classes else ()
     if pack_ref is not None and pack_ref.source == "comfy-registry" and not class_set:
