@@ -183,6 +183,7 @@ def _write_toml_lockfile(entries: list[LockEntry], path: Path) -> None:
 
 
 def upsert_lockfile_entry(entry: LockEntry, path: Path = Path("custom_nodes.lock")) -> None:
+    """Update the writable target lock (cwd-relative when no path is supplied)."""
     entries = read_lockfile(path)
     for index, existing in enumerate(entries):
         if existing.name == entry.name:

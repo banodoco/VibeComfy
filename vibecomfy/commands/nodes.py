@@ -31,7 +31,7 @@ from vibecomfy.schema import (
     socket_types_compatible,
 )
 import vibecomfy.node_packs as node_packs_install
-from vibecomfy.node_packs import LockEntry, read_lockfile, write_lockfile
+from vibecomfy.node_packs import LockEntry, read_lockfile, resolve_lockfile_path, write_lockfile
 from vibecomfy.porting.wrappers import codegen as _wrapper_codegen
 from vibecomfy.porting.wrappers import discovery as _wrapper_discovery
 
@@ -395,7 +395,8 @@ def _reconcile_model_references(workflow: object) -> list[dict[str, str]]:
 
 def build_nodes_reconcile_payload(args: argparse.Namespace) -> dict[str, object]:
     """Build the deterministic report without invoking mutation or runtime code."""
-    lock_path = Path(getattr(args, "lockfile", None) or "custom_nodes.lock")
+    requested_lock = getattr(args, "lockfile", None)
+    lock_path = resolve_lockfile_path(requested_lock)
     # Parse before provider/discovery work: malformed locks must remain observable.
     lock_entries = read_lockfile(lock_path)
     known_packs = node_packs_install.get_known_node_packs(lock_path)
@@ -435,7 +436,7 @@ def build_nodes_reconcile_payload(args: argparse.Namespace) -> dict[str, object]
     missing_classes = set(node_classes) - schema_classes - set(node_packs_install.CORE_COMFY_CLASSES)
     # Preserve the existing requirements boundary and the canonical helper for
     # the default lock while avoiding its ambient lock path for explicit locks.
-    if lock_path == Path("custom_nodes.lock"):
+    if requested_lock is None:
         missing_classes.update(node_packs_install.missing_class_types_for_workflow(workflow))
     missing_classes.update(str(item) for item in getattr(workflow.requirements, "missing_nodes", ()))
     if missing_classes:
@@ -758,6 +759,7 @@ def _cmd_nodes_ensure(args: argparse.Namespace) -> int:
 
 
 def _cmd_nodes_lock(args: argparse.Namespace) -> int:
+    """Refresh the writable target lock; the default is cwd-relative."""
     lockfile_path = Path(getattr(args, "path", "custom_nodes.lock"))
     entries = read_lockfile(lockfile_path)
     locked: list[LockEntry] = []
@@ -785,6 +787,7 @@ def _cmd_nodes_lock(args: argparse.Namespace) -> int:
 
 
 def _cmd_nodes_restore(args: argparse.Namespace) -> int:
+    """Replay a target lock (cwd-relative by default), not the shipped catalog."""
     entries = read_lockfile(Path(args.lockfile))
     ok = True
     for entry in entries:
@@ -834,7 +837,7 @@ def _cmd_nodes_coverage(args: argparse.Namespace) -> int:
     except Exception as exc:
         print(f"Failed to load workflow: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
-    lock_path = Path(args.lockfile) if getattr(args, "lockfile", None) else Path("custom_nodes.lock")
+    lock_path = resolve_lockfile_path(getattr(args, "lockfile", None))
     coverage = build_workflow_coverage(
         loaded.workflow,
         schema_provider=schema_provider,
@@ -1097,7 +1100,6 @@ def _parse_class_defs(source: str) -> dict[str, dict[str, Any]]:
 
 
 DEFAULT_WRAPPER_OUT_DIR = Path("vibecomfy/nodes")
-DEFAULT_LOCKFILE = Path("custom_nodes.lock")
 
 
 def _resolve_sources(source_arg: str) -> tuple[str, ...]:
@@ -1120,7 +1122,7 @@ def _cmd_nodes_generate_wrappers(args: argparse.Namespace) -> int:
     server_url = args.server_url
 
     if args.all:
-        slugs = _wrapper_discovery._read_lockfile_pack_slugs(DEFAULT_LOCKFILE)  # noqa: SLF001 — explicit helper
+        slugs = _wrapper_discovery._read_lockfile_pack_slugs(resolve_lockfile_path())  # noqa: SLF001 — explicit helper
     else:
         slugs = [args.pack_slug]
 
@@ -1189,7 +1191,7 @@ def _cmd_nodes_generate_wrappers(args: argparse.Namespace) -> int:
 def _cmd_nodes_wrapper_status(args: argparse.Namespace) -> int:
     out_dir = Path(args.out)
     sources = _resolve_sources(args.source)
-    slugs = _wrapper_discovery._read_lockfile_pack_slugs(Path(args.lockfile))  # noqa: SLF001
+    slugs = _wrapper_discovery._read_lockfile_pack_slugs(resolve_lockfile_path(args.lockfile))  # noqa: SLF001
     rows: list[dict] = []
     for slug in slugs:
         module_name = _wrapper_codegen._slug_to_module_name(slug)  # noqa: SLF001
@@ -1330,7 +1332,7 @@ def register(subparsers) -> None:
     nodes_coverage = nodes_sub.add_parser("coverage", help="Schema completeness report for a workflow's class types.")
     nodes_coverage.add_argument("workflow")
     nodes_coverage.add_argument("--json", action="store_true")
-    nodes_coverage.add_argument("--lockfile", default="custom_nodes.lock", help="Path to custom_nodes.lock")
+    nodes_coverage.add_argument("--lockfile", default=None, help="Path to custom_nodes.lock (default: shipped catalog)")
     nodes_coverage.set_defaults(func=_cmd_nodes_coverage)
 
     nodes_drift = nodes_sub.add_parser("drift", help="Schema-drift detector for a custom-node pack.")
@@ -1368,7 +1370,7 @@ def register(subparsers) -> None:
         "wrapper-status",
         help="Report which packs have wrappers and whether they are drifted.",
     )
-    nodes_status.add_argument("--lockfile", default=str(DEFAULT_LOCKFILE))
+    nodes_status.add_argument("--lockfile", default=None, help="Path to custom_nodes.lock (default: shipped catalog)")
     nodes_status.add_argument("--out", default=str(DEFAULT_WRAPPER_OUT_DIR))
     nodes_status.add_argument(
         "--source",
