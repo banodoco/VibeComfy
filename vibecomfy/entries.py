@@ -111,9 +111,12 @@ def draft_entry(workflow: Any, entry_id: str, *, bundle: str = "bundle", input_a
         needs.append({"role": None, "code": "audio_mode_unknown",
                       "ambiguity": "audio mode is unknown; choose tts, music, sfx, or transcribe"})
     needs.extend({"role": None, "ambiguity": f"multiple targets for {name}", "candidates": candidates} for name, candidates in (input_ambiguities or {}).items())
-    for reference in _referenced_model_values(workflow):
+    for reference in _referenced_model_values(workflow, include_unresolved=True):
         role = LOADER_ROLES.get(reference["class_type"])
-        needs.append({**reference, "role": role, **({"ambiguity": "unknown loader role"} if role is None else {})})
+        if reference.get("unresolved") or (role is None and reference["field"] == "model_name"):
+            needs.append({**reference, "role": role, "unresolved": True})
+        else:
+            needs.append({**reference, "role": role, **({"ambiguity": "unknown loader role"} if role is None else {})})
     return _validate({"id": entry_id, "kind": kind, "modes": modes, "bundle": bundle, "needs": needs, "binds": binds, "defaults": {}})
 
 

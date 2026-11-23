@@ -42,7 +42,6 @@ _MODEL_INPUT_SUBDIRS = {
     "clip_name1": "text_encoders",
     "clip_name2": "text_encoders",
     "lora_name": "loras",
-    "model_name": "diffusion_models",
     "text_encoder": "text_encoders",
     "unet_name": "diffusion_models",
     "upscale_model": "upscale_models",
@@ -229,8 +228,16 @@ def _entries_from_node(
     return entries
 
 
-def _referenced_model_values(workflow: VibeWorkflow) -> list[dict[str, str]]:
-    references: list[dict[str, str]] = []
+def _referenced_model_values(
+    workflow: VibeWorkflow, *, include_unresolved: bool = False,
+) -> list[dict[str, Any]]:
+    """Collect model pickers with proven directories; optionally retain unknown labels.
+
+    Unknown model_name values have no filesystem destination. Entry readiness
+    needs that evidence, while asset installation/compilation consumes only
+    references with a known model directory.
+    """
+    references: list[dict[str, Any]] = []
     seen: set[tuple[str, str, str, str]] = set()
     for node in workflow.runtime_nodes().values():
         # Most generated nodes retain model pickers in execution inputs, but
@@ -241,7 +248,10 @@ def _referenced_model_values(workflow: VibeWorkflow) -> list[dict[str, str]]:
         for store in (node.inputs, node.widgets):
             for field, value in store.items():
                 subdir = _subdir_for_model_reference(node.class_type, field)
-                if subdir is None or not isinstance(value, str) or not value:
+                if not isinstance(value, str) or not value:
+                    continue
+                unknown_model_name = subdir is None and field == "model_name"
+                if subdir is None and not (include_unresolved and unknown_model_name):
                     continue
                 if _is_none_model_value(value):
                     continue
@@ -255,7 +265,7 @@ def _referenced_model_values(workflow: VibeWorkflow) -> list[dict[str, str]]:
                         "class_type": node.class_type,
                         "field": field,
                         "value": value,
-                        "subdir": subdir,
+                        **({"subdir": subdir} if subdir is not None else {"unresolved": True}),
                     }
                 )
     return references
@@ -430,7 +440,14 @@ def reconcile_model_requirements(
 
 
 def _subdir_for_model_reference(class_type: str, field: str) -> str | None:
-    return _CLASS_FIELD_SUBDIRS.get((class_type, field), _MODEL_INPUT_SUBDIRS.get(field))
+    specific = _CLASS_FIELD_SUBDIRS.get((class_type, field))
+    if specific is not None:
+        return specific
+    # A generic model_name is not evidence of a diffusion model. Only a
+    # known loader class can give this otherwise untyped label a directory.
+    if field == "model_name":
+        return _CLASS_TYPE_SUBDIRS.get(class_type)
+    return _MODEL_INPUT_SUBDIRS.get(field)
 
 
 def _asset_for_reference(
