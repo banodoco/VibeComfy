@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from vibecomfy import resources
+from vibecomfy.node_recipes import canonical_recipe
 
 try:
     import tomllib
@@ -52,6 +53,8 @@ class LockEntry:
     source_sha256: dict[str, str] = field(default_factory=dict)
     class_schema_sha256: str | None = None
     patches: tuple[DeclaredPatch, ...] = ()
+    requirements_txt: str | None = None
+    pip_no_deps: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.slug is None:
@@ -66,6 +69,9 @@ class LockEntry:
             self.class_schema_sha256 = self.schema_hash
         self.class_set = tuple(sorted({str(item) for item in self.class_set}))
         self.pip_packages = tuple(sorted({str(item) for item in self.pip_packages}))
+        recipe = canonical_recipe({"requirements_txt": self.requirements_txt, "pip_no_deps": self.pip_no_deps})
+        self.requirements_txt = recipe["requirements_txt"]
+        self.pip_no_deps = tuple(recipe["pip_no_deps"])
 
 
 def read_lockfile(path: Path | None = None) -> list[LockEntry]:
@@ -101,6 +107,8 @@ def _any_entry_has_rich_data(entries: list[LockEntry]) -> bool:
         or bool(entry.class_set)
         or entry.last_seen_at is not None
         or bool(entry.pip_packages)
+        or entry.requirements_txt is not None
+        or bool(entry.pip_no_deps)
         for entry in entries
     )
 
@@ -156,6 +164,11 @@ def _write_toml_lockfile(entries: list[LockEntry], path: Path) -> None:
             lines.append(f"class_set = {_toml_array(entry.class_set)}")
         if entry.pip_packages:
             lines.append(f"pip_packages = {_toml_array(entry.pip_packages)}")
+        if entry.requirements_txt is not None:
+            lines.append(f"requirements_txt = {_toml_quote(entry.requirements_txt)}")
+        if entry.pip_no_deps:
+            # Unlike a class set, this is an installation sequence.
+            lines.append("pip_no_deps = [" + ", ".join(_toml_quote(item) for item in entry.pip_no_deps) + "]")
         if entry.patches:
             patches = ", ".join(
                 f"{{ path = {_toml_quote(patch.path)}, sha256 = {_toml_quote(patch.sha256)} }}"
@@ -189,6 +202,8 @@ def upsert_lockfile_entry(entry: LockEntry, path: Path = Path("custom_nodes.lock
                     class_set=entry.class_set,
                     last_seen_at=entry.last_seen_at,
                     pip_packages=entry.pip_packages,
+                    requirements_txt=entry.requirements_txt,
+                    pip_no_deps=entry.pip_no_deps,
                     semantic_label=entry.semantic_label,
                     source_sha256=entry.source_sha256,
                     class_schema_sha256=entry.class_schema_sha256 or existing.class_schema_sha256,
@@ -287,6 +302,8 @@ def _entry_from_mapping(name: Any, raw: dict[str, Any]) -> LockEntry:
         class_set=class_set,
         last_seen_at=str(raw["last_seen_at"]) if raw.get("last_seen_at") is not None else None,
         pip_packages=pip_packages,
+        requirements_txt=raw.get("requirements_txt"),
+        pip_no_deps=raw.get("pip_no_deps", ()),
         semantic_label=str(semantic_label) if semantic_label is not None else None,
         source_sha256={str(key): str(value) for key, value in source_sha256.items()},
         class_schema_sha256=str(class_schema_sha256) if class_schema_sha256 is not None else None,

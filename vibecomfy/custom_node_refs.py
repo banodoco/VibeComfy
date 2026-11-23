@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 
 from vibecomfy.node_packs import LockEntry
+from vibecomfy.node_recipes import RECIPE_FIELDS, canonical_recipe
 from vibecomfy.workflow import VibeWorkflow
 
 
@@ -169,9 +170,9 @@ def _reject_conflicting_exact_refs(refs: Iterable[dict[str, Any]]) -> None:
     for ref in refs:
         selector = _ref_key(ref)
         location = str(ref.get("_source_location") or "requirements.custom_node_refs")
-        for field in ("url", "path", "commit", "version"):
+        for field in ("url", "path", "commit", "version", "requirements_txt", "pip_no_deps"):
             value = ref.get(field)
-            if value in (None, ""):
+            if (field in RECIPE_FIELDS and field not in ref) or (field not in RECIPE_FIELDS and value in (None, "")):
                 continue
             key = (selector, field)
             previous = seen.get(key)
@@ -228,6 +229,8 @@ def workflow_lock_entries(workflow: VibeWorkflow) -> list[LockEntry]:
                 path=ref.get("path"),
                 class_set=tuple(classes) if isinstance(classes, (list, tuple)) else (),
                 pip_packages=tuple(ref.get("pip_packages") or ()) if isinstance(ref.get("pip_packages"), (list, tuple)) else (),
+                requirements_txt=ref.get("requirements_txt"),
+                pip_no_deps=ref.get("pip_no_deps", ()),
                 source_sha256=dict(ref.get("source_sha256") or {}) if isinstance(ref.get("source_sha256"), Mapping) else {},
                 class_schema_sha256=ref.get("class_schema_sha256"),
                 schema_hash=ref.get("schema_hash"),
@@ -288,6 +291,10 @@ def lock_entry_to_ref(entry: LockEntry) -> dict[str, Any]:
         ref["class_set"] = list(entry.class_set)
     if entry.pip_packages:
         ref["pip_packages"] = list(entry.pip_packages)
+    if entry.requirements_txt is not None:
+        ref["requirements_txt"] = entry.requirements_txt
+    if entry.pip_no_deps:
+        ref["pip_no_deps"] = list(entry.pip_no_deps)
     if entry.source_sha256:
         ref["source_sha256"] = dict(entry.source_sha256)
     if entry.class_schema_sha256 is not None:
@@ -410,6 +417,10 @@ def _normalize_ref(ref: Mapping[str, Any]) -> dict[str, Any] | None:
             normalized[key] = values
     if isinstance(ref.get("pip_packages"), (list, tuple)):
         normalized["pip_packages"] = sorted({str(item) for item in ref["pip_packages"] if isinstance(item, str) and item})
+    recipe = canonical_recipe({key: ref[key] for key in RECIPE_FIELDS if key in ref})
+    for key in RECIPE_FIELDS:
+        if key in ref:
+            normalized[key] = recipe[key]
     if isinstance(ref.get("source_sha256"), Mapping):
         normalized["source_sha256"] = {
             str(key): str(value) for key, value in ref["source_sha256"].items()
@@ -423,7 +434,7 @@ def _normalize_ref(ref: Mapping[str, Any]) -> dict[str, Any] | None:
         "constraint", "commit", "revision", "path", "repository", "repo",
         "classes", "class_set", "pip_packages", "source_sha256",
         "class_schema_sha256", "schema_hash", "semantic_label", "last_seen_at",
-        "schema_source", "source_evidence",
+        "schema_source", "source_evidence", "requirements_txt", "pip_no_deps",
     }
     for key, value in ref.items():
         if key in known or str(key).startswith("_"):
