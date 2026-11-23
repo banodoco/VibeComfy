@@ -25,7 +25,10 @@ from typing import Any, Iterable, Mapping
 
 from vibecomfy.errors import ObjectInfoIdentityAmbiguityError
 from vibecomfy.errors import ObjectInfoCacheCorruptError
-from vibecomfy.porting.object_info.generation import active_cache_root, cache_file_witness, read_json, safe_cache_filename
+from vibecomfy.porting.object_info.generation import (
+    MANIFEST_FILE, _generation_validation_cached, active_cache_root,
+    cache_file_witness, read_json, safe_cache_filename,
+)
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -320,6 +323,7 @@ class BundleReadSet:
         self.packs: dict[str, dict[str, dict[str, Any]]] = {}
         self.disabled = False
         self.failure: Exception | None = None
+        self.manifest_files: dict[str, str] | None = None
 
     @staticmethod
     def _safe(path: Path) -> bool:
@@ -341,18 +345,54 @@ class BundleReadSet:
             if configured != self.configured:
                 raise ObjectInfoCacheCorruptError("object_info cache root changed during bundle emission")
             return True
-        if not self._witness(configured / "CURRENT"):
+        marker = configured / "CURRENT"
+        if not self._witness(marker):
             return False
+        with _reader_lock:
+            prior = _reader_state
+            if (self.witnesses[marker] is None and prior
+                    and prior["root"] == configured.resolve(strict=False)
+                    and prior["committed"]):
+                raise ObjectInfoCacheCorruptError(f"object_info cache marker disappeared: {marker}")
+
         def observe_validation(path: Path, witness: Any) -> None:
             self.witnesses[path] = witness
 
         root = active_cache_root(configured, validation_observer=observe_validation)
         self.root = root
-        if not self._safe(root) or not self._witness(root / "index.json"):
+        if not self._safe(root):
             self.disabled = True
             return False
+        if root != configured:
+            manifest_path = root / MANIFEST_FILE
+            if not self._witness(manifest_path):
+                return False
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise ObjectInfoCacheCorruptError(f"object_info cache generation has unreadable manifest: {manifest_path} ({exc})") from exc
+            if not isinstance(manifest, dict) or not isinstance(manifest.get("files"), dict):
+                raise ObjectInfoCacheCorruptError(f"invalid object_info cache manifest: {manifest_path}")
+            # Bind this copy to the validation that active_cache_root just used.
+            # A changed generation must not be admitted through a stale warm cache.
+            if not _generation_validation_cached(root):
+                raise ObjectInfoCacheCorruptError(f"object_info cache changed during generation validation: {root}")
+            self.manifest_files = manifest["files"]
+        if not self._witness(root / "index.json"):
+            return False
+        self._check_manifest("index.json")
         self.configured, self.root = configured, root
         return True
+
+    def _check_manifest(self, filename: str) -> None:
+        if self.manifest_files is None:
+            return
+        witness = self.witnesses[self.root / filename]
+        expected = self.manifest_files.get(filename)
+        if not isinstance(expected, str) or witness is None or witness[-1] != expected:
+            raise ObjectInfoCacheCorruptError(
+                f"object_info generation artifact {filename!r} failed its hash check"
+            )
 
     def _index(self) -> tuple[dict[str, str], dict[str, list[str]]] | None:
         if not self._setup():
@@ -370,6 +410,7 @@ class BundleReadSet:
             raise ObjectInfoCacheCorruptError(f"unsafe object_info provider filename: {filename!r}")
         if not self._witness(self.root / filename):
             return None
+        self._check_manifest(filename)
         if filename not in self.packs:
             self.packs[filename] = _read_pack_at_root(self.root, filename)
         return self.packs[filename]

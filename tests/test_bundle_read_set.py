@@ -151,3 +151,109 @@ def test_symlinked_cache_root_matches_scalar_checks(tmp_path, monkeypatch):
         consume.get_class('ImageResizeKJ')
     with pytest.raises(ObjectInfoCacheCorruptError):
         consume.get_class('ImageResizeKJ', read_set=read_set)
+
+
+def committed_cache(tmp_path, monkeypatch):
+    from vibecomfy.porting.object_info.serialize import build_cache
+
+    cache = tmp_path / 'committed'
+    for class_type, pack in [('ImageResizeKJ', 'PackA'), ('OtherNodeForTest', 'PackB')]:
+        source = tmp_path / f'{pack}.json'
+        source.write_text(json.dumps({class_type: {
+            'python_module': f'custom_nodes.{pack}.nodes',
+            'input': {'required': {}},
+            'input_order': {'required': []},
+            'output': ['IMAGE'], 'output_name': ['IMAGE'],
+            'output_is_list': [False],
+        }}), encoding='utf-8')
+        build_cache(source, version='v1', cache_dir=cache)
+    monkeypatch.setattr(consume, 'CACHE_DIR', cache)
+    monkeypatch.setattr(consume, 'INDEX_PATH', cache / 'index.json')
+    consume.reset_cache()
+    assert consume.get_class('ImageResizeKJ') is not None
+    root = cache / 'generations' / (cache / 'CURRENT').read_text(encoding='utf-8').strip()
+    index = json.loads((root / 'index.json').read_text(encoding='utf-8'))
+    return cache, root, index
+
+
+def test_warm_committed_missing_marker_refuses_bundle(tmp_path, monkeypatch):
+    cache, _, _ = committed_cache(tmp_path, monkeypatch)
+    (cache / 'CURRENT').unlink()
+    with pytest.raises(ObjectInfoCacheCorruptError, match='marker disappeared'):
+        consume.get_class('ImageResizeKJ')
+    dest = tmp_path / 'output' / 'workflow.py'
+    with pytest.raises(ObjectInfoCacheCorruptError):
+        bundle.emit_bundle(sample(), dest, {})
+    assert not dest.exists()
+    assert not dest.with_suffix('.vibe.json').exists()
+
+
+def test_warm_committed_changed_unread_pack_refuses_bundle(tmp_path, monkeypatch):
+    _, root, index = committed_cache(tmp_path, monkeypatch)
+    first, second = index['ImageResizeKJ'], index['OtherNodeForTest']
+    original_pack = consume.BundleReadSet._pack
+    changed = []
+
+    def replace_after_first(read_set, filename):
+        result = original_pack(read_set, filename)
+        if filename == first and not changed:
+            path = root / second
+            value = json.loads(path.read_text(encoding='utf-8'))
+            value['OtherNodeForTest']['description'] = 'changed after generation validation'
+            path.write_text(json.dumps(value), encoding='utf-8')
+            changed.append(True)
+        return result
+
+    monkeypatch.setattr(consume.BundleReadSet, '_pack', replace_after_first)
+    workflow = sample()
+    workflow.add_node('OtherNodeForTest', uid='two')
+    dest = tmp_path / 'output' / 'workflow.py'
+    with pytest.raises(ObjectInfoCacheCorruptError):
+        bundle.emit_bundle(workflow, dest, {})
+    assert changed
+    assert not dest.exists()
+    assert not dest.with_suffix('.vibe.json').exists()
+
+
+def test_warm_committed_manifest_change_refuses_bundle(tmp_path, monkeypatch):
+    _, root, _ = committed_cache(tmp_path, monkeypatch)
+    original_verify = consume.BundleReadSet.verify
+    changed = []
+
+    def change_manifest_then_verify(read_set):
+        manifest = root / 'manifest.json'
+        manifest.write_text(manifest.read_text(encoding='utf-8') + ' ', encoding='utf-8')
+        changed.append(True)
+        return original_verify(read_set)
+
+    monkeypatch.setattr(consume.BundleReadSet, 'verify', change_manifest_then_verify)
+    dest = tmp_path / 'output' / 'workflow.py'
+    with pytest.raises(ObjectInfoCacheCorruptError):
+        bundle.emit_bundle(sample(), dest, {})
+    assert changed
+    assert not dest.exists()
+    assert not dest.with_suffix('.vibe.json').exists()
+
+
+def test_warm_committed_loaded_pack_changed_before_first_witness_refuses_bundle(tmp_path, monkeypatch):
+    _, root, index = committed_cache(tmp_path, monkeypatch)
+    first = index['ImageResizeKJ']
+    original_pack = consume.BundleReadSet._pack
+    changed = []
+
+    def replace_before_first(read_set, filename):
+        if filename == first and not changed:
+            path = root / first
+            value = json.loads(path.read_text(encoding='utf-8'))
+            value['ImageResizeKJ']['description'] = 'changed before first bundle witness'
+            path.write_text(json.dumps(value), encoding='utf-8')
+            changed.append(True)
+        return original_pack(read_set, filename)
+
+    monkeypatch.setattr(consume.BundleReadSet, '_pack', replace_before_first)
+    dest = tmp_path / 'output' / 'workflow.py'
+    with pytest.raises(ObjectInfoCacheCorruptError):
+        bundle.emit_bundle(sample(), dest, {})
+    assert changed
+    assert not dest.exists()
+    assert not dest.with_suffix('.vibe.json').exists()
