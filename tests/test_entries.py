@@ -51,7 +51,11 @@ def test_output_ambiguity_and_loader_roles():
     entry = draft_entry(wf, "a")
     assert entry["needs"][0]["role"] == "diffusion_model"
     assert entry["needs"][1]["role"] is None
-    assert entry["needs"][1]["ambiguity"] == "unknown loader role"
+    unknown = entry["needs"][1]
+    assert unknown["class_type"] == "CustomMysteryLoader"
+    assert unknown["field"] == "model_name" and unknown["value"] == "x.safetensors"
+    assert unknown["unresolved"] is True
+    assert "ambiguity" not in unknown and "subdir" not in unknown
     wf.nodes["4"] = VibeNode("4", "SaveAudio")
     with pytest.raises(ValueError, match="ambiguous"):
         draft_entry(wf, "a")
