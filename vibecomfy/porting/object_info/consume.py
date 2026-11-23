@@ -231,6 +231,7 @@ def _sync_reader() -> bool:
                      "index_sig": index_sig, "pack_sigs": pack_sigs}
     owner = _BUNDLE_CLASS_MEMO.get()
     if isinstance(owner, _BundleClassMemo) and owner.active:
+        owner.observe_root(configured)
         owner.observe(configured / "CURRENT", marker_sig)
         owner.observe(active / "index.json", index_sig)
     return changed
@@ -329,13 +330,28 @@ class _BundleClassMemo:
         self.active = True
         self.witnesses: dict[Path, Any] = {}
         self.packs: set[str] = set()
+        self.root_identity: tuple[Path, int | None, int | None] | None = None
+
+    def observe_root(self, root: Path) -> None:
+        if self.root_identity is None:
+            try:
+                stat = root.stat()
+                self.root_identity = (root, stat.st_dev, stat.st_ino)
+            except OSError:
+                self.root_identity = (root, None, None)
 
     def observe(self, path: Path, witness: Any) -> None:
         self.witnesses.setdefault(path, witness)
 
     def validate(self) -> None:
         with _reader_lock:
-            changed = any(cache_file_witness(path) != witness
+            root = Path(CACHE_DIR).expanduser().resolve(strict=False)
+            try:
+                stat = root.stat()
+                root_identity = (root, stat.st_dev, stat.st_ino)
+            except OSError:
+                root_identity = (root, None, None)
+            changed = (self.root_identity is not None and root_identity != self.root_identity) or any(cache_file_witness(path) != witness
                           for path, witness in self.witnesses.items())
             if not changed:
                 return
@@ -350,6 +366,7 @@ class _BundleClassMemo:
         self.entries.clear()
         self.witnesses.clear()
         self.packs.clear()
+        self.root_identity = None
 
 
 _BUNDLE_CLASS_MEMO: ContextVar[_BundleClassMemo | None] = ContextVar(
