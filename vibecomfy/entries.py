@@ -108,7 +108,8 @@ def draft_entry(workflow: Any, entry_id: str, *, bundle: str = "bundle", input_a
     from vibecomfy.model_assets import _referenced_model_values
     needs = []
     if kind == "audio" and not transcribe:
-        needs.append({"role": None, "ambiguity": "audio mode is unknown; choose tts, music, sfx, or transcribe"})
+        needs.append({"role": None, "code": "audio_mode_unknown",
+                      "ambiguity": "audio mode is unknown; choose tts, music, sfx, or transcribe"})
     needs.extend({"role": None, "ambiguity": f"multiple targets for {name}", "candidates": candidates} for name, candidates in (input_ambiguities or {}).items())
     for reference in _referenced_model_values(workflow):
         role = LOADER_ROLES.get(reference["class_type"])
