@@ -138,3 +138,16 @@ def test_github_bad_json_isolated(tmp_path):
     assert result.source_tier_status["github"] == "unavailable"
     assert any(c.ref.slug == PACK for c in result.candidates)
     assert len(calls["github"]) == 2
+
+
+def test_missing_manager_feeds_stay_unavailable_on_warm_cache(tmp_path):
+    manager = {
+        resolver.MANAGER_NODE_MAP_URL: (404, {}),
+        resolver.MANAGER_EXTENSION_MAP_URL: (404, {}),
+        resolver.MANAGER_NODE_LIST_URL: (404, {}),
+    }
+    first, _ = run(tmp_path, manager=manager)
+    second, calls = run(tmp_path, manager=manager)
+    assert first.source_tier_status["comfyui-manager"] == "unavailable"
+    assert second.source_tier_status["comfyui-manager"] == "unavailable"
+    assert not calls["manager"]
