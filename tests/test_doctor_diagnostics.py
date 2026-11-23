@@ -295,7 +295,7 @@ def test_doctor_explicit_managed_lock_is_used_for_both_gates(tmp_path, monkeypat
     workflow = VibeWorkflow(id="managed", source=WorkflowSource(id="managed"))
     workflow.nodes["1"] = VibeNode(id="1", class_type="SaveImage", uid="1", inputs={"images": "image", "filename_prefix": "ok"})
     # Use the actual pin checker with a ref absent from the packaged lock.
-    workflow.metadata["custom_node_refs"] = [{
+    workflow.requirements.custom_node_refs = [{
         "name": "ApprovedPack", "slug": "ApprovedPack", "url": repo,
         "commit": approved, "source": "git",
     }]
