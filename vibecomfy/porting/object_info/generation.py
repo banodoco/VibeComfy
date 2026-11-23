@@ -110,7 +110,7 @@ def cache_file_witness(path: str | Path) -> tuple[int, int, int, int, int, str |
     )
 
 
-def active_cache_root(cache_root: str | Path) -> Path:
+def active_cache_root(cache_root: str | Path, *, validation_observer=None) -> Path:
     """Resolve the committed generation, or the legacy root when none exists."""
     root = Path(cache_root)
     marker = root / CURRENT_FILE
@@ -135,17 +135,20 @@ def active_cache_root(cache_root: str | Path) -> Path:
             f"object_info cache marker points to missing generation {generation!r}"
         )
     if not _generation_validation_cached(generation_root):
-        manifest = validate_generation(generation_root)
+        manifest = (validate_generation(generation_root) if validation_observer is None
+                    else validate_generation(generation_root, validation_observer=validation_observer))
         _remember_generation_validation(generation_root, manifest)
     return generation_root
 
 
-def validate_generation(generation_root: str | Path) -> dict[str, Any]:
+def validate_generation(generation_root: str | Path, *, validation_observer=None) -> dict[str, Any]:
     """Validate one committed generation and return its manifest."""
     root = Path(generation_root)
     _validate_generation_root(root)
     manifest_path = _artifact_path(root, MANIFEST_FILE)
     try:
+        if validation_observer is not None:
+            validation_observer(manifest_path, cache_file_witness(manifest_path))
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ObjectInfoCacheCorruptError(
@@ -165,7 +168,11 @@ def validate_generation(generation_root: str | Path) -> dict[str, Any]:
         artifact = _artifact_path(root, filename)
         if not artifact.is_file():
             raise ObjectInfoCacheCorruptError(f"object_info generation is missing artifact {filename!r}")
+        file_stat = artifact.lstat() if validation_observer is not None else None
         actual_hash = hashlib.sha256(artifact.read_bytes()).hexdigest()
+        if validation_observer is not None:
+            validation_observer(artifact, (file_stat.st_dev, file_stat.st_ino,
+                file_stat.st_size, file_stat.st_mtime_ns, file_stat.st_mode, actual_hash))
         if actual_hash != expected_hash:
             raise ObjectInfoCacheCorruptError(
                 f"object_info generation artifact {filename!r} failed its hash check"

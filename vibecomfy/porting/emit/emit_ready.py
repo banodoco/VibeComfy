@@ -159,7 +159,7 @@ def _node_title(node: Any) -> str:
     return ""
 
 
-def _resolved_field_values(node: Any) -> dict[str, Any]:
+def _resolved_field_values(node: Any, *, read_set=None) -> dict[str, Any]:
     class_type = str(getattr(node, "class_type", ""))
     metadata = getattr(node, "metadata", {})
     aliases = metadata.get("input_aliases") if isinstance(metadata, Mapping) else None
@@ -168,7 +168,7 @@ def _resolved_field_values(node: Any) -> dict[str, Any]:
         # widget roster as Python emission.  This names proven seed slots
         # (including custom-node schemas) without inventing names for opaque
         # widgets such as UltraShapeSaveGLB.
-        aliases = compact_widget_names_for_node(node, class_type).names
+        aliases = compact_widget_names_for_node(node, class_type, read_set=read_set).names
     values: dict[str, Any] = {}
     # ``inputs`` is the semantic channel and wins only after translating both
     # channels to their canonical field names.  This mirrors direct compile's
@@ -204,6 +204,7 @@ def _infer_public_input_bindings(
     reserved_names: set[str] | None = None,
     reserved_targets: set[tuple[str, str]] | None = None,
     connected_prompt_roles: bool = False,
+    read_set=None,
 ) -> list[_PublicInputBinding]:
     bindings: list[_PublicInputBinding] = []
     used_names: set[str] = set(reserved_names or set())
@@ -232,7 +233,7 @@ def _infer_public_input_bindings(
         node = workflow_nodes.get(node_id)
         if node is None:
             return
-        fields = _resolved_field_values(node)
+        fields = _resolved_field_values(node, read_set=read_set)
         available = set(fields)
         incoming = {str(getattr(edge, "to_input", "")) for edge in edges_in.get(node_id, [])}
         if field not in available or field in incoming:
@@ -261,7 +262,7 @@ def _infer_public_input_bindings(
                 if role in {"positive", "negative"}:
                     output_roles.setdefault(str(getattr(edge, "from_node", "")), set()).add(role)
     for node_id, node in sorted(workflow_nodes.items(), key=lambda item: _id_sort_key(item[0])):
-        fields = _resolved_field_values(node)
+        fields = _resolved_field_values(node, read_set=read_set)
         class_type = str(getattr(node, "class_type", ""))
 
         if class_type in {"CLIPTextEncode", "CLIPTextEncodeFlux", "CLIPTextEncodeSD3", "CLIPTextEncodeSDXL", "TextEncodeQwenImageEdit"}:
@@ -336,6 +337,7 @@ def _public_input_specs(
     registered_inputs: dict[str, tuple[str, str]] | None,
     constant_map: dict[tuple[str, str], str],
     authored_inputs: Mapping[str, Any] | None = None,
+    read_set=None,
 ) -> list[_PublicInputSpec]:
     specs: list[_PublicInputSpec] = []
     used_names: set[str] = set()
@@ -357,7 +359,7 @@ def _public_input_specs(
             if isinstance(authored, Mapping)
             else (lambda key, fallback=None: getattr(authored, key, fallback))
         )
-        field_values = _resolved_field_values(node)
+        field_values = _resolved_field_values(node, read_set=read_set)
         missing_target = binding.field not in field_values
         if missing_target:
             if authored is None or not read("allow_missing_target", False):
@@ -461,6 +463,7 @@ def _public_input_specs(
             edges_in,
             reserved_names=used_names,
             reserved_targets=used_targets,
+            read_set=read_set,
         )
         for binding in inferred:
             # Retained-input reconciliation fills the role-based controls
@@ -537,6 +540,7 @@ def _share_public_input_values(
     *,
     constant_lines: list[str],
     constant_map: dict[tuple[str, str], str],
+    read_set=None,
 ) -> tuple[list[str], list[_PublicInputSpec]]:
     """Name a value shared by a constructor and its public descriptor once."""
     if not specs:
@@ -562,7 +566,7 @@ def _share_public_input_values(
     for spec in specs:
         node_id = node_by_var.get(str(spec.node_ref))
         node = workflow_nodes.get(node_id) if node_id is not None else None
-        fields = _resolved_field_values(node) if node is not None else {}
+        fields = _resolved_field_values(node, read_set=read_set) if node is not None else {}
         if spec.field not in fields:
             rewritten.append(spec)
             continue
@@ -818,6 +822,7 @@ def emit_ready_template_python(
     external_custody: bool = False,
     preserve_authored_graph: bool = False,
     preserve_draft_names: bool = False,
+    read_set=None,
 ) -> str:
     from vibecomfy.porting.emitter import _use_object_info_identities, _drain_lookup_warning_diagnostics  # noqa: PLC0415
     with _use_object_info_identities(object_info_identities):
@@ -836,6 +841,7 @@ def emit_ready_template_python(
             external_custody=external_custody,
             preserve_authored_graph=preserve_authored_graph,
             preserve_draft_names=preserve_draft_names,
+            read_set=read_set,
         )
         lookup_warnings = _drain_lookup_warning_diagnostics(diagnostics)
         if lookup_warnings:
@@ -862,9 +868,10 @@ def _emit_ready_template_python_inner(
     external_custody: bool = False,
     preserve_authored_graph: bool = False,
     preserve_draft_names: bool = False,
+    read_set=None,
 ) -> str:
     from vibecomfy.porting.emit.emit_prepare import _prepare_workflow_for_emit  # noqa: PLC0415
-    _preflight_object_info_identity_resolution(workflow)
+    _preflight_object_info_identity_resolution(workflow, read_set=read_set)
     # Bundle publication opts into the compact companion-backed form. Direct
     # ready-template conversion remains independently buildable and may retain
     # the recursive helper's structural witness locally; published pairs keep
@@ -929,6 +936,7 @@ def _emit_ready_template_python_inner(
         omit_terminal_ui_only=omit_terminal_ui_only,
         keep_virtual_wires=keep_virtual_wires,
         prune_dead_branches=False,
+        read_set=read_set,
     )
     # UI widget labels/titles are presentation evidence, not constructor-name
     # authority.  Retained native/schema metadata remains available to the
@@ -961,6 +969,7 @@ def _emit_ready_template_python_inner(
         var_names,
         name_authority=prepared.get("name_authority"),
         resolve_graph_strings=False,
+        read_set=read_set,
     )
     constant_lines, constant_map = _drop_output_prefix_constants(constant_lines, constant_map)
     section_groups = _build_section_groups(workflow_nodes, edges_in)
@@ -988,6 +997,7 @@ def _emit_ready_template_python_inner(
         registered_inputs=registered_inputs,
         constant_map=constant_map,
         authored_inputs=workflow.inputs,
+        read_set=read_set,
     )
     constant_lines, public_inputs = _share_public_input_values(
         public_inputs,
@@ -995,6 +1005,7 @@ def _emit_ready_template_python_inner(
         var_names,
         constant_lines=constant_lines,
         constant_map=constant_map,
+        read_set=read_set,
     )
     model_assets = _model_assets_for_emit(
         metadata, requirements, preserve_draft_names=preserve_draft_names or external_custody,
@@ -1158,6 +1169,7 @@ def _emit_ready_template_python_inner(
             section_groups=section_groups,
             external_custody=external_custody,
             preserve_authored_graph=preserve_authored_graph,
+            read_set=read_set,
         )
     )
     out_lines.append("")
@@ -1211,6 +1223,7 @@ def _canonical_node_custody(
     *,
     edges_in: Mapping[str, list[Any]],
     name_authority: Mapping[str, Any] | None,
+    read_set=None,
 ) -> dict[str, dict[str, Any]]:
     """Return the compact non-runtime custody manifest for emitted nodes."""
     custody: dict[str, dict[str, Any]] = {}
@@ -1224,7 +1237,7 @@ def _canonical_node_custody(
         label = str(var_names[node_id])
         metadata = getattr(node, "metadata", {})
         retained_metadata = _v2_custody_metadata(metadata, allowed_metadata)
-        widget_channels = _canonical_widget_channels(node, name_authority)
+        widget_channels = _canonical_widget_channels(node, name_authority, read_set=read_set)
         linked_inputs = {
             str(edge.to_input)
             for edge in edges_in.get(str(node_id), ())
@@ -1286,6 +1299,7 @@ def canonical_v2_custody(
     workflow: Any,
     *,
     preserve_authored_graph: bool = False,
+    read_set=None,
 ) -> dict[str, Any]:
     """Project the emitted constructor roster into the closed v2 capsule.
 
@@ -1304,6 +1318,7 @@ def canonical_v2_custody(
         omit_terminal_ui_only=False,
         keep_virtual_wires=True,
         prune_dead_branches=False,
+        read_set=read_set,
     )
     prepared["name_authority"] = {}
     nodes = door_nodes(prepared)
@@ -1312,6 +1327,7 @@ def canonical_v2_custody(
         prepared["var_names"],
         edges_in=prepared["edges_in"],
         name_authority=prepared["name_authority"],
+        read_set=read_set,
     )
     result: dict[str, Any] = {
         "scopes": [
@@ -1645,6 +1661,7 @@ def _format_helper_custody(custody: list[dict[str, Any]]) -> list[str]:
 def _canonical_widget_channels(
     node: Any,
     name_authority: Mapping[str, Any] | None,
+    *, read_set=None,
 ) -> dict[str, str]:
     """Map constructor field names back to their authored widget channel."""
     from vibecomfy.porting.widgets.compact_resolver import compact_widget_names_for_node
@@ -1662,6 +1679,7 @@ def _canonical_widget_channels(
         semantic_node,
         str(semantic_node.class_type),
         name_authority=name_authority,
+        read_set=read_set,
     )
     aliases = list(resolution.names)
     result: dict[str, str] = {}
@@ -1691,9 +1709,10 @@ def _exceptional_authored_channels(
     node: Any,
     edges_in: Mapping[str, list[Any]],
     name_authority: Mapping[str, Any] | None,
+    *, read_set=None,
 ) -> dict[str, tuple[str, Any, bool, Any]]:
     """Return widget channels shadowed by a distinct effective input channel."""
-    channels = _canonical_widget_channels(node, name_authority)
+    channels = _canonical_widget_channels(node, name_authority, read_set=read_set)
     incoming_fields = {
         str(edge.to_input) for edge in edges_in.get(str(node.id), ())
     }
@@ -2477,7 +2496,7 @@ def _canonical_connection_lines(
     ]
 
 
-def _preflight_object_info_identity_resolution(workflow: Any) -> None:
+def _preflight_object_info_identity_resolution(workflow: Any, *, read_set=None) -> None:
     """Resolve bound object-info identities before default lookup can swallow errors."""
     from vibecomfy.porting.emitter import _identity_for_node  # noqa: PLC0415
     from vibecomfy.porting.object_info import resolve_class_entry  # noqa: PLC0415
@@ -2487,7 +2506,7 @@ def _preflight_object_info_identity_resolution(workflow: Any) -> None:
         identity = _identity_for_node(node)
         if identity is not None:
             resolve_class_entry(
-                str(node.class_type), identity=identity, allow_class_fallback=True
+                str(node.class_type), identity=identity, allow_class_fallback=True, read_set=read_set
             )
 
 
@@ -2840,6 +2859,7 @@ def _emit_build_function(
     emit_all_ids: bool = False,
     external_custody: bool = False,
     preserve_authored_graph: bool = False,
+    read_set=None,
 ) -> list[str]:
     from vibecomfy.porting.emitter import (  # noqa: PLC0415
         EmissionDiagnostic,
@@ -3090,7 +3110,7 @@ def _emit_build_function(
         }
         preserve_fields.update(public_preserve_fields.get(nid, set()))
         preserve_fields.update(
-            _canonical_widget_channels(node, prepared.get("name_authority")).keys()
+            _canonical_widget_channels(node, prepared.get("name_authority"), read_set=read_set).keys()
         )
         # Raw ``_ui`` is presentation evidence.  The kwargs builder also has
         # legacy compact-widget discovery, so give it a detached semantic copy
@@ -3101,7 +3121,7 @@ def _emit_build_function(
             semantic_node = copy.deepcopy(node)
             semantic_node.metadata.pop("_ui", None)
         exceptional_channels = _exceptional_authored_channels(
-            node, edges_in, prepared.get("name_authority")
+            node, edges_in, prepared.get("name_authority"), read_set=read_set
         )
         kwargs = _node_kwargs(
             semantic_node, edges_in, var_names,
@@ -3126,6 +3146,7 @@ def _emit_build_function(
             resolve_graph_strings=False,
             skip_widget_fields={record[0] for record in exceptional_channels.values()},
             emit_native_ports=emit_all_ids,
+            read_set=read_set,
         )
         if exceptional_channels:
             present = {key for key, _expr in kwargs}
@@ -3568,7 +3589,7 @@ def _retained_output_names(node: Any) -> list[str] | None:
     return None
 
 
-def _node_local_output_names(node: Any) -> list[str]:
+def _node_local_output_names(node: Any, *, read_set=None) -> list[str]:
     """Retained output names for *node*, then identity/class fallback."""
     retained_names = _retained_output_names(node)
     if retained_names is not None:
@@ -3584,11 +3605,11 @@ def _node_local_output_names(node: Any) -> list[str]:
     identity = _identity_for_node(node)
     if identity is not None:
         try:
-            result = resolve_class_entry(class_type, identity=identity, allow_class_fallback=True)
+            result = resolve_class_entry(class_type, identity=identity, allow_class_fallback=True, read_set=read_set)
         except ObjectInfoIdentityError:
             raise
         except Exception:
-            return list(_class_output_names(class_type))
+            return list(_class_output_names(class_type, read_set=read_set))
         _record_lookup_warning(node, class_type, result.warning)
         entry = result.entry
         if entry is not None:
@@ -3596,7 +3617,7 @@ def _node_local_output_names(node: Any) -> list[str]:
             names = [str(o.get("name", "")) for o in outputs if isinstance(o, Mapping)]
             if names:
                 return names
-    return list(_class_output_names(class_type))
+    return list(_class_output_names(class_type, read_set=read_set))
 
 
 def _reconcile_emit_arity(
@@ -3614,7 +3635,7 @@ def _reconcile_emit_arity(
     return ui_output_count
 
 
-def _node_local_arity_check(node: Any, ui_output_count: int | None) -> int:
+def _node_local_arity_check(node: Any, ui_output_count: int | None, *, read_set=None) -> int:
     """Retained arity consensus check for *node*; identity/class fallback.
 
     A node-local roster is the session's captured authority and is checked
@@ -3637,8 +3658,8 @@ def _node_local_arity_check(node: Any, ui_output_count: int | None) -> int:
         resolve_class_entry,
     )
     def _class_fallback_count() -> int:
-        cached_count = class_output_count(class_type)
-        if ui_output_count is not None and class_is_known(class_type):
+        cached_count = class_output_count(class_type, read_set=read_set)
+        if ui_output_count is not None and class_is_known(class_type, read_set=read_set):
             return _reconcile_emit_arity(cached_count, ui_output_count)
         return cached_count
 
@@ -3650,7 +3671,7 @@ def _node_local_arity_check(node: Any, ui_output_count: int | None) -> int:
     if identity is not None:
         try:
             result = resolve_class_entry(
-                class_type, identity=identity, allow_class_fallback=True
+                class_type, identity=identity, allow_class_fallback=True, read_set=read_set
             )
         except ObjectInfoIdentityError:
             raise

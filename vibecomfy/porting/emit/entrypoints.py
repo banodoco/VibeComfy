@@ -51,6 +51,7 @@ def emit_canonical_python(
     external_custody: bool = False,
     preserve_authored_graph: bool = False,
     require_model_records: bool = False,
+    read_set=None,
 ) -> str:
     """Emit the sole executable Python workflow source.
 
@@ -144,6 +145,7 @@ def emit_canonical_python(
         external_custody=external_custody,
         preserve_authored_graph=preserve_authored_graph,
         preserve_draft_names=not require_model_records,
+        read_set=read_set,
     )
 
 
@@ -196,6 +198,7 @@ def emit_scratchpad_python(
     preserve_node_ids: bool = False,
     external_custody: bool = False,
     preserve_authored_graph: bool = False,
+    read_set=None,
 ) -> str:
     if not keep_virtual_wires or prune_dead_branches:
         message = (
@@ -235,6 +238,7 @@ def emit_scratchpad_python(
         preserve_node_ids=preserve_node_ids,
         external_custody=external_custody,
         preserve_authored_graph=preserve_authored_graph,
+        read_set=read_set,
     )
 
 

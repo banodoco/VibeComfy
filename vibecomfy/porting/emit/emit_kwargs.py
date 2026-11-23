@@ -363,7 +363,7 @@ def _warn_metadata_ui_output_arity_disagreement(
     )
 
 
-def _schema_output_names_for_unpack(node: Any) -> list[str]:
+def _schema_output_names_for_unpack(node: Any, *, read_set: Any = None) -> list[str]:
     # Lazy import to avoid circular dependency
     from vibecomfy.porting.emitter import (  # noqa: PLC0415
         _node_local_output_names,
@@ -380,7 +380,7 @@ def _schema_output_names_for_unpack(node: Any) -> list[str]:
     )
     cache_names: list[str] = []
     try:
-        cache_names = [str(name) for name in _node_local_output_names(node) if str(name)]
+        cache_names = [str(name) for name in _node_local_output_names(node, read_set=read_set) if str(name)]
     except Exception:
         cache_names = []
     if ui_names and metadata_names and len(ui_names) != len(metadata_names):
@@ -389,14 +389,14 @@ def _schema_output_names_for_unpack(node: Any) -> list[str]:
     # were the UI count defeats reconciliation when a retained/native roster
     # has three real slots but an older schema still declares four.
     ui_output_count = len(ui_names) if ui_names else None
-    reconciled = _node_local_arity_check(node, ui_output_count)
+    reconciled = _node_local_arity_check(node, ui_output_count, read_set=read_set)
     names = ui_names or metadata_names or cache_names
     if names and reconciled and len(names) > reconciled:
         return list(names)[:reconciled]
     return names
 
 
-def _declared_output_names_for_call_metadata(node: Any) -> list[str]:
+def _declared_output_names_for_call_metadata(node: Any, *, read_set: Any = None) -> list[str]:
     # Lazy import to avoid circular dependency
     from vibecomfy.porting.emitter import _node_local_arity_check  # noqa: PLC0415
 
@@ -411,7 +411,7 @@ def _declared_output_names_for_call_metadata(node: Any) -> list[str]:
     if ui_names and metadata_names and len(ui_names) != len(metadata_names):
         _warn_metadata_ui_output_arity_disagreement(node, metadata_names, ui_names)
     ui_output_count = len(ui_names) if ui_names else None
-    reconciled = _node_local_arity_check(node, ui_output_count)
+    reconciled = _node_local_arity_check(node, ui_output_count, read_set=read_set)
     if ui_names:
         return list(ui_names)[:reconciled]
     if metadata_names and reconciled and len(metadata_names) > reconciled:
@@ -436,6 +436,8 @@ def _compute_output_variable_names(
     workflow_nodes: dict[str, Any],
     var_names: dict[str, str],
     edges: list[Any],
+    *,
+    read_set: Any = None,
 ) -> dict[str, dict[int, str]]:
     # Lazy import to avoid circular dependency
     from vibecomfy.porting.emitter import _wrapper_module_for_class  # noqa: PLC0415
@@ -444,7 +446,7 @@ def _compute_output_variable_names(
     for nid, node in sorted(workflow_nodes.items(), key=lambda item: _id_sort_key(item[0])):
         if _wrapper_module_for_class(str(node.class_type)) is None:
             continue
-        names = _schema_output_names_for_unpack(node)
+        names = _schema_output_names_for_unpack(node, read_set=read_set)
         if len(names) <= 1:
             continue
         if _has_out_of_range_edge(str(nid), len(names), edges):
@@ -585,6 +587,7 @@ def _is_schema_default(
     node_metadata: Mapping[str, Any] | dict[str, Any],
     *,
     node: Any = None,
+    read_set: Any = None,
 ) -> bool:
     # Lazy import to avoid circular dependency
     from vibecomfy.porting.emitter import (  # noqa: PLC0415
@@ -599,9 +602,9 @@ def _is_schema_default(
     defaults = dict(_CURATED_SCHEMA_DEFAULTS.get(class_type, {}))
     try:
         if node is not None:
-            defaults.update(_node_local_class_defaults(node))
+            defaults.update(_node_local_class_defaults(node, read_set=read_set))
         else:
-            defaults.update(class_defaults(class_type))
+            defaults.update(class_defaults(class_type, read_set=read_set))
     except Exception:
         pass
     return key in defaults and value == defaults[key]
@@ -784,9 +787,9 @@ def _output_fallback_diagnostic(
     )
 
 
-def _is_schema_confirmed_single_output(class_type: str, output_names: list[str] | tuple[str, ...]) -> bool:
+def _is_schema_confirmed_single_output(class_type: str, output_names: list[str] | tuple[str, ...], *, read_set: Any = None) -> bool:
     try:
-        return class_output_count(class_type) == 1 and not class_has_list_output(class_type)
+        return class_output_count(class_type, read_set=read_set) == 1 and not class_has_list_output(class_type, read_set=read_set)
     except Exception:
         return len(output_names) == 1
 
@@ -795,6 +798,7 @@ def _is_single_output_ref(
     workflow_nodes: dict[str, Any] | None,
     from_node: str,
     from_slot: int,
+    *, read_set: Any = None,
 ) -> bool:
     if from_slot != 0 or workflow_nodes is None:
         return False
@@ -804,7 +808,7 @@ def _is_single_output_ref(
     output_names = _node_output_names(src_node)
     if _UUID_RE.match(str(src_node.class_type)) and len(output_names) == 1:
         return True
-    return _is_schema_confirmed_single_output(str(src_node.class_type), output_names)
+    return _is_schema_confirmed_single_output(str(src_node.class_type), output_names, read_set=read_set)
 
 
 # ---------------------------------------------------------------------------
@@ -834,12 +838,13 @@ def _edge_ref_expr(
     diagnostics: "list[Any] | None",
     target_node: Any,
     target_input: str,
+    read_set: Any = None,
 ) -> str:
     if from_node_str in var_names:
         unpacked_ref = output_var_names.get(from_node_str, {}).get(from_slot)
         if unpacked_ref is not None:
             return unpacked_ref
-        if bare_single_output_refs and _is_single_output_ref(workflow_nodes, from_node_str, from_slot):
+        if bare_single_output_refs and _is_single_output_ref(workflow_nodes, from_node_str, from_slot, read_set=read_set):
             return var_names[from_node_str]
         safe_name = _safe_output_name(workflow_nodes, from_node_str, from_slot)
         if safe_name is not None:
@@ -1083,6 +1088,7 @@ def _node_kwargs(
     resolve_graph_strings: bool = True,
     skip_widget_fields: set[str] | None = None,
     emit_native_ports: bool = False,
+    read_set: Any = None,
 ) -> list[tuple[str, str]]:
     # Lazy imports to avoid circular dependency
     from vibecomfy.porting.emitter import (  # noqa: PLC0415
@@ -1101,7 +1107,7 @@ def _node_kwargs(
     # that schema-source evidence wins - the static table is only a fallback.
     node_metadata: dict[str, Any] = getattr(node, "metadata", None) or {}
     input_aliases: list[str | None] | None = None
-    compact_names = compact_widget_names_for_node(node, cls, name_authority=name_authority).names
+    compact_names = compact_widget_names_for_node(node, cls, name_authority=name_authority, read_set=read_set).names
     if compact_names:
         input_aliases = list(compact_names)
     elif use_ui_widget_aliases:
@@ -1242,16 +1248,16 @@ def _node_kwargs(
         }
         if any(value is not None for value in native_ports.values()):
             out.append(("_native_ports", _format_value(native_ports)))
-    output_names = _declared_output_names_for_call_metadata(node)
+    output_names = _declared_output_names_for_call_metadata(node, read_set=read_set)
     native_output_names = getattr(node, "native_output_names", None)
     if output_names and not (
-        omit_single_output_metadata and _is_schema_confirmed_single_output(cls, output_names)
+        omit_single_output_metadata and _is_schema_confirmed_single_output(cls, output_names, read_set=read_set)
     ):
         out.append(("_outputs", _format_value(tuple(output_names))))
     for key in ordered_static_keys:
         if key in incoming or key in incoming_exprs:
             continue
-        if key not in preserve_fields and strip_schema_defaults and _is_schema_default(cls, key, static_inputs[key], node_metadata, node=node):
+        if key not in preserve_fields and strip_schema_defaults and _is_schema_default(cls, key, static_inputs[key], node_metadata, node=node, read_set=read_set):
             continue
         if not _is_python_ident(key) and not (emit_reserved_keyword_args and key in RESERVED_WRAPPER_INPUT_NAMES):
             extras.append((key, _format_static_value(key, static_inputs[key])))
@@ -1295,6 +1301,7 @@ def _node_kwargs(
                 diagnostics=diagnostics,
                 target_node=node,
                 target_input=to_input,
+                read_set=read_set,
             )
         if not _is_python_ident(to_input) and not (emit_reserved_keyword_args and to_input in RESERVED_WRAPPER_INPUT_NAMES):
             extras.append((to_input, expr))
