@@ -1505,3 +1505,39 @@ def test_github_tier_skipped_when_retry_env_set(
     assert github.calls == []
     assert result.candidates == ()
     assert any("VIBECOMFY_REGISTRY_SKIP_GITHUB" in warning for warning in result.warnings)
+
+
+def test_manager_real_extension_map_resolves_edgetts(tmp_path: Path, monkeypatch) -> None:
+    """Recorded public ComfyUI-Manager rows retrieved 2026-11-23.
+
+    Sources:
+    https://raw.githubusercontent.com/ltdrdata/ComfyUI-Manager/main/extension-node-map.json
+    https://raw.githubusercontent.com/ltdrdata/ComfyUI-Manager/main/custom-node-list.json
+    Only the relevant repository and list fields are retained. No network.
+    """
+    monkeypatch.setenv("VIBECOMFY_REGISTRY_SKIP_GITHUB", "1")
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    repo = "https://github.com/1038lab/ComfyUI-EdgeTTS"
+    map_url = "https://raw.githubusercontent.com/ltdrdata/ComfyUI-Manager/main/extension-node-map.json"
+    list_url = "https://raw.githubusercontent.com/ltdrdata/ComfyUI-Manager/main/custom-node-list.json"
+    manager = FakeRegistryClient({
+        (map_url, ()): {repo: [["EdgeTTS", "Save_Audio", "WhisperSTT"],
+                                {"title_aux": "ComfyUI-EdgeTTS"}]},
+        (list_url, ()): {"custom_nodes": [{
+            "author": "1038lab", "title": "ComfyUI-EdgeTTS",
+            "reference": repo, "files": [repo], "install_type": "git-clone",
+        }]},
+    })
+    result = resolve_missing_nodes(
+        "EdgeTTS", query_intent="class_name", cache_root=tmp_path,
+        registry_client=FakeRegistryClient({}), manager_client=manager,
+        github_client=FakeRegistryClient({}),
+    )
+    candidate, = result.candidates
+    assert candidate.ref.url == repo
+    assert candidate.expected_classes == ("EdgeTTS",)
+    assert any(ev.tier == "comfyui-manager" and ev.source == "extension-node-map"
+               and ev.endpoint == map_url for ev in candidate.evidence)
+    assert result.source_tier_status["comfyui-manager"] == "matched"
+    assert result.runnable is False
+    assert (map_url, ()) in manager.calls
