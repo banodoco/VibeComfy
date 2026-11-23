@@ -120,17 +120,17 @@ def _identity_for_node_id(node_id: Any) -> "ObjectInfoIdentity | None":
         return None
     return table.get(str(node_id))
 
-def _node_local_class_defaults(node: Any) -> dict[str, Any]:
+def _node_local_class_defaults(node: Any, *, read_set: Any = None) -> dict[str, Any]:
     """Identity-aware schema defaults for *node*; class-only fallback."""
     class_type = str(node.class_type)
     identity = _identity_for_node(node)
     if identity is not None:
         try:
             result = resolve_class_entry(
-                class_type, identity=identity, allow_class_fallback=True
+                class_type, identity=identity, allow_class_fallback=True, read_set=read_set
             )
         except Exception:
-            return dict(class_defaults(class_type))
+            return dict(class_defaults(class_type, read_set=read_set))
         _record_lookup_warning(node, class_type, result.warning)
         entry = result.entry
         if entry is not None:
@@ -138,17 +138,17 @@ def _node_local_class_defaults(node: Any) -> dict[str, Any]:
                 name: spec.default for name, spec in read_object_info_inputs(entry).items()
                 if not spec.hidden and spec.has_default
             }
-    return dict(class_defaults(class_type))
+    return dict(class_defaults(class_type, read_set=read_set))
 
-def _node_local_output_names(node: Any) -> list[str]:
+def _node_local_output_names(node: Any, *, read_set: Any = None) -> list[str]:
     from vibecomfy.porting.emit.emit_ready import _node_local_output_names as _impl  # noqa: PLC0415
 
-    return _impl(node)
+    return _impl(node, read_set=read_set)
 
-def _node_local_arity_check(node: Any, ui_output_count: int | None) -> int:
+def _node_local_arity_check(node: Any, ui_output_count: int | None, *, read_set: Any = None) -> int:
     from vibecomfy.porting.emit.emit_ready import _node_local_arity_check as _impl  # noqa: PLC0415
 
-    return _impl(node, ui_output_count)
+    return _impl(node, ui_output_count, read_set=read_set)
 
 __all__ = [
     '_use_object_info_identities',
