@@ -1084,7 +1084,8 @@ class _ExternalJsonCache:
             if expires_at > time.time():
                 return None, True, 422, httpx.Headers()
             return None
-        return cached, True, 200, httpx.Headers()
+        # A cached JSON null records an earlier HTTP 404, not an empty successful search.
+        return cached, True, 404 if cached is None else 200, httpx.Headers()
 
     def _cache_file_for_url(self, url: str, params: dict[str, str] | None) -> Path:
         query = urlencode(sorted((params or {}).items()))
