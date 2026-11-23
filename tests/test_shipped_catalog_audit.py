@@ -21,8 +21,9 @@ def test_private_catalog_and_coverage_read_shipped_lock(tmp_path, monkeypatch):
         assert not any(pack.name == "TargetOnly" for pack in read())
         assert any(pack.name == "TargetOnly" for pack in read(target))
     workflow = VibeWorkflow("coverage", WorkflowSource("coverage"))
-    workflow.nodes["1"] = VibeNode("1", "HunyuanFoleySampler")
+    workflow.nodes["1"] = VibeNode("1", "AuditFoleyNode", pack="ComfyUI-HunyuanVideo_Foley")
     assert build_workflow_coverage(workflow).missing_lock == 0
+    assert build_workflow_coverage(workflow, lock_path=target).missing_lock == 1
     assert target.read_bytes() == original
     target.write_text("[bad", encoding="utf-8")
     with pytest.raises(ValueError):
