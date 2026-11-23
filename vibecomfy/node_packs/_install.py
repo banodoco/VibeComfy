@@ -3,7 +3,7 @@ import contextvars
 import hashlib
 import importlib.metadata
 import importlib.util, json, os, re, shutil, socket, subprocess, sys, tempfile, time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Callable, Literal, Mapping, Protocol, Sequence
 from urllib.parse import urlparse
@@ -370,7 +370,19 @@ def _install_pack_via_clone(
     )
 
 
-def restore_pack(entry: LockEntry, *, install_root: Path | None = None, runner: Runner = subprocess.run, lockfile_path: Path = Path("custom_nodes.lock")) -> InstallResult:
+def _entry_has_dependencies(entry: LockEntry | None) -> bool:
+    return entry is not None and bool(
+        entry.pip_packages or entry.requirements_txt is not None or entry.pip_no_deps
+    )
+
+
+def restore_pack(
+    entry: LockEntry,
+    *,
+    install_root: Path | None = None,
+    runner: Runner = subprocess.run,
+    lockfile_path: Path = Path("custom_nodes.lock"),
+) -> InstallResult:
     """Restore this entry; an omitted lock path writes the cwd's target lock.
 
     Declared dependencies and recipes come from the entry. Bare legacy entries
@@ -378,10 +390,15 @@ def restore_pack(entry: LockEntry, *, install_root: Path | None = None, runner: 
     """
     if install_root is None:
         install_root = default_install_root()
+    declared = _entry_has_dependencies(entry)
+    if declared and not entry.git_commit_sha:
+        return InstallResult(entry.name, "failed", None, f"declared dependencies for {entry.name} require a pinned git commit")
     install_dir = install_root / entry.name
-    pack = _pack_by_name(entry.name)
+    pack = None if declared else _pack_by_name(entry.name)
     sentinel = _install_sentinel(install_root, entry.name)
     if _has_incomplete_install(sentinel): return InstallResult(entry.name, "failed", None, sentinel.reason)
+    status: InstallStatus = "installed"
+    verified = 0
     if install_dir.exists():
         current_head = _git_head(install_dir, runner)
         dirty = _git_porcelain(install_dir, runner)
@@ -392,39 +409,31 @@ def restore_pack(entry: LockEntry, *, install_root: Path | None = None, runner: 
                 reason += f" (declared patch {entry.patches[0].path} requires locked HEAD)"
             return InstallResult(entry.name, "failed" if dirty is None else "skipped_dirty", current_head, reason)
         if current_head == entry.git_commit_sha:
-            if not (entry.pip_packages or entry.requirements_txt is not None or entry.pip_no_deps):
+            if not declared:
                 return InstallResult(entry.name, "refreshed", entry.git_commit_sha, None, verified)
-            result = _finalize_install(
-                entry.name, entry.url or "", install_dir, lockfile_path, runner,
-                pack=pack, expected_commit=entry.git_commit_sha, sentinel=sentinel, restore_entry=entry,
-            )
-            if result.status != "installed":
-                return result
-            return InstallResult(result.name, "refreshed", result.git_commit_sha, result.error, verified)
+        else:
+            try:
+                sentinel.write(phase="restore_fetch", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
+                runner(["git", "-C", str(install_dir), "fetch", "origin"], check=True, capture_output=True, text=True)
+                sentinel.write(phase="restore_checkout", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
+                runner(["git", "-C", str(install_dir), "checkout", entry.git_commit_sha], check=True, capture_output=True, text=True)
+            except (OSError, subprocess.CalledProcessError) as exc:
+                return InstallResult(entry.name, "failed", None, _error_text(exc) or f"failed to restore {entry.name}")
+        status = "refreshed"
+    else:
+        sentinel.write(phase="restore_start", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
         try:
-            sentinel.write(phase="restore_fetch", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
-            runner(["git", "-C", str(install_dir), "fetch", "origin"], check=True, capture_output=True, text=True)
+            sentinel.write(phase="clone", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
+            runner(["git", "clone", entry.url, str(install_dir)], check=True, capture_output=True, text=True)
             sentinel.write(phase="restore_checkout", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
             runner(["git", "-C", str(install_dir), "checkout", entry.git_commit_sha], check=True, capture_output=True, text=True)
-        except (OSError, subprocess.CalledProcessError) as exc: return InstallResult(entry.name, "failed", None, _error_text(exc) or f"failed to restore {entry.name}")
-        result = _finalize_install(
-            entry.name, entry.url or "", install_dir, lockfile_path, runner,
-            pack=pack, expected_commit=entry.git_commit_sha, sentinel=sentinel, restore_entry=entry,
-        )
-        if result.status != "installed":
-            return result
-        return InstallResult(result.name, "refreshed", result.git_commit_sha, result.error)
-    sentinel.write(phase="restore_start", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
-    try:
-        sentinel.write(phase="clone", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
-        runner(["git", "clone", entry.url, str(install_dir)], check=True, capture_output=True, text=True)
-        sentinel.write(phase="restore_checkout", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
-        runner(["git", "-C", str(install_dir), "checkout", entry.git_commit_sha], check=True, capture_output=True, text=True)
-    except (OSError, subprocess.CalledProcessError) as exc: return InstallResult(entry.name, "failed", None, _error_text(exc) or f"failed to restore {entry.name}")
-    return _finalize_install(
+        except (OSError, subprocess.CalledProcessError) as exc:
+            return InstallResult(entry.name, "failed", None, _error_text(exc) or f"failed to restore {entry.name}")
+    result = _finalize_install(
         entry.name, entry.url or "", install_dir, lockfile_path, runner,
         pack=pack, expected_commit=entry.git_commit_sha, sentinel=sentinel, restore_entry=entry,
     )
+    return replace(result, status=status, verified_patches=verified) if result.status == "installed" else result
 def _refresh_existing(
     name: str,
     repo_url: str,
@@ -628,7 +637,17 @@ def _install_required_packs_impl(
             results=tuple(InstallResult(pack.name, "failed", None, error) for pack in ordered_packs),
             preflight=PipPreflightResult(ok=False, error=error),
         )
-    preflight = preflight_pip_requirements(ordered_packs, runner=runner)
+    selected_entries = tuple(
+        _matching_lock_entry(pack, install_refs.get(pack.name), restore_entries or ()) for pack in ordered_packs
+    )
+    # Preflight the same dependency authority that restore will install.
+    # Catalog pip dependencies must not leak into an entry's declared recipe.
+    preflight_packs = tuple(
+        replace(pack, pip_packages=entry.pip_packages)
+        if entry is not None and _entry_has_dependencies(entry) else pack
+        for pack, entry in zip(ordered_packs, selected_entries)
+    )
+    preflight = preflight_pip_requirements(preflight_packs, runner=runner)
     if not preflight.ok:
         error = preflight.error or "pip preflight failed"
         return InstallBatchResult(
@@ -637,12 +656,10 @@ def _install_required_packs_impl(
             preflight=preflight,
         )
     results: list[InstallResult] = []
-    for pack in ordered_packs:
+    for pack, entry in zip(ordered_packs, selected_entries):
         authored_ref = install_refs.get(pack.name)
-        # A lock is a resolution receipt.  Reuse it when it exactly matches
-        # the authored URL and optional selector; otherwise resolve the URL
-        # (default branch for an unpinned ref) and record a new full commit.
-        entry = _matching_lock_entry(pack, authored_ref, restore_entries or ())
+        # The selected entry is the exact witness chosen before preflight.
+        # Without one, resolve the authored ref and record a new full commit.
         install_ref = _pack_ref_from_install_ref(authored_ref)
         if install_ref is not None and not install_ref.slug:
             install_ref = _pack_ref_with_slug(install_ref, pack.name)
@@ -1015,10 +1032,10 @@ def _install_pack_pip_packages(
     Only bare legacy entries use the catalog's established pip dependencies.
     Requirements files are explicit: no file discovery or install.py execution.
     """
-    declared = restore_entry is not None and bool(
-        restore_entry.pip_packages or restore_entry.requirements_txt is not None or restore_entry.pip_no_deps
-    )
-    packages = restore_entry.pip_packages if declared else pack.pip_packages if pack is not None else ()
+    declared = _entry_has_dependencies(restore_entry)
+    packages = pack.pip_packages if pack is not None else ()
+    if restore_entry is not None and declared:
+        packages = restore_entry.pip_packages
     steps: list[tuple[str, ...]] = [tuple(packages)] if packages else []
     pip_cwd = install_dir.resolve() if declared and install_dir is not None else None
     if restore_entry is not None:
@@ -1109,19 +1126,17 @@ def _finalize_install(
     sentinel: _InstallSentinel,
     restore_entry: LockEntry | None = None,
 ) -> InstallResult:
-    """Shared install finalization: pip deps, git HEAD verify, lockfile upsert, sentinel clear.
+    """Verify and install dependencies, then persist the lock and clear the sentinel.
 
-    All five install/restore paths (clone, cm-cli success, refresh,
-    restore-existing, restore-clone) route through this single helper so that
+    Every path that installs dependencies (clone, cm-cli success, refresh,
+    restore-existing, restore-clone) routes through this single helper so that
     durable invariants — pip dependency installation, commit verification,
     lockfile entry derivation and upsert, and sentinel clearance — are
     applied uniformly and only after all work succeeds.
     """
     # Read a recipe only from the requested checkout, before pip can consume
     # its requirements file. Verify again after pip, as for every install.
-    if restore_entry is not None and (
-        restore_entry.pip_packages or restore_entry.requirements_txt is not None or restore_entry.pip_no_deps
-    ):
+    if _entry_has_dependencies(restore_entry):
         sentinel.write(phase="verification", name=name, repo_url=repo_url, install_dir=install_dir)
         head = _git_head(install_dir, runner)
         if head is None:
@@ -1143,7 +1158,9 @@ def _finalize_install(
         return InstallResult(name, "failed", sha, f"expected git HEAD {expected_commit} for {install_dir}, got {sha}")
     # 3. Preserve the exact restore declaration, including its recipe and
     # evidence. New catalog installs still derive their resolution receipt.
-    entry = restore_entry if restore_entry is not None else _lock_entry_for_pack(name, sha, repo_url, pack=pack, pack_ref=pack_ref)
+    entry = restore_entry
+    if entry is None:
+        entry = _lock_entry_for_pack(name, sha, repo_url, pack=pack, pack_ref=pack_ref)
     if entry is None:
         return InstallResult(name, "failed", None, f"failed to derive class_set for registry-driven pack {name}")
     # 4. Upsert lockfile and clear sentinel — only after all durable work succeeds.

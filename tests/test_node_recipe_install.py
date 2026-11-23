@@ -173,6 +173,15 @@ def test_restore_verifies_checkout_before_reading_recipe(target):
     assert not target[1].exists()
 
 
+def test_restore_rechecks_head_after_recipe_install(target):
+    runner = RecipeRunner()
+    runner.after_install = lambda: setattr(runner, "head", "f" * 40)
+    result = restore(recipe_entry(), target, runner)
+    assert result.status == "failed"
+    assert "expected git HEAD" in result.error
+    assert not target[1].exists()
+
+
 def test_protected_version_checked_after_each_recipe_install(target):
     runner = RecipeRunner()
     runner.after_install = lambda: target[2].update(torch="2.11.0")
@@ -203,3 +212,41 @@ def test_batch_restores_recipe_from_exact_entry(target):
     assert result.ok
     assert len(runner.installs) == 4
     assert read_lockfile(target[1]) == [entry]
+
+
+def test_batch_preflight_uses_entry_dependencies_instead_of_catalog(target):
+    entry = recipe_entry(pip_packages=("entry-only==2",))
+    pack = CustomNodePack(entry.name, entry.url, frozenset(entry.class_set), ("catalog-only==99",))
+    runner = RecipeRunner()
+    result = install.install_required_packs(
+        [pack], restore_entries=[entry], install_root=target[0], lockfile_path=target[1], runner=runner,
+    )
+    assert result.ok
+    assert result.preflight.packages == ("entry-only==2",)
+    assert not any("catalog-only==99" in call for call in runner.calls)
+    assert len(runner.installs) == 5
+    assert read_lockfile(target[1]) == [entry]
+
+
+def test_recipe_keeps_declared_runtime_requirements_protected(target):
+    entry = recipe_entry()
+    target[2]["requests"] = "2.31.0"
+    pack = CustomNodePack(entry.name, entry.url, frozenset(entry.class_set))
+    runner = RecipeRunner()
+    result = install.install_required_packs(
+        [pack], restore_entries=[entry], install_root=target[0], lockfile_path=target[1], runner=runner,
+        runtime_requirements=("requests>=2",),
+    )
+    assert result.ok
+    assert len(runner.installs) == 4
+    assert all("requests==2.31.0" in contents for _, contents in runner.constraints)
+
+
+def test_missing_declared_recipe_pin_fails_before_clone(target):
+    entry = recipe_entry(commit=None, git_commit_sha=None)
+    runner = RecipeRunner()
+    result = restore(entry, target, runner)
+    assert result.status == "failed"
+    assert "commit" in result.error.lower()
+    assert not runner.calls
+    assert not target[1].exists()
