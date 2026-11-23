@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 import stat
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 
@@ -31,9 +32,24 @@ RESERVED_FILES = frozenset({CURRENT_FILE, MANIFEST_FILE, "index.json", "provenan
 # replacement or metadata change falls back to the full content validation.
 _VALIDATED_GENERATIONS: dict[Path, tuple[tuple[str, int, int, int, int, int, int], ...]] = {}
 
+# Optional, invocation-local observer used by bundle emission. The ordinary
+# generation reader has no observer and retains its existing behavior.
+_GENERATION_OBSERVER: ContextVar[Any] = ContextVar("_GENERATION_OBSERVER", default=None)
+
+
+def _observed(path: Path, operation: Any, *, directory: bool = False) -> Any:
+    observer = _GENERATION_OBSERVER.get()
+    if observer is None:
+        return operation()
+    observer(path, directory)
+    try:
+        return operation()
+    finally:
+        observer(path, directory)
+
 
 def _stat_fingerprint(path: Path) -> tuple[str, int, int, int, int, int, int]:
-    file_stat = path.lstat()
+    file_stat = _observed(path, path.lstat)
     return (
         path.name,
         int(file_stat.st_dev),
@@ -113,23 +129,30 @@ def cache_file_witness(path: str | Path) -> tuple[int, int, int, int, int, str |
 def active_cache_root(cache_root: str | Path) -> Path:
     """Resolve the committed generation, or the legacy root when none exists."""
     root = Path(cache_root)
+    observer = _GENERATION_OBSERVER.get()
+    if observer is not None:
+        observer(root, True)
     marker = root / CURRENT_FILE
     if not marker.exists() and not marker.is_symlink():
         return root
     if marker.is_symlink() or not marker.is_file():
         raise ObjectInfoCacheCorruptError(f"object_info cache marker is not a regular file: {marker}")
     try:
-        generation = marker.read_text(encoding="utf-8").strip()
+        generation = _observed(marker, lambda: marker.read_text(encoding="utf-8")).strip()
     except OSError as exc:
         raise ObjectInfoCacheCorruptError(f"cannot read object_info cache marker {marker}: {exc}") from exc
     if not generation or Path(generation).name != generation or "/" in generation or "\\" in generation:
         raise ObjectInfoCacheCorruptError(f"invalid object_info cache generation marker: {marker}")
     generations_root = root / GENERATIONS_DIR
+    if observer is not None:
+        observer(generations_root, True)
     if generations_root.is_symlink() or not generations_root.is_dir():
         raise ObjectInfoCacheCorruptError(
             f"object_info cache generations directory is not a regular directory: {generations_root}"
         )
     generation_root = generations_root / generation
+    if observer is not None:
+        observer(generation_root, True)
     if generation_root.is_symlink() or not generation_root.is_dir():
         raise ObjectInfoCacheCorruptError(
             f"object_info cache marker points to missing generation {generation!r}"
@@ -146,7 +169,7 @@ def validate_generation(generation_root: str | Path) -> dict[str, Any]:
     _validate_generation_root(root)
     manifest_path = _artifact_path(root, MANIFEST_FILE)
     try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest = json.loads(_observed(manifest_path, lambda: manifest_path.read_text(encoding="utf-8")))
     except (OSError, json.JSONDecodeError) as exc:
         raise ObjectInfoCacheCorruptError(
             f"object_info cache generation has unreadable manifest: {manifest_path} ({exc})"
@@ -165,7 +188,7 @@ def validate_generation(generation_root: str | Path) -> dict[str, Any]:
         artifact = _artifact_path(root, filename)
         if not artifact.is_file():
             raise ObjectInfoCacheCorruptError(f"object_info generation is missing artifact {filename!r}")
-        actual_hash = hashlib.sha256(artifact.read_bytes()).hexdigest()
+        actual_hash = hashlib.sha256(_observed(artifact, artifact.read_bytes)).hexdigest()
         if actual_hash != expected_hash:
             raise ObjectInfoCacheCorruptError(
                 f"object_info generation artifact {filename!r} failed its hash check"
@@ -174,8 +197,10 @@ def validate_generation(generation_root: str | Path) -> dict[str, Any]:
     if not required <= set(files):
         raise ObjectInfoCacheCorruptError("object_info generation is missing index or provenance")
     try:
-        index = json.loads(_artifact_path(root, "index.json").read_text(encoding="utf-8"))
-        provenance = json.loads(_artifact_path(root, "provenance.json").read_text(encoding="utf-8"))
+        index_path = _artifact_path(root, "index.json")
+        index = json.loads(_observed(index_path, lambda: index_path.read_text(encoding="utf-8")))
+        provenance_path = _artifact_path(root, "provenance.json")
+        provenance = json.loads(_observed(provenance_path, lambda: provenance_path.read_text(encoding="utf-8")))
     except (OSError, json.JSONDecodeError) as exc:
         raise ObjectInfoCacheCorruptError(f"object_info generation has invalid JSON: {root}") from exc
     if not isinstance(index, dict) or not isinstance(provenance, dict):
@@ -206,7 +231,8 @@ def validate_generation(generation_root: str | Path) -> dict[str, Any]:
             )
         try:
             if filename not in provider_files:
-                provider_files[filename] = json.loads(_artifact_path(root, filename).read_text(encoding="utf-8"))
+                provider_path = _artifact_path(root, filename)
+                provider_files[filename] = json.loads(_observed(provider_path, lambda: provider_path.read_text(encoding="utf-8")))
             pack = provider_files[filename]
         except (OSError, json.JSONDecodeError) as exc:
             raise ObjectInfoCacheCorruptError(f"object_info pack {filename!r} is unreadable") from exc
@@ -230,7 +256,7 @@ def read_json(root: str | Path, filename: str, *, required: bool = True) -> Any:
             raise ObjectInfoCacheCorruptError(f"object_info cache artifact is missing: {path}")
         return None
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(_observed(path, lambda: path.read_text(encoding="utf-8")))
     except (OSError, json.JSONDecodeError) as exc:
         raise ObjectInfoCacheCorruptError(f"object_info cache artifact is corrupt: {path} ({exc})") from exc
 

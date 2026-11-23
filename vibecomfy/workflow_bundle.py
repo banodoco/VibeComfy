@@ -3233,7 +3233,15 @@ def _destination_path(destination: str | Path, workflow: VibeWorkflow) -> Path:
 
 
 def _with_bundle_class_memo(func):
-    """within one emit the object-info evidence is read as of first lookup and witnessed once more at the end, before any output file is written; a change during the emit refuses with the base's error; where the base would have used a new value mid-emit, this refuses instead"""
+    """Scope object-info memoization to this bundle operation.
+
+    Recorded object-info dependencies are checked before a memo hit and again
+    before publication. A detected change refuses, including when the scalar
+    reader could instead consume a changed valid value. These checks cannot
+    eliminate ABA changes or changes after the last check. Workflow, sidecar,
+    and publication I/O do not feed memoized object-info answers and are
+    outside this set. The default final check re-hashes regular-file bytes.
+    """
     @functools.wraps(func)
     def wrapped(*args, **kwargs):
         from vibecomfy.porting.object_info.consume import _BUNDLE_CLASS_MEMO, _BundleClassMemo
@@ -3310,7 +3318,8 @@ def emit_bundle(
         external_custody=True,
     )
     _validate_bundle_cache_witness()
-    _atomic_publish_pair(path, source, bundle.ui_sidecar, expected=bundle)
+    _atomic_publish_pair(path, source, bundle.ui_sidecar, expected=bundle,
+                         before_publish=_validate_bundle_cache_witness)
     return bundle
 
 
@@ -3563,6 +3572,7 @@ def _atomic_publish_pair(
     expected: WorkflowBundle | None = None,
     expected_members: Mapping[str | Path, str | None] | None = None,
     extra_members: Mapping[str | Path, bytes] | None = None,
+    before_publish=None,
 ) -> None:
     """Publish a complete pair under a lock with durable crash recovery."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -3575,6 +3585,7 @@ def _atomic_publish_pair(
             expected=expected,
             expected_members=expected_members,
             extra_members=extra_members,
+            before_publish=before_publish,
         )
 
 
@@ -3586,6 +3597,7 @@ def _atomic_publish_pair_unlocked(
     expected: WorkflowBundle | None = None,
     expected_members: Mapping[str | Path, str | None] | None = None,
     extra_members: Mapping[str | Path, bytes] | None = None,
+    before_publish=None,
 ) -> None:
     """Validate staged bytes, then publish a complete bundle with rollback.
 
@@ -3768,6 +3780,8 @@ def _atomic_publish_pair_unlocked(
                     next(backup for backup, item in backups if item == destination).resolve()
                 ) if original_exists else None,
             })
+        if before_publish is not None:
+            before_publish()
         transaction_id = uuid.uuid4().hex
         _write_publish_transaction(
             path,
@@ -4114,6 +4128,7 @@ def emit_bundle_with_candidate(
         expected=bundle,
         expected_members=expected_members,
         extra_members=extra_members,
+        before_publish=_validate_bundle_cache_witness,
     )
     return bundle
 

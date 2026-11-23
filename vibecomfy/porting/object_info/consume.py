@@ -13,6 +13,7 @@ from vibecomfy.socket_types import canonical_socket_type
 from vibecomfy.porting.object_info.identity import normalize_cache_identity
 
 import copy
+import hashlib
 import json
 import threading
 import warnings
@@ -25,7 +26,7 @@ from typing import Any, Iterable, Mapping
 
 from vibecomfy.errors import ObjectInfoIdentityAmbiguityError
 from vibecomfy.errors import ObjectInfoCacheCorruptError
-from vibecomfy.porting.object_info.generation import active_cache_root, cache_file_witness, read_json, safe_cache_filename
+from vibecomfy.porting.object_info.generation import active_cache_root, cache_file_witness as _cache_file_witness, read_json as _read_json, safe_cache_filename, _artifact_path, _GENERATION_OBSERVER
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -157,6 +158,78 @@ _reader_lock = threading.RLock()
 _reader_state: dict[str, Any] | None = None
 
 
+def cache_file_witness(path: Path) -> Any:
+    """Witness and record every file consulted by the sync reader."""
+    witness = _cache_file_witness(path)
+    owner = _BUNDLE_CLASS_MEMO.get()
+    if isinstance(owner, _BundleClassMemo) and owner.active:
+        owner.observe(path, witness)
+    return witness
+
+
+def read_json(root: Path, filename: str, *, required: bool = True) -> Any:
+    """Bind a bundle's parsed value to the bytes in its recorded witness."""
+    owner = _BUNDLE_CLASS_MEMO.get()
+    if not isinstance(owner, _BundleClassMemo) or not owner.active or not owner.memo_allowed:
+        return _read_json(root, filename, required=required)
+    if not safe_cache_filename(filename) and filename not in {"index.json", "provenance.json"}:
+        raise ObjectInfoCacheCorruptError(f"unsafe object_info provider filename: {filename!r}")
+    path = _artifact_path(Path(root), filename)
+    before = cache_file_witness(path)
+    if not path.exists():
+        if required:
+            raise ObjectInfoCacheCorruptError(f"object_info cache artifact is missing: {path}")
+        return None
+    try:
+        raw = path.read_bytes()
+        # Path.read_text uses universal-newline translation before parsing.
+        data = json.loads(raw.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ObjectInfoCacheCorruptError(f"object_info cache artifact is corrupt: {path} ({exc})") from exc
+    after = cache_file_witness(path)
+    if before != after or after is None or after[-1] != hashlib.sha256(raw).hexdigest():
+        raise ObjectInfoCacheCorruptError("object_info cache changed during JSON load")
+    return data
+
+
+def _active_cache_root_tracked(root: Path) -> Path:
+    owner = _BUNDLE_CLASS_MEMO.get()
+    if not isinstance(owner, _BundleClassMemo) or not owner.active:
+        return active_cache_root(root)
+    def observe(path: Path, directory: bool) -> None:
+        try:
+            if directory:
+                owner.observe_directory(path)
+            else:
+                cache_file_witness(path)
+        except OSError:
+            # Preserve the underlying reader's exception and refusal order;
+            # an unavailable observation cannot admit a memoized answer.
+            owner.changed = True
+            owner.memo_allowed = False
+    token = _GENERATION_OBSERVER.set(observe)
+    try:
+        return active_cache_root(root)
+    finally:
+        for path in tuple(owner.directories):
+            observe(path, True)
+        _GENERATION_OBSERVER.reset(token)
+
+
+def _bundle_end_witness(path: Path) -> Any:
+    """Full-content final witness; separate from hit validation for profiling."""
+    return _cache_file_witness(path)
+
+
+def _bundle_end_stat_witness(path: Path) -> Any:
+    """Alternative profiling strategy, limited to one command invocation."""
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        return None
+    return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_mode)
+
+
 @dataclass(frozen=True)
 class _ClassEntrySnapshot:
     entries: Mapping[str, dict[str, Any]]
@@ -196,6 +269,11 @@ def _normalize_output_name(name: str) -> str:
 
 def _sync_reader() -> bool:
     global _reader_state, _index
+    owner = _BUNDLE_CLASS_MEMO.get()
+    if isinstance(owner, _BundleClassMemo) and owner.active and not owner.admission_done:
+        owner.admission_done = True
+        if _index is not None or _pack_cache:
+            owner.memo_allowed = False
     configured = Path(CACHE_DIR).expanduser().resolve(strict=False)
     marker = configured / "CURRENT"
     marker_sig = cache_file_witness(marker)
@@ -204,9 +282,14 @@ def _sync_reader() -> bool:
         raise ObjectInfoCacheCorruptError(f"object_info cache marker disappeared: {marker}")
     marker_changed = not prior or prior["root"] != configured or marker_sig != prior["marker_sig"]
     committed = bool(marker_sig)
+    owner = _BUNDLE_CLASS_MEMO.get()
+    if committed and isinstance(owner, _BundleClassMemo) and owner.active:
+        # Generation validation has additional indirect reads; do not memoize
+        # answers until those dependencies can be authenticated in this scope.
+        owner.memo_allowed = False
     marker_text = prior["marker_text"] if prior and not marker_changed else None
     if marker_sig is not None and marker_changed:
-        active = active_cache_root(configured)
+        active = _active_cache_root_tracked(configured)
         try:
             marker_text = marker.read_text(encoding="utf-8").strip()
         except OSError as exc:
@@ -220,7 +303,7 @@ def _sync_reader() -> bool:
     pack_changed = bool(prior and prior["root"] == configured and prior["pack_sigs"] and any(cache_file_witness(active / name) != sig for name, sig in prior["pack_sigs"].items()))
     changed = marker_changed or not prior or index_sig != (prior["index_sig"] if prior else None) or pack_changed
     if changed and committed and not (marker_sig is not None and marker_changed):
-        active = active_cache_root(configured)
+        active = _active_cache_root_tracked(configured)
         index_sig = cache_file_witness(active / "index.json")
     if changed:
         _index = None
@@ -327,8 +410,16 @@ def _all_pack_filenames() -> list[str]:
 class _BundleClassMemo:
     def __init__(self) -> None:
         self.entries: dict[str, Any] = {}
+        self.sources: dict[str, tuple[Any, Any, Any, bool]] = {}
+        self.last_class: str | None = None
         self.active = True
+        # Process-global parsed values have no provenance tying them to a
+        # particular byte witness. Admission happens under the reader lock.
+        self.memo_allowed = True
+        self.admission_done = False
+        self.changed = False
         self.witnesses: dict[Path, Any] = {}
+        self.directories: dict[Path, Any] = {}
         self.packs: set[str] = set()
         self.root_identity: tuple[Path, int | None, int | None] | None = None
 
@@ -341,9 +432,27 @@ class _BundleClassMemo:
                 self.root_identity = (root, None, None)
 
     def observe(self, path: Path, witness: Any) -> None:
-        self.witnesses.setdefault(path, witness)
+        if path in self.witnesses and self.witnesses[path] != witness:
+            self.changed = True
+        else:
+            self.witnesses.setdefault(path, witness)
 
-    def validate(self) -> None:
+    @staticmethod
+    def directory_identity(path: Path) -> Any:
+        try:
+            info = path.lstat()
+            return (path.resolve(strict=False), info.st_dev, info.st_ino, info.st_mode)
+        except FileNotFoundError:
+            return None
+
+    def observe_directory(self, path: Path) -> None:
+        identity = self.directory_identity(path)
+        if path in self.directories and self.directories[path] != identity:
+            self.changed = True
+        else:
+            self.directories.setdefault(path, identity)
+
+    def validate(self, class_type: str | None = None) -> None:
         with _reader_lock:
             root = Path(CACHE_DIR).expanduser().resolve(strict=False)
             try:
@@ -351,22 +460,40 @@ class _BundleClassMemo:
                 root_identity = (root, stat.st_dev, stat.st_ino)
             except OSError:
                 root_identity = (root, None, None)
-            changed = (self.root_identity is not None and root_identity != self.root_identity) or any(cache_file_witness(path) != witness
+            def matches(path: Path, witness: Any) -> bool:
+                if class_type is not None:
+                    return _cache_file_witness(path) == witness
+                current = _bundle_end_witness(path)
+                if current is not None and len(current) == 5:
+                    witness = witness[:5] if witness is not None else None
+                return current == witness
+            changed = self.changed or (self.root_identity is not None and root_identity != self.root_identity) or any(self.directory_identity(path) != identity for path, identity in self.directories.items()) or any(not matches(path, witness)
                           for path, witness in self.witnesses.items())
             if not changed:
                 return
             # Reuse the scalar reader to surface its original corruption errors.
-            _load_index()
-            for filename in sorted(self.packs):
-                _load_pack(filename)
+            allowed = self.memo_allowed
+            self.memo_allowed = False
+            try:
+                index = _load_index()
+                replay_class = class_type if class_type is not None else self.last_class
+                filename = index.get(replay_class) if replay_class is not None else None
+                if filename is not None:
+                    _load_pack(filename)
+            finally:
+                self.memo_allowed = allowed
             raise ObjectInfoCacheCorruptError("object_info cache changed during bundle emission")
 
     def revoke(self) -> None:
-        self.active = False
-        self.entries.clear()
-        self.witnesses.clear()
-        self.packs.clear()
-        self.root_identity = None
+        with _reader_lock:
+            self.active = False
+            self.entries.clear()
+            self.sources.clear()
+            self.last_class = None
+            self.witnesses.clear()
+            self.directories.clear()
+            self.packs.clear()
+            self.root_identity = None
 
 
 _BUNDLE_CLASS_MEMO: ContextVar[_BundleClassMemo | None] = ContextVar(
@@ -378,14 +505,33 @@ def _resolve_class_type(class_type: str) -> dict[str, Any] | None:
     # A separately captured operation snapshot keeps its existing semantics.
     owner = _BUNDLE_CLASS_MEMO.get() if _CLASS_ENTRY_SNAPSHOT.get() is None else None
     memo = (owner.entries if owner.active else None) if isinstance(owner, _BundleClassMemo) else owner
-    if memo is not None and class_type in memo:
+    if memo is not None and class_type in memo and not isinstance(owner, _BundleClassMemo):
         return memo[class_type]
     with _reader_lock:
+        if isinstance(owner, _BundleClassMemo) and owner.active:
+            owner.last_class = class_type
+        if isinstance(owner, _BundleClassMemo) and owner.active and owner.memo_allowed and class_type in owner.sources:
+            index, filename, pack, anchored = owner.sources[class_type]
+            owner.validate(class_type)
+            state = _reader_state
+            signatures_match = not state or (
+                (owner.root_identity is None or state["root"] == owner.root_identity[0]) and
+                all(state["active"] / name in owner.witnesses and
+                    owner.witnesses[state["active"] / name] == sig
+                    for name, sig in state["pack_sigs"].items())
+            )
+            if (owner.active and signatures_match and
+                (not anchored or (_index is index and index.get(class_type) == filename and
+                                  (filename is None or _pack_cache.get(filename) is pack)))):
+                return None if filename is None else pack.get(class_type)
         idx = _load_index()
         filename = idx.get(class_type)
-        result = None if filename is None else _load_pack(filename).get(class_type)
+        pack = None if filename is None else _load_pack(filename)
+        result = None if pack is None else pack.get(class_type)
+        if isinstance(owner, _BundleClassMemo) and owner.active and owner.memo_allowed:
+            owner.sources[class_type] = (idx, filename, pack, _index is idx)
     # Failed reads never reach this assignment and are retried on the next call.
-    if memo is not None and (not isinstance(owner, _BundleClassMemo) or owner.active):
+    if memo is not None and (not isinstance(owner, _BundleClassMemo) or (owner.active and owner.memo_allowed)):
         memo[class_type] = result
     return result
 
