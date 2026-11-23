@@ -5,7 +5,7 @@ from functools import lru_cache
 import hashlib
 from pathlib import Path
 
-from ._lockfile import LockEntry
+from ._lockfile import LockEntry, resolve_lockfile_path
 
 # read_lockfile is imported lazily inside _rich_lock_packs() so that
 # monkeypatching node_packs.read_lockfile (the package-level attribute)
@@ -512,7 +512,7 @@ def _cached_known_node_packs(
     return _known_node_packs(Path(resolved_lockfile_path))
 
 
-def get_known_node_packs(lockfile_path: Path = Path("custom_nodes.lock")) -> tuple[CustomNodePack, ...]:
+def get_known_node_packs(lockfile_path: Path | None = None) -> tuple[CustomNodePack, ...]:
     """Return known custom-node packs with lockfile-aware in-process caching.
 
     ``custom_nodes.lock`` changes are reflected in the same interpreter when the
@@ -520,7 +520,8 @@ def get_known_node_packs(lockfile_path: Path = Path("custom_nodes.lock")) -> tup
     module's static pack seed list still require a process restart because that
     source is imported only once per interpreter.
     """
-    return _cached_known_node_packs(*_lockfile_fingerprint(lockfile_path))
+    # Catalog reads are shipped-resource reads by default, not target writes.
+    return _cached_known_node_packs(*_lockfile_fingerprint(resolve_lockfile_path(lockfile_path)))
 
 
 def clear_known_node_packs_cache() -> None:
@@ -529,7 +530,7 @@ def clear_known_node_packs_cache() -> None:
 
 
 def resolve_node_packs(
-    class_types: set[str], *, lockfile_path: Path = Path("custom_nodes.lock")
+    class_types: set[str], *, lockfile_path: Path | None = None
 ) -> list[CustomNodePack]:
     packs = [
         pack
@@ -540,7 +541,7 @@ def resolve_node_packs(
 
 
 def unresolved_class_types(
-    class_types: set[str], *, lockfile_path: Path = Path("custom_nodes.lock")
+    class_types: set[str], *, lockfile_path: Path | None = None
 ) -> list[str]:
     packs = get_known_node_packs(lockfile_path=lockfile_path)
     covered = set().union(*(pack.classes for pack in packs)) if packs else set()
