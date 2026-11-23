@@ -116,7 +116,13 @@ def draft_entry(workflow: Any, entry_id: str, *, bundle: str = "bundle", input_a
     return _validate({"id": entry_id, "kind": kind, "modes": modes, "bundle": bundle, "needs": needs, "binds": binds, "defaults": {}})
 
 
-def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | None = None) -> dict[str, Any]:
+def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | None = None, *, replace: bool = False) -> dict[str, Any]:
+    """Import a complete bundle; explicitly replace an entry by swapping its manifest.
+
+    The entry directory and older bundle paths stay intact for readers that
+    already loaded the old manifest. Retiring those bundles requires separate
+    reader-aware cleanup; never remove them during publication.
+    """
     from vibecomfy.porting.import_service import import_workflow_bytes
     from vibecomfy.security.provenance import Provenance
     from vibecomfy.workflow_bundle import emit_bundle, load_bundle
@@ -125,13 +131,20 @@ def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | N
         raise ValueError("invalid entry id")
     root = Path(directory).expanduser() if directory is not None else entries_dir()
     destination = root / entry_id
-    if destination.exists() or destination.is_symlink():
-        raise FileExistsError(f"entry already exists: {destination}")
+    replacing = destination.exists() or destination.is_symlink()
+    if replacing:
+        if not replace:
+            raise FileExistsError(f"entry already exists: {destination}")
+        entry_file = destination / "entry.json"
+        if destination.is_symlink() or not destination.is_dir() or entry_file.is_symlink() or not entry_file.is_file():
+            raise FileExistsError(f"not a replaceable entry: {destination}")
+        if load_entry(entry_file)["id"] != entry_id:
+            raise ValueError(f"entry id does not match destination: {destination}")
     source_path = Path(source).expanduser()
     is_json = source_path.is_file() and source_path.suffix.lower() == ".json"
     artifacts = import_workflow_bytes(source_path.read_bytes(), workflow_id=entry_id, infer_inputs=True) if is_json else None
     root.mkdir(parents=True, exist_ok=True)
-    staging = Path(tempfile.mkdtemp(prefix=f".{entry_id}.", dir=root))
+    staging = Path(tempfile.mkdtemp(prefix="revision-", dir=destination)) if replacing else Path(tempfile.mkdtemp(prefix=f".{entry_id}.", dir=root))
     try:
         folder = staging / "bundle"
         folder.mkdir()
@@ -143,12 +156,22 @@ def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | N
             canonical = load_bundle(source_path, trust=Provenance.USER_CONFIRMED)
             emit_bundle(canonical.workflow, folder / "workflow.py", canonical.provenance)
         workflow = load_bundle(folder / "workflow.py", trust=Provenance.USER_CONFIRMED).workflow
-        manifest = draft_entry(workflow, entry_id, input_ambiguities=artifacts.report.get("input_ambiguities") if artifacts else None)
+        bundle = f"{staging.name}/bundle" if replacing else "bundle"
+        manifest = draft_entry(workflow, entry_id, bundle=bundle, input_ambiguities=artifacts.report.get("input_ambiguities") if artifacts else None)
         (staging / "entry.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-        if destination.exists() or destination.is_symlink():
-            raise FileExistsError(f"entry already exists: {destination}")
-        os.rename(staging, destination)
     except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    # The manifest is the commit point: its bundle is already complete. An
+    # unsuccessful rename leaves the previous manifest and sidecars untouched.
+    try:
+        if replacing:
+            os.replace(staging / "entry.json", destination / "entry.json")
+        else:
+            if destination.exists() or destination.is_symlink():
+                raise FileExistsError(f"entry already exists: {destination}")
+            os.rename(staging, destination)
+    except OSError:
         shutil.rmtree(staging, ignore_errors=True)
         raise
     return load_entry(destination)
