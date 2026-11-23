@@ -18,6 +18,7 @@ import httpx
 
 API_BASE_URL = "https://api.comfy.org"
 MANAGER_NODE_MAP_URL = "https://raw.githubusercontent.com/ltdrdata/ComfyUI-Manager/main/custom-node-map.json"
+MANAGER_EXTENSION_MAP_URL = "https://raw.githubusercontent.com/ltdrdata/ComfyUI-Manager/main/extension-node-map.json"
 MANAGER_NODE_LIST_URL = "https://raw.githubusercontent.com/ltdrdata/ComfyUI-Manager/main/custom-node-list.json"
 GITHUB_API_BASE_URL = "https://api.github.com"
 DEFAULT_CACHE_ROOT = Path(os.environ.get("VIBECOMFY_REGISTRY_CACHE", "~/.cache/vibecomfy/registry")).expanduser()
@@ -1097,21 +1098,43 @@ class _ExternalJsonCache:
 
 class _ManagerEvidenceClient(_ExternalJsonCache):
     def resolve(self, query: str, *, query_intent: str) -> list[ResolverCandidate]:
-        def fetch(url: str) -> tuple[Any, bool]:
+        def fetch(url: str, *, missing_ok: bool = False) -> tuple[Any, bool]:
             try:
                 payload, cache_hit, status, _ = self._get_json_url(url)
             except _LOOKUP_ERRORS as exc:
                 self.lookup_warnings.append(_lookup_failure(f"ComfyUI-Manager {url}", exc))
                 return None, False
+            if status == 404 and missing_ok:
+                return None, cache_hit
             if status >= 400:
                 self.lookup_warnings.append(f"ComfyUI-Manager {url} unavailable (HTTP {status}).")
                 return None, False
             return payload, cache_hit
 
-        node_map, map_cache_hit = fetch(MANAGER_NODE_MAP_URL)
+        map_url = MANAGER_NODE_MAP_URL
+        # Retain old snapshots/clients. The public Manager feed now uses
+        # extension-node-map.json, with repository URLs as keys.
+        node_map, map_cache_hit = fetch(map_url, missing_ok=True)
+        if node_map is None:
+            map_url = MANAGER_EXTENSION_MAP_URL
+            node_map, map_cache_hit = fetch(map_url)
         node_list, list_cache_hit = fetch(MANAGER_NODE_LIST_URL)
         class_to_packs = _manager_class_to_packs(node_map)
         metadata = _manager_pack_metadata(node_list)
+        if map_url == MANAGER_EXTENSION_MAP_URL:
+            # The extension map is direct repository evidence even if the
+            # metadata feed is unavailable. Match metadata by repository URL,
+            # not display title, which is neither unique nor stable.
+            class_to_packs, extension_metadata = _manager_extension_records(node_map, metadata)
+            # Extension records already include matching list metadata. Keep
+            # list-only evidence for packages that have no map row.
+            mapped_urls = {key.lower() for key in extension_metadata}
+            metadata = {
+                key: record for key, record in metadata.items()
+                if (_manager_record_url(record) or "").rstrip("/").removesuffix(".git").lower()
+                not in mapped_urls
+            }
+            metadata.update(extension_metadata)
         matched_slugs: set[str] = set()
         exact_classes: dict[str, list[str]] = {}
         normalized_query = _normalize_lookup_key(query)
@@ -1150,8 +1173,8 @@ class _ManagerEvidenceClient(_ExternalJsonCache):
                 evidence_detail["description"] = description
             evidence = ResolverEvidence(
                 tier="comfyui-manager",
-                source="custom-node-map" if expected else "custom-node-list",
-                endpoint=MANAGER_NODE_MAP_URL if expected else MANAGER_NODE_LIST_URL,
+                source=Path(urlparse(map_url).path).stem if expected else "custom-node-list",
+                endpoint=map_url if expected else MANAGER_NODE_LIST_URL,
                 cache_hit=map_cache_hit if expected else list_cache_hit,
                 matched_classes=expected,
                 detail=evidence_detail,
@@ -1415,7 +1438,56 @@ def _manager_slugs_from_value(value: Any) -> list[str]:
     ]
 
 
+def _manager_extension_records(
+    payload: Any, metadata: Mapping[str, dict[str, Any]]
+) -> tuple[dict[str, tuple[str, ...]], dict[str, dict[str, Any]]]:
+    """Invert the repository-keyed Manager feed; preserve the actual URL."""
+    classes: dict[str, list[str]] = {}
+    records: dict[str, dict[str, Any]] = {}
+    by_url = {
+        url.rstrip("/").removesuffix(".git").lower(): record
+        for record in metadata.values()
+        if (url := _manager_record_url(record))
+    }
+    if not isinstance(payload, dict):
+        return {}, {}
+    for url, entry in payload.items():
+        if not isinstance(url, str) or not isinstance(entry, list) or not entry:
+            continue
+        parsed = urlparse(url)
+        if parsed.scheme not in {"https", "http"} or not parsed.netloc:
+            continue
+        if not isinstance(entry[0], list):
+            continue
+        slug = _slug_from_manager_url(url)
+        if slug is None:
+            continue
+        # Use the URL as the lookup key, not a display title.
+        key = url.rstrip("/").removesuffix(".git")
+        record = dict(by_url.get(key.lower(), {}))
+        extra = entry[1] if len(entry) > 1 and isinstance(entry[1], dict) else {}
+        record.setdefault("title", extra.get("title_aux") or slug)
+        record["repository"] = url
+        record["_extension_slug"] = slug
+        records[key] = record
+        for class_name in entry[0]:
+            if isinstance(class_name, str) and class_name.strip():
+                classes.setdefault(class_name, []).append(key)
+    return {name: _dedupe_strings(keys) for name, keys in classes.items()}, records
+
+
+def _manager_record_url(record: Mapping[str, Any]) -> str | None:
+    if url := _first_string(dict(record), "repository", "repo", "url"):
+        return url
+    files = record.get("files")
+    if isinstance(files, list) and files and isinstance(files[0], str):
+        return files[0]
+    return _first_string(dict(record), "reference", "files")
+
+
 def _manager_pack_metadata(payload: Any) -> dict[str, dict[str, Any]]:
+    if isinstance(payload, dict) and isinstance(payload.get("custom_nodes"), list):
+        payload = payload["custom_nodes"]
     metadata: dict[str, dict[str, Any]] = {}
     records = _iter_records(payload)
     if isinstance(payload, dict) and not records:
@@ -1434,9 +1506,9 @@ def _manager_pack_metadata(payload: Any) -> dict[str, dict[str, Any]]:
 
 
 def _pack_ref_from_manager_record(slug: str, record: Mapping[str, Any]) -> PackRef:
-    url = _first_string(dict(record), "repository", "repo", "url", "reference", "files")
+    url = _manager_record_url(record)
     return PackRef(
-        slug=slug,
+        slug=_first_string(dict(record), "_extension_slug") or slug,
         source="comfyui-manager",
         url=url,
         name=_first_string(dict(record), "title", "name", "display_name", "displayName") or slug,
