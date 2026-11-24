@@ -4,6 +4,7 @@ from dataclasses import dataclass, replace
 from functools import lru_cache
 import hashlib
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from ._lockfile import LockEntry, resolve_lockfile_path
 
@@ -23,6 +24,42 @@ class CustomNodePack:
     class_schema_sha256: str | None = None
     downloads_own_models: bool | None = None
     model_download_bytes_hint: int | None = None
+
+
+# These two upstream GitHub names describe the same ComfyUI project.
+# Keep the catalog's historical source spelling and the current source
+# here, rather than letting consumers infer identity from a basename.
+_COMFYUI_REPOSITORY = "https://github.com/Comfy-Org/ComfyUI.git"
+_COMFYUI_LEGACY_REPOSITORY = "https://github.com/comfyanonymous/ComfyUI.git"
+_COMFYUI_REPOSITORIES = (_COMFYUI_REPOSITORY, _COMFYUI_LEGACY_REPOSITORY)
+
+
+def _github_project(repo: str) -> str | None:
+    """Project only a credential-free HTTPS GitHub project name.
+
+    This is catalog identity, not Git remote equality or code approval.
+    GitHub project paths are case-insensitive; checkout/approval authority
+    must still compare the actual declared source and exact commit.
+    """
+    if not isinstance(repo, str):
+        return None
+    try:
+        parsed = urlsplit(repo)
+        if (parsed.scheme != "https" or parsed.hostname != "github.com"
+                or parsed.port not in (None, 443) or parsed.username is not None
+                or parsed.password is not None or parsed.query or parsed.fragment):
+            return None
+    except ValueError:
+        return None
+    return parsed.path.rstrip("/").casefold().removesuffix(".git")
+
+
+def is_comfyui_core_repo(repo: str) -> bool:
+    """Recognize the upstream ComfyUI repository, not a similarly named pack."""
+    project = _github_project(repo)
+    return project is not None and any(
+        project == _github_project(upstream) for upstream in _COMFYUI_REPOSITORIES
+    )
 
 
 _STATIC_NODE_PACKS: tuple[CustomNodePack, ...] = (
@@ -56,7 +93,7 @@ _STATIC_NODE_PACKS: tuple[CustomNodePack, ...] = (
     # to emission.  Declaring them in the fallback pack would mask a resolver bug.
     CustomNodePack(
         name="comfy-core-fallback",
-        repo="https://github.com/comfyanonymous/ComfyUI.git",
+        repo=_COMFYUI_LEGACY_REPOSITORY,
         classes=frozenset(
             {
                 "PrimitiveNode",
@@ -66,7 +103,7 @@ _STATIC_NODE_PACKS: tuple[CustomNodePack, ...] = (
     ),
     CustomNodePack(
         name="comfy_extras",
-        repo="https://github.com/Comfy-Org/ComfyUI.git",
+        repo=_COMFYUI_REPOSITORY,
         classes=frozenset({"MiniMaxH3ImageToVideo"}),
         class_schema_sha256="62ec72d4f3b879640dbd41b959a6c1112a82b77478509323094f49dae17fffdb",
     ),
