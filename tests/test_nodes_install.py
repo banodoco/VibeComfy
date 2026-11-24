@@ -1574,6 +1574,7 @@ def test_declared_patch_restore_and_doctor(tmp_path: Path, monkeypatch, capsys) 
     from vibecomfy.node_packs._install import inspect_pack_install_state, restore_pack
     from vibecomfy.node_packs._lockfile import DeclaredPatch
     from vibecomfy.commands import doctor, nodes
+    from vibecomfy import resources
 
     root = tmp_path / "custom_nodes"
     pack = root / "ExamplePack"
@@ -1594,13 +1595,18 @@ def test_declared_patch_restore_and_doctor(tmp_path: Path, monkeypatch, capsys) 
     entry = LockEntry("ExamplePack", head, "https://example.test/repo.git",
                       source_sha256={"patched.py": hashlib.sha256(b"original\n").hexdigest()},
                       patches=(DeclaredPatch("patched.py", digest),))
-    result = restore_pack(entry, install_root=root, approvals=_approvals(entry))
+    shipped_root = tmp_path / "engine"
+    shipped_root.mkdir()
+    shipped_lock = shipped_root / "custom_nodes.lock"
+    write_lockfile([entry], shipped_lock)
+    monkeypatch.setattr(resources, "_selected_layout", lambda: ("checkout", shipped_root))
+    lockfile = tmp_path / "custom_nodes.lock"
+    write_lockfile([entry], lockfile)
+    result = restore_pack(entry, install_root=root, lockfile_path=lockfile, approvals=_approvals(entry))
     assert result.status == "refreshed" and result.verified_patches == 1
     from types import SimpleNamespace
     monkeypatch.setattr(nodes, "read_lockfile", lambda _: [entry])
     monkeypatch.setattr(nodes.node_packs_install, "restore_pack", lambda _, **kwargs: result)
-    lockfile = tmp_path / "custom_nodes.lock"
-    lockfile.touch()
     approvals = tmp_path / "approvals.json"
     approvals.write_text(json.dumps(_approvals(entry)))
     assert nodes._cmd_nodes_restore(SimpleNamespace(lockfile=str(lockfile), approvals=str(approvals))) == 0
@@ -1614,17 +1620,26 @@ def test_declared_patch_restore_and_doctor(tmp_path: Path, monkeypatch, capsys) 
     assert any(w.code == "nodepack_lockfile_declared_patches_verified" for w in warnings)
 
     wrong = LockEntry("ExamplePack", head, entry.url, patches=(DeclaredPatch("patched.py", "0" * 64),))
-    assert restore_pack(wrong, install_root=root, approvals=_approvals(wrong)).status == "skipped_dirty"
+    def no_install(*_args, **_kwargs):
+        pytest.fail("untrusted patch reached a subprocess")
+
+    before = lockfile.read_bytes()
+    refused = restore_pack(wrong, install_root=root, lockfile_path=lockfile,
+                           approvals=_approvals(wrong), runner=no_install)
+    assert refused.status == "failed" and "needs_consent:" in refused.error and "patched.py" in refused.error
+    assert lockfile.read_bytes() == before
     (pack / "other.py").write_text("changed\n")
-    assert restore_pack(entry, install_root=root, approvals=_approvals(entry)).status == "skipped_dirty"
+    assert restore_pack(entry, install_root=root, lockfile_path=lockfile, approvals=_approvals(entry)).status == "skipped_dirty"
     git("checkout", "--", "other.py")
     (pack / "untracked").write_text("untracked")
-    assert restore_pack(entry, install_root=root, approvals=_approvals(entry)).status == "skipped_dirty"
+    assert restore_pack(entry, install_root=root, lockfile_path=lockfile, approvals=_approvals(entry)).status == "skipped_dirty"
     (pack / "untracked").unlink()
     different = LockEntry("ExamplePack", "0" * 40, entry.url, patches=entry.patches)
-    refused = restore_pack(different, install_root=root, approvals=_approvals(different))
-    assert refused.status == "skipped_dirty" and "patched.py" in refused.error
+    refused = restore_pack(different, install_root=root, lockfile_path=lockfile,
+                           approvals=_approvals(different), runner=no_install)
+    assert refused.status == "failed" and "needs_consent:" in refused.error and "patched.py" in refused.error
+    assert lockfile.read_bytes() == before
     undeclared = LockEntry("ExamplePack", head, entry.url)
-    refused = restore_pack(undeclared, install_root=root, approvals=_approvals(undeclared))
+    refused = restore_pack(undeclared, install_root=root, lockfile_path=lockfile, approvals=_approvals(undeclared))
     assert refused.status == "skipped_dirty"
     assert refused.error == f"conflict: {pack} has uncommitted changes; restore refused; remove or clean {pack}, then retry"
