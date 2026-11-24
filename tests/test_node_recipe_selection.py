@@ -9,7 +9,7 @@ from tests.fixtures.node_recipe_runner import RecipeRunner
 from tests.test_node_recipe_install import target  # noqa: F401
 from vibecomfy.custom_node_refs import lock_entry_to_ref
 from vibecomfy.node_approvals import CodeConsentRequired, approval_record
-from vibecomfy.node_packs import CustomNodePack, LockEntry, write_lockfile
+from vibecomfy.node_packs import CustomNodePack, LockEntry, read_lockfile, write_lockfile
 from vibecomfy.node_packs import _install as install
 from vibecomfy.workflow import VibeWorkflow, WorkflowSource
 
@@ -39,8 +39,9 @@ def _workflow_refs(entry, pack):
     return install.build_install_refs_by_name(workflow, [pack])
 
 
+@pytest.mark.parametrize("approval_mode", ["shipped-only", "stale-record"])
 @pytest.mark.parametrize("case", ["requirements-file", "no-deps-order", "removed-recipe", "no-target-witness"])
-def test_changed_authored_recipe_refuses_before_mutation(target, monkeypatch, case):
+def test_changed_authored_recipe_refuses_before_mutation(target, monkeypatch, case, approval_mode):
     root, lock, _ = target
     if case == "no-target-witness":
         shipped = _shipped()
@@ -64,7 +65,8 @@ def test_changed_authored_recipe_refuses_before_mutation(target, monkeypatch, ca
     result = install.install_required_packs(
         [pack], restore_entries=entries,
         install_refs_by_name=_workflow_refs(authored, pack),
-        approvals=[_record(shipped)], install_root=root, lockfile_path=lock, runner=runner,
+        approvals=[_record(shipped)] if approval_mode == "stale-record" else [],
+        install_root=root, lockfile_path=lock, runner=runner,
     )
     assert not result.ok
     assert result.results[0].status == "failed"
@@ -117,9 +119,38 @@ def test_same_authored_recipe_reuses_exact_lock(declared):
     assert install._batch_restore_entry(pack, raw, [shipped]) is shipped
 
 
-def test_invalid_direct_recipe_ref_refused_before_mutation(target):
+def test_exact_new_approval_installs_and_persists_authored_recipe(target, monkeypatch):
+    root, lock, _ = target
+    shipped = _shipped(pip_packages=("legacy-only==99",))
+    authored = replace(shipped, requirements_txt="deps/requirements.txt",
+                       pip_no_deps=("second==2", "first==1", "second==2"), pip_packages=())
+    write_lockfile([shipped], lock)
+    monkeypatch.setattr("vibecomfy.node_packs.read_lockfile", lambda: [shipped])
+    pack = _pack(shipped, packages=shipped.pip_packages)
+    runner = RecipeRunner()
+    result = install.install_required_packs(
+        [pack], restore_entries=[shipped],
+        install_refs_by_name=_workflow_refs(authored, pack),
+        approvals=[_record(authored)], install_root=root, lockfile_path=lock, runner=runner,
+    )
+    assert result.ok, result
+    [saved] = read_lockfile(lock)
+    assert saved.commit == authored.commit and saved.url == authored.url
+    assert saved.requirements_txt == authored.requirements_txt
+    assert saved.pip_no_deps == authored.pip_no_deps
+    assert saved.pip_packages == ()
+    assert len(runner.installs) == 4
+    assert runner.installs[0][-2] == "-r"
+    assert [call[-2:] for call in runner.installs[1:]] == [
+        ["--no-deps", item] for item in authored.pip_no_deps
+    ]
+    assert not any("legacy-only==99" in call for call in runner.calls)
+
+
+def test_invalid_direct_recipe_ref_refused_before_mutation(target, monkeypatch):
     root, lock, _ = target
     shipped = _shipped()
+    monkeypatch.setattr("vibecomfy.node_packs.read_lockfile", lambda: [shipped])
     pack = _pack(shipped)
     raw = {**lock_entry_to_ref(shipped), "pip_no_deps": ["--index-url=https://example.test"]}
     runner = RecipeRunner()
@@ -129,5 +160,6 @@ def test_invalid_direct_recipe_ref_refused_before_mutation(target):
     )
     assert not result.ok
     assert result.results[0].error.startswith("needs_consent:")
+    assert "pip_no_deps" in result.results[0].error
     assert runner.calls == []
     assert not root.exists() and not lock.exists()
