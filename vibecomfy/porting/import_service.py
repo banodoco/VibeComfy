@@ -62,6 +62,89 @@ def _member_digests(source: bytes, python: bytes, companion: bytes) -> dict[str,
     }
 
 
+
+def pack_version_evidence(
+    source_report: Mapping[str, Any],
+    selected_refs: Iterable[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Compare source-authored version evidence with *selected* exact refs.
+
+    Neither a source version nor a registry name authorizes a checkout. The
+    caller supplies the refs it actually selected, not a list of candidates.
+    A version label and a Git SHA are different kinds of evidence: without
+    a witnessed mapping, equality or inequality cannot be inferred from them.
+    The result never changes a pin or claims the target has installed it.
+    """
+    records = source_report.get("records")
+    if not isinstance(records, (list, tuple)):
+        return []
+    refs = list(selected_refs)
+    # A registry identity is matched only when there is one selected pack
+    # with that name. An unrelated same-class or same-basename repository
+    # is not evidence of the authored identity.
+    by_name: dict[str, list[int]] = {}
+    for index, ref in enumerate(refs):
+        for name in (ref.get("slug"), ref.get("name")):
+            if isinstance(name, str) and name:
+                by_name.setdefault(name.casefold(), []).append(index)
+    authored: dict[int, set[str]] = {}
+    matched: set[int] = set()
+    for record in records:
+        if not isinstance(record, Mapping) or record.get("execution_looking") is not True:
+            continue
+        name = record.get("cnr_id")
+        if not isinstance(name, str) or name == "comfy-core":
+            continue
+        candidates = set(by_name.get(name.casefold(), ()))
+        if len(candidates) != 1:
+            continue
+        index = next(iter(candidates))
+        matched.add(index)
+        version = record.get("ver")
+        if isinstance(version, str) and version:
+            authored.setdefault(index, set()).add(version)
+
+    evidence = []
+    for index, ref in enumerate(refs):
+        commit, slug, repo = ref.get("commit"), ref.get("slug"), ref.get("url")
+        if (not isinstance(commit, str) or len(commit) != 40
+                or any(char not in "0123456789abcdefABCDEF" for char in commit)
+                or not isinstance(slug, str) or not slug
+                or not isinstance(repo, str) or not repo):
+            continue
+        explicit = ref.get("entry_add") is True
+        versions = sorted(authored.get(index, ()))
+        if index not in matched and not (explicit and not records):
+            # Don't invent a source-to-pack association from a class name or
+            # describe a mismatched/ambiguous UI record as unrecorded.
+            continue
+        lock_label = ref.get("version")
+        if not isinstance(lock_label, str) or lock_label in ("", "unknown"):
+            lock_label = None
+        if not versions:
+            relation = "not_recorded"
+        elif all(len(v) == 40 and all(c in "0123456789abcdefABCDEF" for c in v)
+                 for v in versions):
+            relation = ("same_commit" if all(v.lower() == commit.lower() for v in versions)
+                        else "different_commit")
+        else:
+            # A human-readable version on a ref might be source annotation,
+            # not a verified tag-to-commit mapping. Expose it as a label only.
+            relation = ("same_version_label" if versions == [lock_label]
+                        else "different_version_label" if lock_label is not None
+                        else "unverified")
+        evidence.append({
+            "pack": slug,
+            "repository": repo,
+            "recorded_versions": versions,
+            "selected_commit": commit,
+            "selected_version_label": lock_label,
+            "user_selected": explicit,
+            "relation": relation,
+        })
+    return evidence
+
+
 def import_workflow_bytes(
     source_bytes: bytes,
     *,
@@ -301,6 +384,9 @@ def import_workflow_bytes(
             "readiness": readiness,
             "diagnostics": diagnostics,
             "provenance": conversion_provenance,
+            "pack_version_evidence": pack_version_evidence(
+                embedded_source_provenance, bundle.workflow.requirements.custom_node_refs,
+            ),
         }
         if infer_inputs:
             origin_report["input_ambiguities"] = input_ambiguities
@@ -320,4 +406,4 @@ def import_workflow_bytes(
     )
 
 
-__all__ = ["ImportArtifacts", "import_workflow_bytes"]
+__all__ = ["ImportArtifacts", "import_workflow_bytes", "pack_version_evidence"]
