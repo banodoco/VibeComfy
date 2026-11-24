@@ -136,6 +136,30 @@ def entry_added_node_refs(entry: Mapping[str, Any]) -> list[dict[str, Any]]:
             if ref.get("entry_add") is True]
 
 
+def merge_entry_added_node_refs(
+    retained: Iterable[Mapping[str, Any]], additions: Iterable[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """An explicit replacement supersedes only matching retained declarations.
+
+    Both entry publication and Agent preflight use this selection. New
+    declarations are never merged with each other here: the canonical ref
+    validator still rejects conflicting new pins or conflicts with authored
+    source requirements. This is selection of source intent, not approval.
+    """
+    incoming = [dict(ref) for ref in additions]
+
+    def repository(ref: Mapping[str, Any]) -> str:
+        url = ref.get("url")
+        return url.rstrip("/").removesuffix(".git") if isinstance(url, str) else ""
+
+    slugs = {ref.get("slug") for ref in incoming if ref.get("slug")}
+    repositories = {repo for ref in incoming if (repo := repository(ref))}
+    return [
+        dict(ref) for ref in retained
+        if ref.get("slug") not in slugs and repository(ref) not in repositories
+    ] + incoming
+
+
 def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | None = None, *, replace: bool = False, add: Iterable[str] = (),
                     added_node_refs: Iterable[Mapping[str, Any]] = ()) -> dict[str, Any]:
     """Import a complete bundle; explicitly replace an entry by swapping its manifest.
@@ -169,7 +193,7 @@ def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | N
     is_json = source_path.is_file() and source_path.suffix.lower() == ".json"
     # Agent preflight may supply its already-resolved declarations so the
     # approved identity is exactly the one written, even if a branch moved.
-    refs = [*retained_refs, *added_node_refs, *resolve_added_node_refs(add)]
+    refs = merge_entry_added_node_refs(retained_refs, [*added_node_refs, *resolve_added_node_refs(add)])
     artifacts = import_workflow_bytes(source_path.read_bytes(), workflow_id=entry_id, infer_inputs=True,
                                       added_node_refs=refs) if is_json else None
     root.mkdir(parents=True, exist_ok=True)
