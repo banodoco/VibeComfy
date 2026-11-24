@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import importlib.metadata
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -70,9 +71,14 @@ def test_restore_recipe_clone_checkout_requirements_then_ordered_no_deps(target)
     assert runner.installs[0][-2:] == ["-r", str((root / entry.name / entry.requirements_txt).resolve())]
     assert [call[-2:] for call in runner.installs[1:]] == [["--no-deps", package] for package in NO_DEPS]
     preflights = [call for call in runner.pip_calls if "--dry-run" in call]
-    assert len(preflights) == 4
-    assert all(runner.calls.index(call) < runner.calls.index(runner.installs[0]) for call in preflights)
-    assert all(cwd == (root / entry.name).resolve() for call, cwd in zip(runner.calls, runner.cwds) if call in runner.pip_calls)
+    assert len(preflights) == 8
+    assert all(runner.calls.index(call) < runner.calls.index(runner.installs[0]) for call in preflights[:4])
+    for index, call in enumerate(runner.installs):
+        assert runner.calls[runner.calls.index(call) - 1] == preflights[4 + index]
+        assert preflights[4 + index][-2:] == call[-2:]
+    assert all(call[1:5] == ["-I", "-m", "pip", "install"] for call in runner.pip_calls)
+    assert all(cwd is not None and not Path(cwd).resolve().is_relative_to((root / entry.name).resolve())
+               for call, cwd in zip(runner.calls, runner.cwds) if call in runner.pip_calls)
     assert all("torch==2.10.0+cu130" in contents for _, contents in runner.constraints)
     assert all(not path.exists() for path, _ in runner.constraints)
     assert read_lockfile(lock) == [entry]

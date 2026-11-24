@@ -41,8 +41,11 @@ def test_node_pip_allows_compatible_torch_and_verifies_after_install(monkeypatch
         "pack", CustomNodePack("pack", "https://example.test/pack", frozenset({"Node"}), ("dep",)), runner
     )
     assert error is None
-    assert len(calls) == 2
-    assert "--no-deps" not in calls[1]
+    assert len(calls) == 3
+    assert "--dry-run" in calls[0] and "--dry-run" in calls[1]
+    assert "--dry-run" not in calls[2]
+    assert "--no-deps" not in calls[2]
+    assert all(call[1:5] == ["-I", "-m", "pip", "install"] for call in calls)
 
 
 def test_node_pip_rejects_malformed_resolution_report(monkeypatch) -> None:

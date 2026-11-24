@@ -7,7 +7,6 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
-import sys
 from types import SimpleNamespace
 import venv
 import zipfile
@@ -146,7 +145,7 @@ def test_rs1_7_checkout_cannot_shadow_target_pip(tmp_path, monkeypatch, phase):
     "--requirement=../../outside.txt", "--constraint ../../outside.txt",
     "-r../../outside.txt", "-c../../outside.txt",
     "--req ../../outside.txt", "--constr=../../outside.txt",
-    "-r \\\n+../../outside.txt", "-c ${RS1_OUTSIDE}",
+    "-r \\\n../../outside.txt", "-c ${RS1_OUTSIDE}",
     "-r file:///outside.txt", "-r https://example.test/requirements.txt",
 ], ids=["requirements", "constraints", "long-equals", "long-space", "short-attached-r", "short-attached-c",
         "abbreviated-r", "abbreviated-c", "continuation", "environment", "file-url", "https-url"])
@@ -185,6 +184,42 @@ def test_rs1_8_cycle_refused_before_pip(tmp_path, protected_versions):
     runner = PipWitness()
     error = _apply(_entry(requirements_txt="requirements.txt"), checkout, runner)
     assert error is not None and "cycl" in error.lower()
+    assert runner.calls == []
+
+
+def test_rs1_8_symlinked_include_uses_its_spelled_parent(tmp_path, protected_versions):
+    checkout = tmp_path / "checkout"
+    (checkout / "inner").mkdir(parents=True)
+    (tmp_path / "outside.txt").write_text("outside-package==1\n")
+    (checkout / "outside.txt").write_text("inside-package==1\n")
+    (checkout / "requirements.txt").write_text("-r alias.txt\n")
+    (checkout / "inner/real.txt").write_text("-r ../outside.txt\n")
+    (checkout / "alias.txt").symlink_to(checkout / "inner/real.txt")
+    runner = PipWitness()
+    error = _apply(_entry(requirements_txt="requirements.txt"), checkout, runner)
+    assert error is not None and "inside its checkout" in error
+    assert runner.calls == []
+
+
+def test_rs1_8_includes_rechecked_after_previous_step(tmp_path, protected_versions):
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+    (tmp_path / "outside.txt").write_text("outside-package==1\n")
+    requirements = checkout / "requirements.txt"
+    requirements.write_text("inside-package==1\n")
+    runner = PipWitness(after_install=lambda _: requirements.write_text("-r ../outside.txt\n"))
+    error = _apply(_entry(requirements_txt="requirements.txt", pip_packages=("first==1",)), checkout, runner)
+    assert error is not None and "inside its checkout" in error
+    assert [call[-1] for call in runner.installs] == ["first==1"]
+
+
+def test_rs1_7_temp_directory_inside_checkout_is_refused(tmp_path, monkeypatch, protected_versions):
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+    monkeypatch.setattr(install.tempfile, "tempdir", str(checkout))
+    runner = PipWitness()
+    error = _apply(_entry(pip_no_deps=("package==1",)), checkout, runner)
+    assert error is not None and "outside its checkout" in error
     assert runner.calls == []
 
 

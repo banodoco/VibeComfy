@@ -368,7 +368,7 @@ class _SentinelFakeRunner:
             return _subprocess.CompletedProcess(call, 0, stdout="", stderr="")
         if len(call) >= 4 and call[:4] == ["git", "-C", call[2], "checkout"]:
             return _subprocess.CompletedProcess(call, 0, stdout="", stderr="")
-        if len(call) >= 4 and call[1:4] == ["-m", "pip", "install"]:
+        if call[1:5] == ["-I", "-m", "pip", "install"]:
             if self.fail_pip:
                 raise _subprocess.CalledProcessError(1, call, stderr="pip install failed")
             return _subprocess.CompletedProcess(call, 0, stdout="", stderr="")
