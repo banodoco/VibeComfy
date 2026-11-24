@@ -356,6 +356,8 @@ class _SentinelFakeRunner:
         if call[:2] == ["git", "clone"]:
             if self.fail_clone:
                 raise _subprocess.CalledProcessError(1, call, stderr="clone failed")
+            Path(call[-1]).mkdir(parents=True)
+            self.origin_url = call[-2]
             return _subprocess.CompletedProcess(call, 0, stdout="", stderr="")
         if len(call) >= 4 and call[:4] == ["git", "-C", call[2], "status"]:
             return _subprocess.CompletedProcess(call, 0, stdout=self.porcelain, stderr="")
