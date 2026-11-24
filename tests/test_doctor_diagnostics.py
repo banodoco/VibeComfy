@@ -328,3 +328,56 @@ def test_doctor_explicit_managed_lock_is_used_for_both_gates(tmp_path, monkeypat
 def test_doctor_explicit_missing_lock_fails_closed(tmp_path):
     with pytest.raises(FileNotFoundError, match="Explicit doctor lockfile"):
         doctor_cmd._read_doctor_lockfile(tmp_path / "missing.lock")
+
+
+def test_doctor_json_preserves_real_compile_unknown_input_findings(
+    doctor_env: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from copy import deepcopy
+
+    from vibecomfy.nodes.core import EmptyImage, SaveImage
+    from vibecomfy.porting.object_info import get_class
+    from vibecomfy.schema.provider import TargetSchemaProvider
+    from vibecomfy.templates import OutputSpec, ReadyMetadata, new_workflow
+    from vibecomfy.workflow_bundle import emit_bundle_with_candidate
+
+    with new_workflow(ReadyMetadata.build(template_id="doctor-removed-input", capability="image")) as workflow:
+        image = EmptyImage(width=16, height=16, batch_size=1, color=0)
+        saved = SaveImage(images=image.out("IMAGE"), filename_prefix="doctor")
+        workflow.finalize({}, outputs=[OutputSpec(node=saved)])
+    path = emit_bundle_with_candidate(
+        workflow, doctor_env / "workflow.py", Provenance.USER_CONFIRMED, None
+    ).python_path
+    api = workflow.compile("api")
+    node_id = next(str(key) for key, node in api.items() if node["class_type"] == "EmptyImage")
+
+    info = {}
+    for cls in ("EmptyImage", "SaveImage"):
+        definition = get_class(cls)
+        assert definition is not None
+        info[cls] = {
+            "input": deepcopy(definition["inputs"]),
+            "input_order": deepcopy(definition["input_order"]),
+            "output": [out["type"] for out in definition["outputs"]],
+            "output_name": [out["name"] for out in definition["outputs"]],
+            "output_is_list": [out["is_list"] for out in definition["outputs"]],
+            "output_node": cls == "SaveImage",
+        }
+    del info["EmptyImage"]["input"]["required"]["width"]
+    if "width" in info["EmptyImage"]["input_order"].get("required", []):
+        info["EmptyImage"]["input_order"]["required"].remove("width")
+    target = TargetSchemaProvider.from_object_info(info, server_url="http://target.test:8188")
+    monkeypatch.setattr(doctor_cmd, "get_schema_provider", lambda _mode: target)
+
+    assert _run_doctor(path, json_output=True) == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "error"
+    assert payload["layer"] == "VibeWorkflow validation"
+    group = next(row for row in payload["validation_errors"]
+                 if row["node_id"] == node_id and row["class_type"] == "EmptyImage")
+    assert any(error["code"] == "unknown_input" and error["input"] == "width"
+               for error in group["errors"])
+
+    # The same failure still renders a useful human diagnostic.
+    assert _run_doctor(path) == 1
+    assert "Layer: VibeWorkflow validation" in capsys.readouterr().out
