@@ -38,6 +38,10 @@ def _request_workflow() -> VibeWorkflow:
     workflow.add_node("Integer", _id="2", uid="seed-node", value=7)
     workflow.add_node("EmptyImage", _id="3", uid="image-node",
                       width=512, height=512, batch_size=1, color=0)
+    # The authored edge below addresses output slot 0. Real source-backed
+    # templates retain this roster; the receipt's UI projection requires it.
+    workflow.nodes["3"].native_output_names = ["IMAGE"]
+    workflow.nodes["3"].native_output_types = ["IMAGE"]
     workflow.add_node("SaveImage", _id="4", uid="save-node", filename_prefix="authored")
     workflow.edges.append(VibeEdge("3", "0", "4", "images"))
     for name, node_id, field, value, kind in (
