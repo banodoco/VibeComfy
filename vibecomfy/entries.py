@@ -7,7 +7,7 @@ import re
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable, Mapping
 
 _ENTRY_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _OUTPUT_KINDS = {
@@ -120,13 +120,15 @@ def draft_entry(workflow: Any, entry_id: str, *, bundle: str = "bundle", input_a
     return _validate({"id": entry_id, "kind": kind, "modes": modes, "bundle": bundle, "needs": needs, "binds": binds, "defaults": {}})
 
 
-def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | None = None, *, replace: bool = False) -> dict[str, Any]:
+def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | None = None, *, replace: bool = False, add: Iterable[str] = (),
+                    added_node_refs: Iterable[Mapping[str, Any]] = ()) -> dict[str, Any]:
     """Import a complete bundle; explicitly replace an entry by swapping its manifest.
 
     The entry directory and older bundle paths stay intact for readers that
     already loaded the old manifest. Retiring those bundles requires separate
     reader-aware cleanup; never remove them during publication.
     """
+    from vibecomfy.custom_node_refs import apply_added_node_refs, resolve_added_node_refs
     from vibecomfy.porting.import_service import import_workflow_bytes
     from vibecomfy.security.provenance import Provenance
     from vibecomfy.workflow_bundle import emit_bundle, load_bundle
@@ -146,7 +148,11 @@ def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | N
             raise ValueError(f"entry id does not match destination: {destination}")
     source_path = Path(source).expanduser()
     is_json = source_path.is_file() and source_path.suffix.lower() == ".json"
-    artifacts = import_workflow_bytes(source_path.read_bytes(), workflow_id=entry_id, infer_inputs=True) if is_json else None
+    # Agent preflight may supply its already-resolved declarations so the
+    # approved identity is exactly the one written, even if a branch moved.
+    refs = [*added_node_refs, *resolve_added_node_refs(add)]
+    artifacts = import_workflow_bytes(source_path.read_bytes(), workflow_id=entry_id, infer_inputs=True,
+                                      added_node_refs=refs) if is_json else None
     root.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix="revision-", dir=destination)) if replacing else Path(tempfile.mkdtemp(prefix=f".{entry_id}.", dir=root))
     try:
@@ -158,6 +164,7 @@ def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | N
             (folder / "source.json").write_bytes(artifacts.source_bytes)
         else:
             canonical = load_bundle(source_path, trust=Provenance.USER_CONFIRMED)
+            apply_added_node_refs(canonical.workflow, refs)
             emit_bundle(canonical.workflow, folder / "workflow.py", canonical.provenance)
         workflow = load_bundle(folder / "workflow.py", trust=Provenance.USER_CONFIRMED).workflow
         bundle = f"{staging.name}/bundle" if replacing else "bundle"
