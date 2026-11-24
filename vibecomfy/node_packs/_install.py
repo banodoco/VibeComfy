@@ -1159,7 +1159,8 @@ def _requirements_tree_error(requirements: Path, checkout: Path) -> str | None:
                     else:
                         return f"requirements include {token} in {path} has no path"
                 if include is not None:
-                    if not include or ":" in include or "\\" in include or include.startswith("-"):
+                    if (not include or ":" in include or "\\" in include or include.startswith("-")
+                            or any(ord(char) < 32 or ord(char) == 127 for char in include)):
                         return f"requirements include {include!r} in {path} must be a local checkout path"
                     pending.append((path.parent / include, (*ancestors, resolved)))
     return None

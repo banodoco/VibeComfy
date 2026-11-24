@@ -146,9 +146,9 @@ def test_rs1_7_checkout_cannot_shadow_target_pip(tmp_path, monkeypatch, phase):
     "-r../../outside.txt", "-c../../outside.txt",
     "--req ../../outside.txt", "--constr=../../outside.txt",
     "-r \\\n../../outside.txt", "-c ${RS1_OUTSIDE}",
-    "-r file:///outside.txt", "-r https://example.test/requirements.txt",
+    "-r file:///outside.txt", "-r https://example.test/requirements.txt", "-r bad\x00path.txt",
 ], ids=["requirements", "constraints", "long-equals", "long-space", "short-attached-r", "short-attached-c",
-        "abbreviated-r", "abbreviated-c", "continuation", "environment", "file-url", "https-url"])
+        "abbreviated-r", "abbreviated-c", "continuation", "environment", "file-url", "https-url", "control-character"])
 def test_rs1_8_nested_include_escape_refused_before_pip(tmp_path, monkeypatch, protected_versions, directive):
     checkout = tmp_path / "checkout"
     (checkout / "deps").mkdir(parents=True)
