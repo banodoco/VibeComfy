@@ -26,10 +26,21 @@ from typing import TYPE_CHECKING, Any, Literal, Mapping, Sequence
 if TYPE_CHECKING:
     from vibecomfy.schema import SchemaSnapshot
 
-from vibecomfy.comfy_nodes.agent.provider import (
-    MalformedModelJSON,
-    MissingRequiredField,
-)
+# The UI emitter uses the typed operations below without parsing model replies.
+# Keep provider exceptions (and ComfyUI's custom-node dependencies) off that path.
+def __getattr__(name: str) -> Any:
+    if name in {"MalformedModelJSON", "MissingRequiredField"}:
+        from vibecomfy.comfy_nodes.agent import provider
+
+        value = getattr(provider, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return sorted({*globals(), "MalformedModelJSON", "MissingRequiredField"})
+
 
 _JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
 _RELATIONS = frozenset({"near", "right_of", "left_of", "below", "between"})
@@ -334,6 +345,8 @@ class AgentDeltaTurnResult:
 
 
 def _extract_json_object(text: str) -> dict[str, Any]:
+    from vibecomfy.comfy_nodes.agent.provider import MalformedModelJSON
+
     stripped = text.strip()
     if stripped.startswith("```"):
         match = _JSON_FENCE_RE.search(stripped)
@@ -932,6 +945,8 @@ def normalize_delta_agent_response(
     model: str | None,
     audit_metadata: Mapping[str, Any] | None = None,
 ) -> AgentDeltaTurnResult:
+    from vibecomfy.comfy_nodes.agent.provider import MalformedModelJSON, MissingRequiredField
+
     if isinstance(response, AgentDeltaTurnResult):
         return response
     if isinstance(response, str):
@@ -974,6 +989,8 @@ def normalize_delta_agent_response(
 
 
 def normalize_delta_test_client_response(response: Mapping[str, Any]) -> AgentDeltaTurnResult:
+    from vibecomfy.comfy_nodes.agent.provider import MissingRequiredField
+
     payload = dict(response)
     message = payload.get("message")
     if not isinstance(message, str):
