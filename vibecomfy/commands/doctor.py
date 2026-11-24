@@ -12,7 +12,7 @@ from typing import Any
 
 from vibecomfy._git_utils import git_head
 from vibecomfy.cli_loader import load_bundle
-from vibecomfy.workflow_bundle import WorkflowReconciliationError
+from vibecomfy.workflow_bundle import WorkflowBundleError, WorkflowReconciliationError
 from vibecomfy.commands._model_entries import model_entries_for_workflow
 from vibecomfy.commands._output import emit
 from vibecomfy.contracts import build_contract
@@ -160,6 +160,8 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
             "nodepack_warnings": drift_warnings,
             "suggested_patches": suggested_patches,
         }
+        if isinstance(exc, WorkflowBundleError) and exc.validation_errors:
+            payload["validation_errors"] = exc.validation_errors
         emit(payload, json=json_output, text_renderer=_render_doctor_error)
         return 1
     warnings = _doctor_warnings(workflow)
