@@ -107,7 +107,7 @@ class FakeRunner:
         if call[:4] == ["git", "-C", call[2], "checkout"]:
             self.sha = self.checkout_head or (self.sha if call[4] == "HEAD" else call[4])
             return subprocess.CompletedProcess(call, 0, stdout="", stderr="")
-        if len(call) >= 4 and call[1:4] == ["-m", "pip", "install"]:
+        if call[1:5] == ["-I", "-m", "pip", "install"]:
             if "--dry-run" in call and "--report" in call:
                 Path(call[call.index("--report") + 1]).write_text('{"install": []}', encoding="utf-8")
                 return subprocess.CompletedProcess(call, 0, stdout="", stderr="")
@@ -301,16 +301,16 @@ class PipPreflightRunner(FakeRunner):
         cwd: str | Path | None = None,
     ) -> subprocess.CompletedProcess[str]:
         call = list(args)
-        if call == [call[0], "-m", "pip", "install", "--help"]:
+        if call == [call[0], "-I", "-m", "pip", "install", "--help"]:
             self.calls.append(call)
             self.cwd_calls.append(cwd)
             return subprocess.CompletedProcess(call, 0, stdout=self.pip_help, stderr="")
-        if len(call) >= 7 and call[1:6] == ["-m", "pip", "install", "--dry-run", "--report"]:
+        if call[1:7] == ["-I", "-m", "pip", "install", "--dry-run", "--report"]:
             self.calls.append(call)
             self.cwd_calls.append(cwd)
             if self.fail_dry_run:
                 raise subprocess.CalledProcessError(1, call, stderr="dry-run failed")
-            Path(call[6]).write_text('{"install": []}', encoding="utf-8")
+            Path(call[call.index("--report") + 1]).write_text('{"install": []}', encoding="utf-8")
             return subprocess.CompletedProcess(call, 0, stdout="", stderr="")
         return super().__call__(args, check=check, capture_output=capture_output, text=text, cwd=cwd)
 
@@ -327,8 +327,9 @@ def test_preflight_pip_requirements_runs_joint_dry_run_report() -> None:
     assert result.ok is True
     assert result.unsupported is False
     assert result.packages == ("alpha", "zeta")
-    assert runner.calls[0] == [runner.calls[0][0], "-m", "pip", "install", "--help"]
-    assert runner.calls[1][1:6] == ["-m", "pip", "install", "--dry-run", "--report"]
+    assert runner.calls[0] == [runner.calls[0][0], "-I", "-m", "pip", "install", "--help"]
+    assert runner.calls[1][1:7] == ["-I", "-m", "pip", "install", "--dry-run", "--report"]
+    assert all(cwd is not None and not Path(cwd).resolve().is_relative_to(Path.cwd()) for cwd in runner.cwd_calls)
     assert runner.calls[1][-2:] == ["alpha", "zeta"]
 
 
@@ -1111,6 +1112,7 @@ def test_install_with_repo_url_infers_name_and_skips_pip_when_uncatalogued(tmp_p
     assert_staged_restore(runner, tmp_path / "custom_nodes", "some-pack",
                           "https://example.test/some-pack.git", "uncatalogued", fetch=False)
     assert not any(len(call) >= 4 and call[1:4] == ["-m", "pip", "install"] for call in runner.calls)
+    assert not any(call[1:5] == ["-I", "-m", "pip", "install"] for call in runner.calls)
     assert read_lockfile(lockfile) == [
         LockEntry(
             name="some-pack",
@@ -1172,6 +1174,7 @@ def test_install_uses_cm_cli_when_available(tmp_path: Path) -> None:
     assert runner.cwd_calls[0] == tmp_path
     assert not any(call[:2] == ["git", "clone"] for call in runner.calls)
     assert not any(len(call) >= 4 and call[1:4] == ["-m", "pip", "install"] for call in runner.calls)
+    assert not any(call[1:5] == ["-I", "-m", "pip", "install"] for call in runner.calls)
     assert read_lockfile(lockfile) == [
         _video_helper_entry("cmclihead")
     ]
@@ -1236,7 +1239,7 @@ def test_install_falls_back_to_clone_when_cm_cli_missing(tmp_path: Path) -> None
     assert result.status == "installed"
     assert_staged_restore(runner, tmp_path / "custom_nodes", "ComfyUI-KJNodes",
                           "https://github.com/kijai/ComfyUI-KJNodes.git", "fallbackhead", fetch=False)
-    assert any(len(call) >= 4 and call[1:4] == ["-m", "pip", "install"] for call in runner.calls)
+    assert any(call[1:5] == ["-I", "-m", "pip", "install"] for call in runner.calls)
     [entry] = read_lockfile(lockfile)
     assert entry.name == "ComfyUI-KJNodes"
     assert entry.git_commit_sha == "fallbackhead"
@@ -1278,7 +1281,7 @@ def test_restore_installs_known_pack_pip_dependencies(tmp_path: Path) -> None:
     assert result.status == "installed"
     assert_staged_restore(runner, tmp_path / "custom_nodes", "ComfyUI-WanVideoWrapper",
                           "https://github.com/kijai/ComfyUI-WanVideoWrapper.git", entry.git_commit_sha)
-    assert any(call[1:4] == ["-m", "pip", "install"] and "onnx" in call for call in runner.calls)
+    assert any(call[1:5] == ["-I", "-m", "pip", "install"] and "onnx" in call for call in runner.calls)
 
 
 def test_restore_existing_clean_dir_at_correct_sha_is_noop(tmp_path: Path) -> None:

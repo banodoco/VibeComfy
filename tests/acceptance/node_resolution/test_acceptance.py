@@ -541,14 +541,14 @@ def test_b7_install_robustness(tmp_path: Path):
                 return subprocess.CompletedProcess(call, 0, stdout="", stderr="")
             if call[:4] == ["git", "-C", call[2], "checkout"]:
                 return subprocess.CompletedProcess(call, 0, stdout="", stderr="")
-            if call == [call[0], "-m", "pip", "install", "--help"]:
+            if call == [call[0], "-I", "-m", "pip", "install", "--help"]:
                 return subprocess.CompletedProcess(call, 0, stdout="--dry-run\n--report\n", stderr="")
-            if call[1:6] == ["-m", "pip", "install", "--dry-run", "--report"]:
+            if call[1:7] == ["-I", "-m", "pip", "install", "--dry-run", "--report"]:
                 if self.fail_dry_run:
                     raise subprocess.CalledProcessError(1, call, stderr="pip conflict")
-                Path(call[6]).write_text("{}", encoding="utf-8")
+                Path(call[call.index("--report") + 1]).write_text('{"install": []}', encoding="utf-8")
                 return subprocess.CompletedProcess(call, 0, stdout="", stderr="")
-            if call[1:4] == ["-m", "pip", "install"]:
+            if call[1:5] == ["-I", "-m", "pip", "install"]:
                 if self.fail_pip:
                     raise subprocess.CalledProcessError(1, call, stderr="pip failed")
                 return subprocess.CompletedProcess(call, 0, stdout="", stderr="")

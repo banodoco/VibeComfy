@@ -60,7 +60,7 @@ class RecipeRunner:
                 output = self.origin + "\n"
             elif operation not in {"fetch", "status"}:
                 raise AssertionError(f"Unexpected git operation: {call}")
-        elif call[1:4] == ["-m", "pip", "install"]:
+        elif call[1:5] == ["-I", "-m", "pip", "install"]:
             if "--help" in call:
                 output = "--dry-run --report"
             else:
@@ -83,7 +83,7 @@ class RecipeRunner:
 
     @property
     def pip_calls(self):
-        return [call for call in self.calls if call[1:4] == ["-m", "pip", "install"] and "--help" not in call]
+        return [call for call in self.calls if call[1:5] == ["-I", "-m", "pip", "install"] and "--help" not in call]
 
     @property
     def installs(self):
