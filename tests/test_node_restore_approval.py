@@ -48,7 +48,7 @@ def test_apply_refuses_unapproved_code(target, change):
     result = install.restore_pack(entry, install_root=target[0], lockfile_path=target[1],
                                   runner=runner, approvals=records, placement_class="runpod")
     assert result.status == "failed"
-    assert result.error.startswith("needs_consent:") and "--add URL@REF" in result.error
+    assert result.error.startswith("needs_consent:") and "approve the exact resolved commit" in result.error
     assert runner.calls == []
     assert not target[0].exists()
     assert not target[1].exists()

@@ -564,7 +564,7 @@ def test_batch_install_semver_ref_attempts_checkout_and_preserves_version_identi
     assert runner.calls == []
     assert not (tmp_path / "custom_nodes.lock").exists()
     assert result.results[0].error.startswith("needs_consent:")
-    assert "--add URL@REF" in result.results[0].error
+    assert "approve the exact resolved commit" in result.results[0].error
 
 
 def test_batch_install_resolves_changed_authored_source_as_new_identity(
@@ -748,7 +748,7 @@ def test_removed_authored_version_does_not_reuse_versioned_lock(
     assert resolved.version == "v1.0.0"
     assert resolved.commit == lock.commit
     assert runner.calls == [] and lockfile.read_bytes() == before
-    assert result.results[0].error.startswith("needs_consent:") and "--add URL@REF" in result.results[0].error
+    assert result.results[0].error.startswith("needs_consent:") and "approve the exact resolved commit" in result.results[0].error
 
 
 def test_authored_selector_without_url_does_not_reuse_resolved_source_lock(
@@ -789,7 +789,7 @@ def test_authored_selector_without_url_does_not_reuse_resolved_source_lock(
     assert resolved.url == lock.url
     assert resolved.commit == lock.commit
     assert runner.calls == [] and lockfile.read_bytes() == before
-    assert result.results[0].error.startswith("needs_consent:") and "--add URL@REF" in result.results[0].error
+    assert result.results[0].error.startswith("needs_consent:") and "approve the exact resolved commit" in result.results[0].error
 
 
 def test_removing_commit_only_selector_does_not_reuse_its_generated_lock(
@@ -843,7 +843,7 @@ def test_removing_commit_only_selector_does_not_reuse_its_generated_lock(
     assert latest.version == commit
     assert latest.commit == commit
     assert second_runner.calls == [] and lockfile.read_bytes() == before
-    assert second.results[0].error.startswith("needs_consent:") and "--add URL@REF" in second.results[0].error
+    assert second.results[0].error.startswith("needs_consent:") and "approve the exact resolved commit" in second.results[0].error
 
 
 def test_batch_install_reuses_exact_lock_for_url_only_authored_ref(

@@ -22,8 +22,8 @@ class CodeConsentRequired(ValueError):
     """A refused source has one explicit pin-and-consent next step."""
 
     def __init__(self, detail: str):
-        super().__init__(f"needs_consent: {detail}; pin the repository with --add URL@REF, "
-                         "then approve the exact resolved commit, recipe and placement")
+        super().__init__(f"needs_consent: {detail}; "
+                         "approve the exact resolved commit, recipe and placement")
 
 
 class NodeIdentity(TypedDict):
