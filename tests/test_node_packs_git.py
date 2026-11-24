@@ -731,17 +731,24 @@ def test_sentinel_cleared_after_restore_full_success(tmp_path):
     install_dir.mkdir(parents=True)
     sentinel_path = install_root / INSTALL_STATE_DIR / "ExamplePack.json"
 
-    runner = _SentinelFakeRunner(
-        sha="pinnedsha", porcelain="", origin_url="https://example.test/example.git"
-    )
+    sha = "a" * 40
+    url = "https://example.test/example.git"
+    runner = _SentinelFakeRunner(sha=sha, porcelain="", origin_url=url)
 
-    entry = LockEntry("ExamplePack", "pinnedsha", "https://example.test/example.git")
+    entry = LockEntry("ExamplePack", sha, url)
+    from vibecomfy.node_approvals import approval_record
+
+    approval = approval_record(
+        {"repo": url, "commit": sha, "requirements_txt": None, "pip_no_deps": []},
+        placement_class="local",
+    )
 
     result = restore_pack(
         entry,
         install_root=install_root,
         lockfile_path=lockfile_path,
         runner=runner,
+        approvals=[approval],
     )
 
     assert result.status == "refreshed"
