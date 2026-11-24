@@ -36,6 +36,7 @@ def catalog(tmp_path, monkeypatch):
     path = root / "custom_nodes.lock"
     path.write_text("# empty trusted catalog\n", encoding="utf-8")
     monkeypatch.setattr(resources, "_selected_layout", lambda: ("checkout", root))
+    monkeypatch.setenv("GIT_ALLOW_PROTOCOL", "file")
     return path
 
 
@@ -75,6 +76,8 @@ def test_target_patch_hash_cannot_authorize_dirty_checkout(tmp_path, catalog, re
 
     def runner(*args, **kwargs):
         calls.append(args[0])
+        if args[0][0] != "git" or any(token in {"clone", "fetch", "pull"} for token in args[0]):
+            pytest.fail("unexpected external installer command in offline patch witness")
         return subprocess.run(*args, **kwargs)
 
     result = install.restore_pack(forged, install_root=pack.parent, lockfile_path=lock,
