@@ -9,6 +9,7 @@ __all__ = [
     "CustomNodePack",
     "clear_known_node_packs_cache",
     "get_known_node_packs",
+    "is_comfyui_core_repo",
     "resolve_node_packs",
     "unresolved_class_types",
     # registry.pack_resolver
@@ -63,6 +64,7 @@ def _init_module_map() -> dict[str, str]:
         "CustomNodePack",
         "clear_known_node_packs_cache",
         "get_known_node_packs",
+        "is_comfyui_core_repo",
         "resolve_node_packs",
         "unresolved_class_types",
     }
