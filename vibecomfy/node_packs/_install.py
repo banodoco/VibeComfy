@@ -391,20 +391,24 @@ def _approval_node(entry: LockEntry) -> dict[str, Any]:
             "requirements_txt": entry.requirements_txt, "pip_no_deps": list(entry.pip_no_deps)}
 
 
-def validate_restore_approvals(entries, approvals, *, placement_class):
-    """Admit the whole target lock before git, pip, sentinels or lock writes."""
-    from vibecomfy.node_approvals import CodeConsentRequired, require_approved_nodes, reviewed_lock_entry
+def validate_restore_approvals(entries, approvals, *, placement_class, lockfile_path: Path | None = None):
+    """Admit the complete target lock before git, pip, sentinels or lock writes."""
+    from vibecomfy import resources
+    from vibecomfy.node_approvals import CodeConsentRequired, require_approved_nodes
+    from ._lockfile import read_lockfile
 
+    if lockfile_path is not None:
+        resources.require_writable_node_lock(lockfile_path)
+        # A direct/batch caller may already have selected entries, but must
+        # still reject a malformed destination before it can upsert into it.
+        read_lockfile(lockfile_path)
     try:
         if len({entry.name.casefold() for entry in entries}) != len(entries):
             raise ValueError("duplicate node restore directory")
         nodes = [_approval_node(entry) for entry in entries]
         records = require_approved_nodes(nodes, approvals, placement_class=placement_class)
-        for entry, node in zip(entries, nodes):
-            if entry.pip_packages:
-                reviewed = reviewed_lock_entry(node)
-                if reviewed is None or entry.pip_packages != reviewed.pip_packages:
-                    raise ValueError("node code approval does not cover pip_packages; declare requirements_txt or pip_no_deps")
+        for entry in entries:
+            _reviewed_dependencies(entry)
     except ValueError as exc:
         if isinstance(exc, CodeConsentRequired):
             raise
@@ -413,10 +417,25 @@ def validate_restore_approvals(entries, approvals, *, placement_class):
 
 
 def _reviewed_dependencies(entry: LockEntry) -> LockEntry:
-    """Use dependency packages only from the exact shipped review witness."""
-    from vibecomfy.node_approvals import reviewed_lock_entry
+    """Admit non-consented dependencies and patches only from the shipped recipe.
+
+    The v1 consent hash covers repo, commit, canonical recipe and placement,
+    not patch hashes or pip_packages. A target lock cannot authorize either.
+    """
+    from vibecomfy.node_approvals import CodeConsentRequired, reviewed_lock_entry
 
     reviewed = reviewed_lock_entry(_approval_node(entry))
+    if entry.patches and (
+        reviewed is None
+        or len(set(entry.patches)) != len(entry.patches)
+        or set(entry.patches) != set(reviewed.patches)
+    ):
+        raise CodeConsentRequired(
+            f"node restore patch declaration for {entry.name!r} "
+            f"({entry.patches[0].path}) differs from the trusted shipped recipe"
+        )
+    if entry.pip_packages and (reviewed is None or entry.pip_packages != reviewed.pip_packages):
+        raise CodeConsentRequired("node code approval does not cover pip_packages; declare requirements_txt or pip_no_deps")
     return replace(entry, pip_packages=reviewed.pip_packages) if reviewed is not None and not entry.pip_packages else entry
 
 
@@ -1201,6 +1220,12 @@ def _finalize_install(
     lockfile entry derivation and upsert, and sentinel clearance — are
     applied uniformly and only after all work succeeds.
     """
+    from vibecomfy import resources
+
+    try:
+        resources.require_writable_node_lock(lockfile_path)
+    except ValueError as exc:
+        return InstallResult(name, "failed", None, str(exc))
     # Read a recipe only from the requested checkout, before pip can consume
     # its requirements file. Verify again after pip, as for every install.
     if _entry_has_dependencies(restore_entry):
@@ -1391,6 +1416,14 @@ def _git(pack_dir: Path, args: list[str], runner: Runner) -> str | None:
 def _verified_declared_patches(pack_dir: Path, porcelain: str, entry: LockEntry, head: str | None) -> int:
     """Count verified worktree-only tracked modifications, or fail closed."""
     if not porcelain or not entry.patches or head is None or head != entry.git_commit_sha:
+        return 0
+    from vibecomfy.node_approvals import CodeConsentRequired
+
+    try:
+        _reviewed_dependencies(entry)
+    except CodeConsentRequired:
+        # Diagnostic callers also inspect target lock rows; unreviewed
+        # modifications are dirty, not verified patches.
         return 0
     patches = {patch.path: patch.sha256 for patch in entry.patches}
     count = 0
