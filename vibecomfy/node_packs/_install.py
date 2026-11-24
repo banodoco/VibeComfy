@@ -408,7 +408,8 @@ def validate_restore_approvals(entries, approvals, *, placement_class, lockfile_
         nodes = [_approval_node(entry) for entry in entries]
         records = require_approved_nodes(nodes, approvals, placement_class=placement_class)
         for entry in entries:
-            _reviewed_dependencies(entry)
+            if entry.patches or entry.pip_packages:
+                _reviewed_dependencies(entry)
     except ValueError as exc:
         if isinstance(exc, CodeConsentRequired):
             raise
@@ -1256,6 +1257,10 @@ def _finalize_install(
     if entry is None:
         return InstallResult(name, "failed", None, f"failed to derive class_set for registry-driven pack {name}")
     # 4. Upsert lockfile and clear sentinel — only after all durable work succeeds.
+    try:
+        resources.require_writable_node_lock(lockfile_path)
+    except ValueError as exc:
+        return InstallResult(name, "failed", sha, str(exc))
     sentinel.write(phase="lockfile", name=name, repo_url=repo_url, install_dir=install_dir, git_commit_sha=sha)
     upsert_lockfile_entry(entry, lockfile_path)
     sentinel.clear()
