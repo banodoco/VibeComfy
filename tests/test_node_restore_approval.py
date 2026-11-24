@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import copy
 import json
+import subprocess
 from dataclasses import replace
 from types import SimpleNamespace
 
@@ -65,6 +66,26 @@ def test_approved_recipe_uses_controlled_installer(target):
     assert runner.installs[0][-2:] == ["-r", str((target[0] / entry.name / entry.requirements_txt).resolve())]
     assert [call[-2:] for call in runner.installs[1:]] == [["--no-deps", item] for item in entry.pip_no_deps]
     assert not (target[0] / entry.name / "SCRIPT_EXECUTED").exists()
+
+
+def test_existing_checkout_cannot_substitute_the_approved_repository(target):
+    entry = recipe_entry()
+    checkout = target[0] / entry.name
+    RecipeRunner().checkout_tree(checkout)
+    calls = []
+
+    def wrong_origin(args, **kwargs):
+        calls.append(list(args))
+        assert list(args) == ["git", "-C", str(checkout), "config", "--get", "remote.origin.url"]
+        return subprocess.CompletedProcess(args, 0, stdout="https://example.test/other.git\n", stderr="")
+
+    before = {path.relative_to(checkout): path.read_bytes() for path in checkout.rglob("*") if path.is_file()}
+    result = install.restore_pack(entry, install_root=target[0], lockfile_path=target[1],
+        runner=wrong_origin, approvals=[record(entry)], placement_class="runpod")
+    assert result.status == "failed" and "repository differs" in result.error
+    assert len(calls) == 1
+    assert not target[1].exists()
+    assert before == {path.relative_to(checkout): path.read_bytes() for path in checkout.rglob("*") if path.is_file()}
 
 
 def test_target_lock_extra_ref_refuses_entire_batch_before_restore(target, monkeypatch, capsys):
