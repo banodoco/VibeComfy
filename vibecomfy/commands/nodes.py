@@ -1412,4 +1412,3 @@ def register(subparsers) -> None:
     nodes_widget_schema.add_argument("--server-url", default=None)
     nodes_widget_schema.add_argument("--json", action="store_true", default=False)
     nodes_widget_schema.set_defaults(func=_cmd_nodes_generate_widget_schema)
-

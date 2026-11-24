@@ -381,28 +381,43 @@ def _approval_node(entry: LockEntry) -> dict[str, Any]:
     if (not entry.name or entry.name in {".", ".."} or Path(entry.name).name != entry.name
             or any(char.isspace() or char in "/\\" for char in entry.name)):
         raise ValueError("invalid node restore directory")
-    if entry.source != "git" or entry.path or entry.version:
+    if entry.path:
         raise ValueError("node code approval requires a pinned Git repository")
     if entry.commit != entry.git_commit_sha:
         raise ValueError("node restore commit aliases disagree")
+    # Source/version describe resolution provenance. Restore always checks out
+    # the full commit below; it never executes an annotated tag or local path.
     return {"repo": entry.url, "commit": entry.git_commit_sha,
             "requirements_txt": entry.requirements_txt, "pip_no_deps": list(entry.pip_no_deps)}
 
 
 def validate_restore_approvals(entries, approvals, *, placement_class):
     """Admit the whole target lock before git, pip, sentinels or lock writes."""
-    from vibecomfy.node_approvals import require_approved_nodes, reviewed_lock_entry
+    from vibecomfy.node_approvals import CodeConsentRequired, require_approved_nodes, reviewed_lock_entry
 
-    if len({entry.name.casefold() for entry in entries}) != len(entries):
-        raise ValueError("duplicate node restore directory")
-    nodes = [_approval_node(entry) for entry in entries]
-    records = require_approved_nodes(nodes, approvals, placement_class=placement_class)
-    for entry, node in zip(entries, nodes):
-        if entry.pip_packages:
-            reviewed = reviewed_lock_entry(node)
-            if reviewed is None or entry.pip_packages != reviewed.pip_packages:
-                raise ValueError("node code approval does not cover pip_packages; declare requirements_txt or pip_no_deps")
+    try:
+        if len({entry.name.casefold() for entry in entries}) != len(entries):
+            raise ValueError("duplicate node restore directory")
+        nodes = [_approval_node(entry) for entry in entries]
+        records = require_approved_nodes(nodes, approvals, placement_class=placement_class)
+        for entry, node in zip(entries, nodes):
+            if entry.pip_packages:
+                reviewed = reviewed_lock_entry(node)
+                if reviewed is None or entry.pip_packages != reviewed.pip_packages:
+                    raise ValueError("node code approval does not cover pip_packages; declare requirements_txt or pip_no_deps")
+    except ValueError as exc:
+        if isinstance(exc, CodeConsentRequired):
+            raise
+        raise CodeConsentRequired(str(exc)) from exc
     return records
+
+
+def _reviewed_dependencies(entry: LockEntry) -> LockEntry:
+    """Use dependency packages only from the exact shipped review witness."""
+    from vibecomfy.node_approvals import reviewed_lock_entry
+
+    reviewed = reviewed_lock_entry(_approval_node(entry))
+    return replace(entry, pip_packages=reviewed.pip_packages) if reviewed is not None and not entry.pip_packages else entry
 
 
 def restore_pack(
@@ -423,18 +438,14 @@ def restore_pack(
         validate_restore_approvals((entry,), approvals, placement_class=placement_class)
     except ValueError as exc:
         return InstallResult(entry.name, "failed", None, str(exc))
-    from vibecomfy.node_approvals import reviewed_lock_entry
-    reviewed = reviewed_lock_entry(_approval_node(entry))
-    if reviewed is not None and not entry.pip_packages:
-        entry = replace(entry, pip_packages=reviewed.pip_packages)
+    entry = _reviewed_dependencies(entry)
     if install_root is None:
         install_root = default_install_root()
     declared = _entry_has_dependencies(entry)
-    if declared and not entry.git_commit_sha:
-        return InstallResult(entry.name, "failed", None, f"declared dependencies for {entry.name} require a pinned git commit")
     install_dir = install_root / entry.name
     if install_dir.is_symlink():
-        return InstallResult(entry.name, "failed", None, "node restore directory must not be a symlink")
+        return InstallResult(entry.name, "failed", None,
+            f"conflict: node restore directory must not be a symlink; remove {install_dir}, then retry")
     # Consent covers the entry's recipe, never a same-named ambient catalog recipe.
     pack = None
     sentinel = _install_sentinel(install_root, entry.name)
@@ -444,14 +455,17 @@ def restore_pack(
     if install_dir.exists():
         origin = _git_origin(install_dir, runner)
         if origin is None or _normalize_git_remote(origin) != _normalize_git_remote(entry.url or ""):
-            return InstallResult(entry.name, "failed", None, "approved node repository differs from the existing checkout")
+            return InstallResult(entry.name, "failed", None,
+                f"conflict: approved node repository differs from the existing checkout; remove {install_dir} or approve the new repository")
         current_head = _git_head(install_dir, runner)
         dirty = _git_porcelain(install_dir, runner)
         verified = _verified_declared_patches(install_dir, dirty, entry, current_head) if dirty else 0
         if dirty is None or (dirty and not verified):
-            reason = f"failed to inspect git status for {install_dir}" if dirty is None else f"{install_dir} has uncommitted changes; restore refused"
+            reason = (f"conflict: failed to inspect git status for {install_dir}" if dirty is None
+                      else f"conflict: {install_dir} has uncommitted changes; restore refused")
             if dirty and entry.patches and current_head != entry.git_commit_sha:
                 reason += f" (declared patch {entry.patches[0].path} requires locked HEAD)"
+            reason += f"; remove or clean {install_dir}, then retry"
             return InstallResult(entry.name, "failed" if dirty is None else "skipped_dirty", current_head, reason)
         if current_head == entry.git_commit_sha:
             if not declared:
@@ -682,18 +696,21 @@ def _install_required_packs_impl(
     install_refs = install_refs_by_name or {}
     ref_error = validate_install_refs(ordered_packs, install_refs, restore_entries or ())
     if ref_error is not None:
-        error = ref_error
+        from vibecomfy.node_approvals import CodeConsentRequired
+
+        error = str(CodeConsentRequired(ref_error))
         return InstallBatchResult(
             ok=False,
             results=tuple(InstallResult(pack.name, "failed", None, error) for pack in ordered_packs),
             preflight=PipPreflightResult(ok=False, error=error),
         )
-    selected_entries = tuple(
-        _matching_lock_entry(pack, install_refs.get(pack.name), restore_entries or ()) for pack in ordered_packs
-    )
     try:
-        validate_restore_approvals(tuple(entry for entry in selected_entries if entry is not None),
-                                  approvals, placement_class=placement_class)
+        selected_entries = tuple(
+            _batch_restore_entry(pack, install_refs.get(pack.name), restore_entries or ())
+            for pack in ordered_packs
+        )
+        validate_restore_approvals(selected_entries, approvals, placement_class=placement_class)
+        selected_entries = tuple(_reviewed_dependencies(entry) for entry in selected_entries)
     except ValueError as exc:
         error = str(exc)
         return InstallBatchResult(ok=False,
@@ -703,7 +720,6 @@ def _install_required_packs_impl(
     # Catalog pip dependencies must not leak into an entry's declared recipe.
     preflight_packs = tuple(
         replace(pack, pip_packages=entry.pip_packages)
-        if entry is not None and _entry_has_dependencies(entry) else pack
         for pack, entry in zip(ordered_packs, selected_entries)
     )
     preflight = preflight_pip_requirements(preflight_packs, runner=runner)
@@ -716,41 +732,12 @@ def _install_required_packs_impl(
         )
     results: list[InstallResult] = []
     for pack, entry in zip(ordered_packs, selected_entries):
-        authored_ref = install_refs.get(pack.name)
-        # The selected entry is the exact witness chosen before preflight.
-        # Without one, resolve the authored ref and record a new full commit.
-        install_ref = _pack_ref_from_install_ref(authored_ref)
-        if install_ref is not None and not install_ref.slug:
-            install_ref = _pack_ref_with_slug(install_ref, pack.name)
-        result = (
-            restore_pack(entry, install_root=install_root, runner=runner, lockfile_path=lockfile_path,
-                         approvals=approvals, placement_class=placement_class)
-            if entry is not None
-            else install_pack(
-                name=pack.name,
-                force=force,
-                install_root=install_root,
-                lockfile_path=lockfile_path,
-                runner=runner,
-                cm_cli_resolver=cm_cli_resolver,
-                pack_ref=install_ref,
-                checkout_ref=(
-                    install_ref.commit
-                    if install_ref is not None and install_ref.commit
-                    else install_ref.version if install_ref is not None else None
-                ),
-                expected_commit=install_ref.commit if install_ref is not None and _looks_like_commit(install_ref.commit) else None,
-                allow_source_change=authored_ref is not None and entry is None,
-                resolve_latest=authored_ref is not None and entry is None,
-            )
-        )
-        if authored_ref is not None and entry is not None and result.status in {"installed", "refreshed"}:
+        # Every selected pack now has an admitted immutable identity. Neither
+        # force nor a resolver may substitute dirty code, a tag, or FETCH_HEAD.
+        result = restore_pack(entry, install_root=install_root, runner=runner, lockfile_path=lockfile_path,
+                              approvals=approvals, placement_class=placement_class)
+        if install_refs.get(pack.name) is not None and result.status in {"installed", "refreshed"}:
             upsert_lockfile_entry(entry, lockfile_path)
-        elif install_ref is not None and result.status in {"installed", "refreshed"} and result.git_commit_sha is not None:
-            repo_url = install_ref.url or pack.repo
-            resolved_entry = _lock_entry_for_pack(pack.name, result.git_commit_sha, repo_url, pack=pack, pack_ref=install_ref)
-            if resolved_entry is not None:
-                upsert_lockfile_entry(resolved_entry, lockfile_path)
         results.append(result)
     return InstallBatchResult(
         ok=all(result.status in {"installed", "refreshed"} for result in results),
@@ -862,11 +849,8 @@ def validate_install_refs(
         if ref is None:
             # A LockEntry is already a complete restore identity.
             continue
-        # A changed authored URL/version/commit is a new resolution, not a
-        # preflight conflict. _matching_lock_entry selects only exact lock
-        # witnesses; a miss flows through the authored ref and refresh/clone
-        # path, where existing checkout origin and dirty-state safety remain
-        # enforced before mutation.
+        # A changed selector does not reuse the old witness. The batch must
+        # select a full immutable identity and approve it before any mutation.
     return None
 
 
@@ -908,10 +892,33 @@ def _matching_lock_entry(
         # URL-only and version-only refs are likewise witnessed by the URL or
         # selector checks above.
         return entry
-    # A non-matching authored ref is deliberately not converted into a lock
-    # entry here.  It must flow through install_pack so a changed URL gets a
-    # new clone and an existing checkout still undergoes origin/dirty checks.
+    # A non-matching selector needs a new immutable witness. Batch admission
+    # rejects unresolved tags and latest refs before any subprocess.
     return None
+
+
+def _batch_restore_entry(pack, install_ref, restore_entries) -> LockEntry:
+    """Select a target, authored full pin, or exact shipped review witness."""
+    from vibecomfy.node_approvals import CodeConsentRequired
+
+    entry = _matching_lock_entry(pack, install_ref, restore_entries)
+    if entry is not None:
+        return entry
+    if install_ref is not None:
+        ref = _pack_ref_from_install_ref(install_ref)
+        if ref is not None and not ref.path:
+            entry = _restore_entry_from_install_ref(pack, ref)
+            if entry is not None:
+                return entry
+        raise CodeConsentRequired(f"{pack.name} requires a resolved repository and full commit before installation")
+    from vibecomfy.node_packs import read_lockfile
+
+    reviewed = [row for row in read_lockfile()
+                if (row.name == pack.name or row.slug == pack.name)
+                and row.url and _normalize_git_remote(row.url) == _normalize_git_remote(pack.repo)]
+    if len(reviewed) != 1:
+        raise CodeConsentRequired(f"{pack.name} has no exact shipped pin or approved target lock")
+    return reviewed[0]
 
 
 def _merge_declared_requirement_packs(
@@ -1433,4 +1440,3 @@ def _resolve_node_index_path(path: Path) -> Path:
     repo_index = Path(__file__).resolve().parent.parent.parent / "node_index.json"
     return repo_index if repo_index.exists() else path
 def _error_text(exc: BaseException) -> str | None: return next((text.strip() for value in (getattr(exc, "stderr", None), getattr(exc, "stdout", None)) if isinstance((text := value.decode(errors="replace") if isinstance(value, bytes) else value), str) and text.strip()), str(exc) or None)
-

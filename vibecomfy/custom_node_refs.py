@@ -1,7 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import os
+import re
+import subprocess
+from dataclasses import dataclass, replace
 from typing import Any, Iterable, Mapping
+from urllib.parse import urlsplit
 
 from vibecomfy.node_packs import LockEntry
 from vibecomfy.node_recipes import RECIPE_FIELDS, canonical_recipe
@@ -18,7 +22,123 @@ __all__ = [
     "normalize_custom_node_requirements",
     "structured_refs_from_lock_entries",
     "workflow_lock_entries",
+    "resolve_added_node_refs",
+    "apply_added_node_refs",
 ]
+
+
+_FULL_COMMIT = re.compile(r"[0-9a-fA-F]{40}")
+_REPOSITORY_SLUG = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+_REF_NAME = re.compile(r"[A-Za-z0-9_./-]+")
+
+
+def _added_repository(value: str) -> tuple[str, str, str]:
+    """Parse the explicit HTTPS source, without inventing any class evidence."""
+    if not isinstance(value, str) or not value or any(c.isspace() for c in value):
+        raise ValueError("--add requires HTTPS URL[@REF]")
+    url, sep, ref = value.rpartition("@")
+    if not sep:
+        url, ref = value, "HEAD"
+    parsed = urlsplit(url)
+    if (parsed.scheme != "https" or not parsed.hostname or parsed.username is not None
+            or parsed.password is not None or parsed.query or parsed.fragment
+            or "\\" in url or "@" in url or not ref):
+        raise ValueError("--add requires an HTTPS repository URL without credentials, query or fragment")
+    # Accessing port also rejects malformed numeric ports before a full-SHA
+    # declaration can bypass Git lookup.
+    _ = parsed.port
+    url = url.rstrip("/")
+    slug = parsed.path.rstrip("/").rsplit("/", 1)[-1].removesuffix(".git")
+    if not _REPOSITORY_SLUG.fullmatch(slug) or slug in {".", ".."}:
+        raise ValueError("--add repository URL must name a repository")
+    if not _REF_NAME.fullmatch(ref) or ref.startswith("-") or ".." in ref:
+        raise ValueError("--add REF must be HEAD, a branch, a tag or a full commit SHA")
+    return url, slug, ref
+
+
+def _resolve_added_commit(url: str, ref: str) -> str:
+    # An already exact commit is immutable. In particular the human's consent
+    # retry must not re-resolve a moving branch or require the commit to remain
+    # advertised as a ref. Target restore verifies the exact commit itself.
+    if _FULL_COMMIT.fullmatch(ref):
+        return ref.lower()
+    if ref == "HEAD":
+        names = ["HEAD"]
+    elif ref.startswith("refs/heads/"):
+        names = [ref]
+    elif ref.startswith("refs/tags/"):
+        names = [ref, ref + "^{}"]
+    elif ref.startswith("refs/"):
+        raise ValueError("--add REF must name a branch or tag")
+    else:
+        names = ["refs/heads/" + ref, "refs/tags/" + ref, "refs/tags/" + ref + "^{}"]
+
+    # No clone, schema import, pip, or pack code execution happens during
+    # resolution. Disable alternate Git transports and interactive prompting.
+    try:
+        result = subprocess.run(
+            ["git", "-c", "protocol.allow=never", "-c", "protocol.https.allow=always",
+             "ls-remote", "--exit-code", "--", url, *names],
+            capture_output=True, text=True, check=True, timeout=30,
+            env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+        )
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        raise ValueError(f"could not resolve --add repository {url!r} at {ref!r}") from exc
+
+    advertised: dict[str, str] = {}
+    for line in result.stdout.splitlines():
+        fields = line.split("\t")
+        if len(fields) != 2 or not _FULL_COMMIT.fullmatch(fields[0]) or fields[1] not in names:
+            raise ValueError(f"invalid git ls-remote response for {url!r} at {ref!r}")
+        commit, name = fields
+        if name in advertised and advertised[name] != commit.lower():
+            raise ValueError(f"conflicting git ls-remote response for {url!r} at {ref!r}")
+        advertised[name] = commit.lower()
+    direct = [name for name in names if not name.endswith("^{}") and name in advertised]
+    if len(direct) != 1:
+        raise ValueError(f"--add REF {ref!r} is missing or ambiguous at {url!r}; use an exact branch or tag")
+    name = direct[0]
+    return advertised.get(name + "^{}", advertised[name])
+
+
+def resolve_added_node_refs(add: Iterable[str]) -> list[dict[str, Any]]:
+    """Resolve explicit declarations once; a declaration is not approval."""
+    resolved = []
+    for value in add:
+        url, slug, ref = _added_repository(value)
+        resolved.append({"slug": slug, "source": "git", "url": url,
+                         "commit": _resolve_added_commit(url, ref), "entry_add": True})
+    normalized, _ = normalize_custom_node_requirements({"custom_node_refs": resolved})
+    return list(normalized.get("custom_node_refs", ()))
+
+
+def apply_added_node_refs(workflow: VibeWorkflow, refs: Iterable[Mapping[str, Any]]) -> None:
+    """Extend the single typed requirements authority with resolved refs.
+
+    Used by preflight and by the canonical writer. Neither a declaration nor
+    its repository basename asserts which node classes the repo implements.
+    Exact source/commit conflicts fail in the existing normalizer.
+    """
+    additions = []
+    for raw in refs:
+        ref = dict(raw)
+        url, commit = ref.get("url"), ref.get("commit")
+        if (not isinstance(url, str) or not isinstance(commit, str)
+                or not _FULL_COMMIT.fullmatch(commit)):
+            raise ValueError("resolved --add declaration requires a repository URL and full commit SHA")
+        canonical_url, slug, _ = _added_repository(url)
+        if ref.get("slug") != slug or ref.get("source") != "git" or canonical_url != url:
+            raise ValueError("resolved --add declaration has inconsistent source identity")
+        additions.append({**ref, "commit": commit.lower(), "entry_add": True})
+    if not additions:
+        return
+    workflow._admit_legacy_custom_node_refs_once()
+    current = workflow.requirements
+    workflow.requirements = replace(
+        current,
+        custom_nodes=[*current.custom_nodes, *(ref["slug"] for ref in additions)],
+        custom_node_refs=[*current.custom_node_refs, *additions],
+    )
 
 
 @dataclass(frozen=True)

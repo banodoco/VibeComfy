@@ -13,7 +13,7 @@ from tests.fixtures.node_recipe_runner import RecipeRunner
 from tests.test_node_recipe_install import recipe_entry, target  # noqa: F401
 from vibecomfy.commands import nodes
 from vibecomfy.node_approvals import approval_record, consent_token
-from vibecomfy.node_packs import write_lockfile
+from vibecomfy.node_packs import CustomNodePack, PackRef, read_lockfile, write_lockfile
 from vibecomfy.node_packs import _install as install
 
 
@@ -48,7 +48,7 @@ def test_apply_refuses_unapproved_code(target, change):
     result = install.restore_pack(entry, install_root=target[0], lockfile_path=target[1],
                                   runner=runner, approvals=records, placement_class="runpod")
     assert result.status == "failed"
-    assert result.error
+    assert result.error.startswith("needs_consent:") and "--add URL@REF" in result.error
     assert runner.calls == []
     assert not target[0].exists()
     assert not target[1].exists()
@@ -83,6 +83,7 @@ def test_existing_checkout_cannot_substitute_the_approved_repository(target):
     result = install.restore_pack(entry, install_root=target[0], lockfile_path=target[1],
         runner=wrong_origin, approvals=[record(entry)], placement_class="runpod")
     assert result.status == "failed" and "repository differs" in result.error
+    assert result.error.startswith("conflict:") and f"remove {checkout} or approve the new repository" in result.error
     assert len(calls) == 1
     assert not target[1].exists()
     assert before == {path.relative_to(checkout): path.read_bytes() for path in checkout.rglob("*") if path.is_file()}
@@ -95,7 +96,7 @@ def test_target_lock_extra_ref_refuses_entire_batch_before_restore(target, monke
     approval_path = target[1].with_suffix(".approvals.json")
     approval_path.write_text(json.dumps([record(entry)]))
     calls = []
-    monkeypatch.setattr(install, "restore_pack", lambda *a, **kw: calls.append((a, kw)))
+    monkeypatch.setattr(nodes.node_packs_install, "restore_pack", lambda *a, **kw: calls.append((a, kw)))
     before = target[1].read_bytes()
     result = nodes._cmd_nodes_restore(SimpleNamespace(lockfile=str(target[1]),
         approvals=str(approval_path), placement_class="runpod"))
@@ -113,7 +114,7 @@ def test_cli_restores_only_exact_record_and_keeps_target_lock_path(target, monke
     approval_path.write_text(json.dumps([record(entry)]))
     runner = RecipeRunner()
     restore = install.restore_pack
-    monkeypatch.setattr(install, "restore_pack", lambda item, **kw: restore(
+    monkeypatch.setattr(nodes.node_packs_install, "restore_pack", lambda item, **kw: restore(
         item, install_root=target[0], runner=runner, **kw))
     assert nodes._cmd_nodes_restore(SimpleNamespace(lockfile=str(target[1]),
         approvals=str(approval_path), placement_class="runpod")) == 0
@@ -121,7 +122,6 @@ def test_cli_restores_only_exact_record_and_keeps_target_lock_path(target, monke
 
 
 def test_unapproved_batch_stops_before_pip_preflight(target):
-    from vibecomfy.node_packs import CustomNodePack
     entry = recipe_entry()
     pack = CustomNodePack(entry.name, entry.url, frozenset(entry.class_set))
     runner = RecipeRunner()
@@ -129,6 +129,97 @@ def test_unapproved_batch_stops_before_pip_preflight(target):
         install_root=target[0], lockfile_path=target[1], runner=runner)
     assert not result.ok
     assert runner.calls == []
+
+
+def test_shipped_ref_without_records_restores_but_changed_commit_is_refused(target):
+    entry = next(row for row in read_lockfile() if row.name == "ComfyUI-VideoHelperSuite")
+    runner = RecipeRunner()
+    result = install.restore_pack(entry, install_root=target[0], lockfile_path=target[1],
+                                  runner=runner, placement_class="runpod")
+    assert result.status == "installed"
+    assert ["git", "-C", str(target[0] / entry.name), "checkout", entry.git_commit_sha] in runner.calls
+    before = target[1].read_bytes()
+    changed = replace(entry, commit="b" * 40, git_commit_sha="b" * 40)
+    forbidden = RecipeRunner()
+    refused = install.restore_pack(changed, install_root=target[0], lockfile_path=target[1],
+                                   runner=forbidden, placement_class="runpod")
+    assert refused.status == "failed" and "needs_consent:" in refused.error
+    assert forbidden.calls == [] and target[1].read_bytes() == before
+
+
+def test_batch_without_target_lock_restores_only_shipped_full_pin(target):
+    entry = next(row for row in read_lockfile() if row.name == "ComfyUI-VideoHelperSuite")
+    # A workflow's same-name dependency list is not the reviewed authority.
+    pack = CustomNodePack(entry.name, entry.url, frozenset(entry.class_set), ("unshown==99",))
+    runner = RecipeRunner()
+    result = install.install_required_packs([pack], install_root=target[0], lockfile_path=target[1], runner=runner)
+    assert result.ok
+    assert ["git", "clone", entry.url, str(target[0] / entry.name)] in runner.calls
+    assert ["git", "-C", str(target[0] / entry.name), "checkout", entry.git_commit_sha] in runner.calls
+    assert not any("unshown==99" in call for call in runner.calls)
+    assert read_lockfile(target[1]) == [entry]
+
+
+@pytest.mark.parametrize("selector", ["workflow-pack", "url-only", "tag", "unapproved-pin"])
+def test_batch_without_lock_cannot_install_unreviewed_or_unpinned_ref(target, selector):
+    shipped = next(row for row in read_lockfile() if row.name == "ComfyUI-VideoHelperSuite")
+    unknown = recipe_entry(requirements_txt=None, pip_no_deps=())
+    packs = [CustomNodePack(shipped.name, shipped.url, frozenset(shipped.class_set)),
+             CustomNodePack(unknown.name, unknown.url, frozenset(unknown.class_set))]
+    refs = {} if selector == "workflow-pack" else {unknown.name: PackRef(
+        slug=unknown.name, source="git", url=unknown.url,
+        version="main" if selector == "tag" else None,
+        commit=unknown.commit if selector == "unapproved-pin" else None)}
+    runner = RecipeRunner()
+    result = install.install_required_packs(packs, install_refs_by_name=refs,
+        install_root=target[0], lockfile_path=target[1], runner=runner)
+    assert not result.ok
+    assert all(row.status == "failed" and "needs_consent:" in row.error for row in result.results)
+    assert runner.calls == []
+    assert not target[0].exists() and not target[1].exists()
+
+
+def test_batch_approved_full_pin_preserves_version_annotation_without_executing_tag(target):
+    entry = recipe_entry(requirements_txt=None, pip_no_deps=())
+    pack = CustomNodePack(entry.name, entry.url, frozenset(entry.class_set))
+    runner = RecipeRunner()
+    result = install.install_required_packs([pack], install_refs_by_name={entry.name: PackRef(
+        slug=entry.name, source="aux-git", url=entry.url, version="v1.2.3", commit=entry.commit)},
+        approvals=[record(entry)], placement_class="runpod", install_root=target[0],
+        lockfile_path=target[1], runner=runner)
+    assert result.ok
+    assert ["git", "-C", str(target[0] / entry.name), "checkout", entry.commit] in runner.calls
+    assert not any(call[-1] == "v1.2.3" for call in runner.calls)
+    [saved] = read_lockfile(target[1])
+    assert saved.commit == entry.commit and saved.version == "v1.2.3"
+
+
+def test_force_does_not_authorize_dirty_code_at_a_reviewed_pin(target):
+    entry = next(row for row in read_lockfile() if row.name == "ComfyUI-VideoHelperSuite")
+    checkout = target[0] / entry.name
+    checkout.mkdir(parents=True)
+    write_lockfile([entry], target[1])
+    before = target[1].read_bytes()
+    calls = []
+
+    def dirty_checkout(args, **kwargs):
+        calls.append(list(args))
+        outputs = {
+            ("config", "--get", "remote.origin.url"): entry.url + "\n",
+            ("rev-parse", "HEAD"): entry.commit + "\n",
+            ("status", "--porcelain"): " M nodes.py\n",
+        }
+        assert args[:3] == ["git", "-C", str(checkout)]
+        assert tuple(args[3:]) in outputs
+        return subprocess.CompletedProcess(args, 0, stdout=outputs[tuple(args[3:])], stderr="")
+
+    pack = CustomNodePack(entry.name, entry.url, frozenset(entry.class_set))
+    result = install.install_required_packs([pack], force=True, restore_entries=[entry],
+        install_root=target[0], lockfile_path=target[1], runner=dirty_checkout)
+    assert not result.ok and result.results[0].status == "skipped_dirty"
+    assert result.results[0].error.startswith("conflict:")
+    assert f"remove or clean {checkout}, then retry" in result.results[0].error
+    assert len(calls) == 3 and target[1].read_bytes() == before
 
 
 @pytest.mark.parametrize("field,value", [("pip_packages", ("unshown==1",)), ("name", "../escape")])

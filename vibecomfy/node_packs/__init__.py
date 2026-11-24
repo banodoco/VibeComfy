@@ -38,6 +38,7 @@ __all__ = [
     "preflight_pip_requirements",
     "restore_pack",
     "validate_install_refs",
+    "validate_restore_approvals",
     # _lockfile
     "LockEntry",
     "canonical_class_schema_projection",
@@ -86,6 +87,7 @@ def _init_module_map() -> dict[str, str]:
         "preflight_pip_requirements",
         "restore_pack",
         "validate_install_refs",
+        "validate_restore_approvals",
     }
     _lockfile_names = {
         "LockEntry",

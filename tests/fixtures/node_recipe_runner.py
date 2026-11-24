@@ -9,8 +9,9 @@ from pathlib import Path
 class RecipeRunner:
     """Create a temporary checkout and answer only the allowed git/pip calls."""
 
-    def __init__(self, *, head="0" * 40, files=None):
+    def __init__(self, *, head="0" * 40, files=None, origin="https://example.test/recipe-pack.git"):
         self.head = head
+        self.origin = origin
         self.files = files if files is not None else {"deps/requirements.txt": "regular-dependency==1\n"}
         self.calls = []
         self.cwds = []
@@ -45,6 +46,7 @@ class RecipeRunner:
         output = ""
         if call[:2] == ["git", "clone"]:
             self.checkout_tree(Path(call[3]))
+            self.origin = call[2]
         elif call[:2] == ["git", "-C"]:
             operation = call[3]
             if operation == "checkout":
@@ -52,6 +54,8 @@ class RecipeRunner:
                     self.head = call[4]
             elif operation == "rev-parse":
                 output = self.head + "\n"
+            elif call[3:] == ["config", "--get", "remote.origin.url"]:
+                output = self.origin + "\n"
             elif operation not in {"fetch", "status"}:
                 raise AssertionError(f"Unexpected git operation: {call}")
         elif call[1:4] == ["-m", "pip", "install"]:

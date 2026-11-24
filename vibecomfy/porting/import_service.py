@@ -13,7 +13,7 @@ import json
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 
 from vibecomfy.porting.convert import (
     _build_emitted_workflow_from_text,
@@ -69,6 +69,7 @@ def import_workflow_bytes(
     schema_provider: Any | None = None,
     source_provenance: Mapping[str, Any] | None = None,
     infer_inputs: bool = False,
+    added_node_refs: Iterable[Mapping[str, Any]] = (),
 ) -> ImportArtifacts:
     """Convert source JSON bytes into an inspectable canonical workflow pair.
 
@@ -224,6 +225,11 @@ def import_workflow_bytes(
         # speculative controls before the canonical bundle is emitted.
         for name in input_ambiguities:
             emitted_workflow.inputs.pop(name, None)
+        # Add only explicit resolved declarations to the canonical IR, not
+        # the original JSON or the authored source evidence.
+        from vibecomfy.custom_node_refs import apply_added_node_refs
+
+        apply_added_node_refs(emitted_workflow, added_node_refs)
         bundle = emit_bundle_with_candidate(
             emitted_workflow,
             python_path,

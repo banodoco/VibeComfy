@@ -18,6 +18,14 @@ _CONTEXT = b"astrid.node-code-approval.v1\0"
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
+class CodeConsentRequired(ValueError):
+    """A refused source has one explicit pin-and-consent next step."""
+
+    def __init__(self, detail: str):
+        super().__init__(f"needs_consent: {detail}; pin the repository with --add URL@REF, "
+                         "then approve the exact resolved commit, recipe and placement")
+
+
 class NodeIdentity(TypedDict):
     repo: str
     commit: str
@@ -135,9 +143,11 @@ def require_approved_nodes(
     *,
     placement_class: PlacementClass,
 ) -> list[NodeApproval]:
-    """Return exact matching records, or refuse the whole set without I/O."""
+    """Admit exact records or shipped review witnesses, without target I/O."""
     approved = validate_approvals(records)
     by_hash = {row["approval_sha256"]: row for row in approved}
+    for row in reviewed_approvals(nodes, placement_class=placement_class):
+        by_hash.setdefault(row["approval_sha256"], row)
     selected = []
     names: dict[str, str] = {}
     from urllib.parse import urlsplit
@@ -155,7 +165,6 @@ def require_approved_nodes(
         if previous != record["approval_sha256"]:
             raise ValueError(f"conflicting node code approvals for {name}")
         if record["approval_sha256"] not in by_hash:
-            raise ValueError(f"needs_consent: no matching code approval for {record['identity']['repo']}@{record['identity']['commit']} on {placement_class}")
+            raise CodeConsentRequired(f"no matching code approval for {record['identity']['repo']}@{record['identity']['commit']} on {placement_class}")
         selected.append(by_hash[record["approval_sha256"]])
     return selected
-
