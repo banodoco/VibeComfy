@@ -93,9 +93,34 @@ def _emit(workflow, path, mode, *, session=None, parent_revision=""):
     )
 
 
-def _assert_pair_equal(left, right) -> None:
-    assert left.python_path.read_bytes() == right.python_path.read_bytes()
-    assert left.python_path.with_suffix(".vibe.json").read_bytes() == right.python_path.with_suffix(".vibe.json").read_bytes()
+def _pair_bytes(path: Path) -> tuple[bytes, bytes]:
+    return path.read_bytes(), path.with_suffix(".vibe.json").read_bytes()
+
+
+def _remove_pair(path: Path) -> None:
+    # Both oracle emissions start with an empty publication destination.  Keep
+    # the logical path identical because it is evidence in the UI receipt.
+    path.unlink()
+    path.with_suffix(".vibe.json").unlink()
+
+
+def _different_json_paths(left, right, path=()) -> list[tuple]:
+    if type(left) is not type(right):
+        return [path]
+    if isinstance(left, dict) and left.keys() == right.keys():
+        return [item for key in sorted(left) for item in _different_json_paths(left[key], right[key], (*path, key))]
+    if isinstance(left, list) and len(left) == len(right):
+        return [item for i, (a, b) in enumerate(zip(left, right)) for item in _different_json_paths(a, b, (*path, i))]
+    return [] if left == right else [path]
+
+
+def _assert_pair_equal(left, right, *, left_bytes: tuple[bytes, bytes] | None = None) -> None:
+    if left.python_path == right.python_path:
+        assert left_bytes is not None, "capture the full-build bytes before rewriting the same publication path"
+    expected = _pair_bytes(left.python_path) if left_bytes is None else left_bytes
+    actual = _pair_bytes(right.python_path)
+    assert expected[0] == actual[0], "workflow.py bytes differ"
+    assert expected[1] == actual[1], "companion bytes differ"
     assert left.workflow.compile("api") == right.workflow.compile("api")
     assert left.workflow.semantic_projection() == right.workflow.semantic_projection()
     assert left.semantic_digest == right.semantic_digest
@@ -118,17 +143,21 @@ def _target(workflow):
 
     info = {}
     for node in workflow.runtime_nodes().values():
-        entry = get_class(node.class_type)
         # Integer is the same schema-less scalar used throughout the existing
-        # bundle tests; explicitly advertise its target contract here.
-        if entry is None and node.class_type == "Integer":
+        # bundle tests. get_class can return its curated output-only fallback,
+        # so its target contract must not depend on an optional cache row.
+        if node.class_type == "Integer":
             info["Integer"] = {
                 "input": {"required": {"value": ["INT", {"default": 0}]}},
                 "input_order": {"required": ["value"]}, "output": ["INT"],
-                "output_name": ["value"], "output_is_list": [False], "output_node": False,
+                "output_name": ["INT"], "output_is_list": [False], "output_node": False,
             }
         else:
+            entry = get_class(node.class_type)
             assert entry is not None, node.class_type
+            assert {"inputs", "input_order", "outputs"} <= entry.keys(), (
+                f"incomplete target fixture schema for {node.class_type}: {sorted(entry)}"
+            )
             info[node.class_type] = {
                 "input": copy.deepcopy(entry["inputs"]),
                 "input_order": copy.deepcopy(entry["input_order"]),
@@ -162,8 +191,11 @@ def test_cold_and_warm_match_python_companion_graph_evidence_and_receipt(
     values = {**CURRENT, "prompt": prompt, "prefix": prefix}
     # Independent empty preparation: original builder + current binder + the
     # normal full canonical path, with no cache-bypass flag in production.
-    full = _emit(_bind_request(_request_workflow(), values), tmp_path / "full" / "workflow.py", mode)
+    destination = tmp_path / "published" / "workflow.py"
+    full = _emit(_bind_request(_request_workflow(), values), destination, mode)
     full_record = full.compile(schema_provider=_target(full.workflow))
+    full_bytes = _pair_bytes(destination)
+    _remove_pair(destination)
     checks = {name: 0 for name in ("_canonicalize_for_v2_pair", "_build_v2_sidecar", "_atomic_publish_pair")}
     for name in checks:
         original = getattr(bundles, name)
@@ -178,10 +210,13 @@ def test_cold_and_warm_match_python_companion_graph_evidence_and_receipt(
     # The original workflow constructor is unavailable during the warm fill.
     monkeypatch.setattr(sys.modules[__name__], "_request_workflow", lambda: pytest.fail("warm fill called source builder"))
     warm = fill_template(template, values, current_key_inputs=_current(template))
-    published = _emit(warm.workflow, tmp_path / "warm" / "workflow.py", mode, session=warm.emission)
-    _assert_pair_equal(full, published)
+    published = _emit(warm.workflow, destination, mode, session=warm.emission)
+    _assert_pair_equal(full, published, left_bytes=full_bytes)
     record = published.compile(schema_provider=_target(published.workflow))
-    assert record.to_canonical_bytes() == full_record.to_canonical_bytes()
+    assert published.workflow.source.path == full.workflow.source.path == str(destination.resolve())
+    assert record.to_canonical_bytes() == full_record.to_canonical_bytes(), (
+        _different_json_paths(full_record.to_dict(), record.to_dict())
+    )
     record.assert_matches(published, api_projection=record.api_projection, ui_projection=record.ui_projection)
     assert warm.emission.events and all(event.outcome == "hit" for event in warm.emission.events)
     assert all(count >= 1 for count in checks.values())
@@ -266,18 +301,32 @@ def test_seed_draw_and_parent_revision_remain_current(tmp_path: Path) -> None:
     draws = iter((101, 202))
     first_value = next(draws)
     first = fill_template(template, {"seed": first_value}, current_key_inputs=_current(template))
-    old = _emit(first.workflow, tmp_path / "old" / "workflow.py", "bundle", session=first.emission, parent_revision="a" * 64)
+    old = _emit(first.workflow, tmp_path / "old" / "workflow.py", "bundle", session=first.emission)
     template = first.snapshot()
     current_value = next(draws)
     warm = fill_template(template, {"seed": current_value}, current_key_inputs=_current(template))
-    full = _emit(_workflow(current_value), tmp_path / "full" / "workflow.py", "bundle", parent_revision="b" * 64)
-    published = _emit(warm.workflow, tmp_path / "warm" / "workflow.py", "bundle", session=warm.emission, parent_revision="b" * 64)
-    _assert_pair_equal(full, published)
+    full_workflow = _workflow(current_value)
+    for workflow in (full_workflow, warm.workflow):
+        workflow.metadata["revision_evidence"] = [
+            {"revision_id": old.revision_id, "workflow_identity": old.workflow.id},
+        ]
+    destination = tmp_path / "published" / "workflow.py"
+    full = _emit(full_workflow, destination, "bundle", parent_revision=old.revision_id)
+    full_record = full.compile()
+    full_bytes = _pair_bytes(destination)
+    _remove_pair(destination)
+    published = _emit(warm.workflow, destination, "bundle", session=warm.emission, parent_revision=old.revision_id)
+    _assert_pair_equal(full, published, left_bytes=full_bytes)
+    assert old.parent_revision == ""
+    assert published.parent_revision == full.parent_revision == old.revision_id
     assert published.revision_id != old.revision_id
     assert published.ui_sidecar["bind"]["generation_id"] != old.ui_sidecar["bind"]["generation_id"]
     assert warm.workflow.inputs["seed"].value == 202
     assert template.key == warm.snapshot().key
-    assert published.compile().to_canonical_bytes() == full.compile().to_canonical_bytes()
+    record = published.compile()
+    assert record.to_canonical_bytes() == full_record.to_canonical_bytes(), (
+        _different_json_paths(full_record.to_dict(), record.to_dict())
+    )
 
 
 def test_unseen_projected_structure_recomputes_and_reports_reason(tmp_path: Path) -> None:
@@ -311,7 +360,7 @@ def test_value_dependent_helper_projection_is_not_reused(monkeypatch: pytest.Mon
     workflow.edges = [VibeEdge("p", "0", "s", "x")]
     changed = workflow.copy()
     changed.nodes["p"].inputs["value"] = 19
-    expected = emit_scratchpad_python(changed)
+    expected = emit_scratchpad_python(changed, preserve_node_ids=True)
     original = emit_prepare._prepare_workflow_for_emit
     seen = []
     def observe(current, *args, **kwargs):
@@ -319,9 +368,9 @@ def test_value_dependent_helper_projection_is_not_reused(monkeypatch: pytest.Mon
         return original(current, *args, **kwargs)
     monkeypatch.setattr(emit_prepare, "_prepare_workflow_for_emit", observe)
     session = EmissionSession([])
-    emit_scratchpad_python(workflow, emission_session=session)
+    emit_scratchpad_python(workflow, preserve_node_ids=True, emission_session=session)
     warm = EmissionSession(session.records())
-    actual = emit_scratchpad_python(changed, emission_session=warm)
+    actual = emit_scratchpad_python(changed, preserve_node_ids=True, emission_session=warm)
     assert actual == expected
     namespace = {"__file__": "prepared_helper.py"}
     exec(compile(actual, "prepared helper", "exec"), namespace)  # noqa: S102
@@ -412,21 +461,28 @@ from vibecomfy.prepared_template import PreparedTemplate, fill_template, prepare
 from vibecomfy.workflow_bundle import emit_bundle
 mode, entry, destination = sys.argv[1:]
 entry, destination = Path(entry), Path(destination)
-if mode == "cold":
-    template = prepare_template(_workflow(), _slots(), key_context=_context())
+if mode == "full":
+    bundle = emit_bundle(_workflow().set_input("seed", 91), destination, {"operation": "authored"})
+    events = []
 else:
-    template = PreparedTemplate.from_bytes(entry.read_bytes())
-filled = fill_template(template, {"seed": 91}, current_key_inputs=_current(template))
-bundle = emit_bundle(filled.workflow, destination, {"operation": "authored"}, emission_session=filled.emission)
-if mode == "cold":
-    entry.write_bytes(filled.snapshot().to_bytes())
+    if mode == "cold":
+        template = prepare_template(_workflow(), _slots(), key_context=_context())
+    else:
+        template = PreparedTemplate.from_bytes(entry.read_bytes())
+    filled = fill_template(template, {"seed": 91}, current_key_inputs=_current(template))
+    bundle = emit_bundle(filled.workflow, destination, {"operation": "authored"}, emission_session=filled.emission)
+    if mode == "cold":
+        entry.write_bytes(filled.snapshot().to_bytes())
+    events = [[event.outcome, event.reason] for event in filled.emission.events]
 record = bundle.compile()
 print(json.dumps({
     "source": hashlib.sha256(destination.read_bytes()).hexdigest(),
     "companion": hashlib.sha256(destination.with_suffix(".vibe.json").read_bytes()).hexdigest(),
     "receipt": hashlib.sha256(record.to_canonical_bytes()).hexdigest(),
     "api": record.api_digest,
-    "events": [[event.outcome, event.reason] for event in filled.emission.events],
+    "source_path": bundle.workflow.source.path,
+    "receipt_fields": record.to_dict(),
+    "events": events,
 }))
 '''
 
@@ -435,15 +491,45 @@ def test_emission_layouts_and_receipts_survive_a_fresh_process(tmp_path: Path) -
     entry = tmp_path / "entry.json"
     root = Path(__file__).resolve().parents[1]
     env = {**os.environ, "PYTHONPATH": str(root), "PYTHONDONTWRITEBYTECODE": "1"}
-    def run(mode):
-        destination = tmp_path / mode / "workflow.py"
+    def run(mode, destination):
         result = subprocess.run([sys.executable, "-c", _EMISSION_PROCESS, mode, str(entry), str(destination)],
                                 cwd=root, env=env, check=False, text=True, capture_output=True, timeout=60)
         assert result.returncode == 0, result.stdout + result.stderr
         return json.loads(result.stdout.strip().splitlines()[-1])
-    cold = run("cold")
-    warm = run("warm")
+    # Publication path is an input to the receipt's UI breadcrumb. Use the
+    # same current destination in both processes, snapshotting the old pair
+    # before removing it so both publications start from an empty destination.
+    destination = tmp_path / "published" / "workflow.py"
+    cold = run("cold", destination)
+    cold_bytes = _pair_bytes(destination)
+    _remove_pair(destination)
+    warm = run("warm", destination)
+    warm_bytes = _pair_bytes(destination)
     for field in ("source", "companion", "receipt", "api"):
-        assert warm[field] == cold[field]
+        assert warm[field] == cold[field], (
+            f"{field} digest differs: cold={cold[field]}, warm={warm[field]}; "
+            f"receipt differences={_different_json_paths(cold['receipt_fields'], warm['receipt_fields'])}; "
+            f"source paths: cold={cold['source_path']!r}, warm={warm['source_path']!r}"
+        )
+    for index, field in enumerate(("source", "companion")):
+        assert warm_bytes[index] == cold_bytes[index], f"{field} bytes differ across processes"
+    assert warm["receipt_fields"] == cold["receipt_fields"]
+    for result in (cold, warm):
+        assert result["source_path"] == str(destination.resolve())
+        assert result["receipt_fields"]["ui_projection"]["extra"]["vibecomfy"]["prior_path"] == str(destination.resolve())
     assert any(outcome == "recompute" for outcome, _ in cold["events"])
     assert warm["events"] and all(outcome == "hit" for outcome, _ in warm["events"])
+
+    # Reproduce the original differing input with the ordinary full builder,
+    # independently of the prepared record: only the publication path changes.
+    # Compare its complete receipt; do not strip/normalize source evidence.
+    other_destination = tmp_path / "different-publication" / "workflow.py"
+    full = run("full", other_destination)
+    for field in ("source", "companion", "api"):
+        assert full[field] == cold[field], f"full-build path control changed {field}"
+    assert full["source_path"] == str(other_destination.resolve())
+    assert full["receipt_fields"]["ui_projection"]["extra"]["vibecomfy"]["prior_path"] == str(other_destination.resolve())
+    assert full["receipt"] != cold["receipt"], "different publication paths must remain visible in receipts"
+    assert _different_json_paths(cold["receipt_fields"], full["receipt_fields"]) == [
+        ("ui_projection", "extra", "vibecomfy", "prior_path"),
+    ]
