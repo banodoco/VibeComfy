@@ -7,7 +7,7 @@ import re
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Callable, Iterable, Mapping
 
 _ENTRY_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _OUTPUT_KINDS = {
@@ -161,9 +161,13 @@ def merge_entry_added_node_refs(
 
 
 def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | None = None, *, replace: bool = False, add: Iterable[str] = (),
-                    added_node_refs: Iterable[Mapping[str, Any]] = ()) -> dict[str, Any]:
+                    added_node_refs: Iterable[Mapping[str, Any]] = (),
+                    before_publish: Callable[[dict[str, Any], Path], None] | None = None) -> dict[str, Any]:
     """Import a complete bundle; explicitly replace an entry by swapping its manifest.
 
+    The optional caller hook receives the loaded, unpublished entry and its
+    revision directory (including entry.json). It may validate the actual
+    bundle and write revision-local sidecars. Any exception aborts publication.
     The entry directory and older bundle paths stay intact for readers that
     already loaded the old manifest. Retiring those bundles requires separate
     reader-aware cleanup; never remove them during publication.
@@ -197,8 +201,16 @@ def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | N
     artifacts = import_workflow_bytes(source_path.read_bytes(), workflow_id=entry_id, infer_inputs=True,
                                       added_node_refs=refs) if is_json else None
     root.mkdir(parents=True, exist_ok=True)
-    staging = Path(tempfile.mkdtemp(prefix="revision-", dir=destination)) if replacing else Path(tempfile.mkdtemp(prefix=f".{entry_id}.", dir=root))
+    # Keep a new revision's entry.json out of discover_entries' */entry.json
+    # scan until the entire directory is published. Replacements are already
+    # one level below the discovered entry directory.
+    staging_parent = None if replacing else Path(tempfile.mkdtemp(prefix=".entry-stage-", dir=root))
+    staging = (Path(tempfile.mkdtemp(prefix="revision-", dir=destination))
+               if replacing else staging_parent / entry_id)
+    published = False
     try:
+        if not replacing:
+            staging.mkdir()
         folder = staging / "bundle"
         folder.mkdir()
         if artifacts is not None:
@@ -210,22 +222,26 @@ def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | N
             apply_added_node_refs(canonical.workflow, refs)
             emit_bundle(canonical.workflow, folder / "workflow.py", canonical.provenance)
         workflow = load_bundle(folder / "workflow.py", trust=Provenance.USER_CONFIRMED).workflow
-        bundle = f"{staging.name}/bundle" if replacing else "bundle"
-        manifest = draft_entry(workflow, entry_id, bundle=bundle, input_ambiguities=artifacts.report.get("input_ambiguities") if artifacts else None)
+        manifest = draft_entry(workflow, entry_id, bundle="bundle", input_ambiguities=artifacts.report.get("input_ambiguities") if artifacts else None)
         (staging / "entry.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-    except BaseException:
-        shutil.rmtree(staging, ignore_errors=True)
-        raise
-    # The manifest is the commit point: its bundle is already complete. An
-    # unsuccessful rename leaves the previous manifest and sidecars untouched.
-    try:
+        if before_publish is not None:
+            before_publish(load_entry(staging), staging)
+
+        # This is the only commit point. The replacement manifest selects the
+        # complete immutable revision, including any revision-local sidecars.
         if replacing:
-            os.replace(staging / "entry.json", destination / "entry.json")
+            manifest["bundle"] = f"{staging.name}/bundle"
+            publication = staging / ".publish-entry.json"
+            publication.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+            os.replace(publication, destination / "entry.json")
         else:
             if destination.exists() or destination.is_symlink():
                 raise FileExistsError(f"entry already exists: {destination}")
             os.rename(staging, destination)
-    except OSError:
-        shutil.rmtree(staging, ignore_errors=True)
-        raise
+        published = True
+    finally:
+        if staging_parent is not None:
+            shutil.rmtree(staging_parent)
+        elif not published:
+            shutil.rmtree(staging)
     return load_entry(destination)
