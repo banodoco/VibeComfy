@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import lru_cache
 import hashlib
 from pathlib import Path
@@ -21,9 +21,27 @@ class CustomNodePack:
     classes: frozenset[str]
     pip_packages: tuple[str, ...] = ()
     class_schema_sha256: str | None = None
+    downloads_own_models: bool | None = None
+    model_download_bytes_hint: int | None = None
 
 
 _STATIC_NODE_PACKS: tuple[CustomNodePack, ...] = (
+    # ethanfel/ComfyUI-SAM-Audio@3cfbd03da3019c7252ba13efd5694b1b2ff487e5:
+    # README.md:38-50 documents first-use downloads and optional assets.
+    # nodes.py:712-719 lists classes; nodes.py:339 defaults to sam-audio-large.
+    # sam_audio_comfy/runtime.py:75-81 pins the default large mirror checkpoint
+    # size. This is a checkpoint-size hint, not a total or universal minimum.
+    # Catalog knowledge is not a reviewed lock entry or installation approval.
+    CustomNodePack(
+        name="ComfyUI-SAM-Audio",
+        repo="https://github.com/ethanfel/ComfyUI-SAM-Audio.git",
+        classes=frozenset({
+            "SAMAudioPipelineLoader", "SAMAudioSpanPrompt", "SAMAudioTextSeparator",
+            "SAMAudioSpanSeparator", "SAMAudioVisualSeparator", "SAMAudioVideoSeparator",
+        }),
+        downloads_own_models=True,
+        model_download_bytes_hint=14_861_356_211,
+    ),
     # comfy-core-fallback: Comfy built-in node types that have no object_info schema
     # but are handled by the emitter as FALLBACK_CLASS_TYPES.  Declaring them here
     # keeps `unresolved_class_types` quiet so port check does not emit false-positive
@@ -481,6 +499,13 @@ def _rich_lock_packs(lockfile_path: Path | None = None) -> tuple[CustomNodePack,
 def _known_node_packs(lockfile_path: Path | None = None) -> tuple[CustomNodePack, ...]:
     by_name = {pack.name: pack for pack in _STATIC_NODE_PACKS}
     for pack in _rich_lock_packs(lockfile_path):
+        # A target lock supplies class and schema evidence, not new facts
+        # about downloads. Retain source-backed hints only for the same repo.
+        seed = by_name.get(pack.name)
+        if (seed is not None
+                and seed.repo.rstrip("/").removesuffix(".git") == pack.repo.rstrip("/").removesuffix(".git")):
+            pack = replace(pack, downloads_own_models=seed.downloads_own_models,
+                           model_download_bytes_hint=seed.model_download_bytes_hint)
         by_name[pack.name] = pack
     return tuple(sorted(by_name.values(), key=lambda pack: pack.name.lower()))
 
