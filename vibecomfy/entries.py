@@ -168,6 +168,8 @@ def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | N
     The optional caller hook receives the loaded, unpublished entry and its
     revision directory (including entry.json). It may validate the actual
     bundle and write revision-local sidecars. Any exception aborts publication.
+    Every new replacement uses revision-v2-* and retains its local entry.json,
+    including imports with no hook. Historical revisions are never migrated.
     The entry directory and older bundle paths stay intact for readers that
     already loaded the old manifest. Retiring those bundles requires separate
     reader-aware cleanup; never remove them during publication.
@@ -205,7 +207,7 @@ def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | N
     # scan until the entire directory is published. Replacements are already
     # one level below the discovered entry directory.
     staging_parent = None if replacing else Path(tempfile.mkdtemp(prefix=".entry-stage-", dir=root))
-    staging = (Path(tempfile.mkdtemp(prefix="revision-", dir=destination))
+    staging = (Path(tempfile.mkdtemp(prefix="revision-v2-", dir=destination))
                if replacing else staging_parent / entry_id)
     published = False
     try:
@@ -231,9 +233,10 @@ def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | N
         # complete immutable revision, including any revision-local sidecars.
         if replacing:
             manifest["bundle"] = f"{staging.name}/bundle"
-            # No-hook VibeComfy callers retain the historical layout. Hook
-            # revisions keep their local entry.json as the sidecar anchor.
-            publication = staging / (".publish-entry.json" if before_publish is not None else "entry.json")
+            # Every new v2 revision retains its local manifest as the sidecar
+            # anchor. Direct callers write no approvals; they must not inherit
+            # the root or any earlier revision's approvals.
+            publication = staging / ".publish-entry.json"
             publication.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
             os.replace(publication, destination / "entry.json")
         else:
