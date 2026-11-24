@@ -71,3 +71,37 @@ def test_staged_attachments_are_published_with_selected_bundle(tmp_path, monkeyp
         for path, value in previous.items():
             if path != Path("entry.json") and value is not None:
                 assert (destination / path).read_bytes() == value
+
+
+def test_direct_replacement_has_versioned_anchor_but_no_approval_inheritance(tmp_path, monkeypatch):
+    _write_port_node_index(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    source = _write_port_workflow(tmp_path)
+    root = tmp_path / "entries"
+    first = import_as_entry(source, "sample", root)
+    entry = root / "sample"
+    root_sidecar = entry / "code-approvals.json"
+    root_sidecar.write_bytes(b'["initial"]\n')
+
+    def attach(staged, revision):
+        assert load_entry(revision) == staged
+        (revision / "code-approvals.json").write_bytes(b'["previous-revision"]\n')
+
+    approved = import_as_entry(source, "sample", root, replace=True, before_publish=attach)
+    old_revision = Path(approved["bundle"]).parent
+    before = _tree(entry)
+    direct = import_as_entry(source, "sample", root, replace=True)
+    revision = Path(direct["bundle"]).parent
+    assert revision != old_revision
+    assert revision.name.startswith("revision-v2-")
+    assert old_revision.name.startswith("revision-v2-")
+    assert load_entry(revision) == direct
+    assert load_entry(old_revision) == approved
+    assert not (revision / "code-approvals.json").exists()
+    assert discover_entries(root) == [direct]
+    assert root_sidecar.read_bytes() == b'["initial"]\n'
+    assert Path(first["bundle"], "workflow.py").is_file()
+    for path, value in before.items():
+        if path != Path("entry.json") and value is not None:
+            assert (entry / path).read_bytes() == value
+
