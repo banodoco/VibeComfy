@@ -76,3 +76,34 @@ def test_untrustworthy_head_refused_without_get(status, headers):
         with pytest.raises((ValueError, httpx.HTTPStatusError)):
             resolve_added_model_assets([f"{DEST}={URL}#{SHA}"], client=client)
     assert calls == ["HEAD"]
+
+
+def test_resolved_model_row_is_consumed_by_existing_preparation_without_registry(tmp_path, monkeypatch):
+    """Witness the real existing consumer, independently of entry/CLI publication."""
+    from vibecomfy import fetch
+    from vibecomfy.model_assets import referenced_model_requirements
+    from vibecomfy.runtime.session import _model_assets_from_workflow
+    from vibecomfy.workflow import VibeNode, VibeWorkflow, WorkflowSource
+
+    calls = []
+
+    def reply(request):
+        calls.append((request.method, str(request.url)))
+        return httpx.Response(200, headers={"content-length": "123456"})
+
+    with httpx.Client(transport=httpx.MockTransport(reply)) as client:
+        row, = resolve_added_model_assets([f"{DEST}={URL}#{SHA}"], client=client)
+
+    workflow = VibeWorkflow("explicit-model", WorkflowSource("explicit-model"))
+    workflow.nodes["1"] = VibeNode(
+        "1", "CheckpointLoaderSimple", inputs={"ckpt_name": "nested/model.safetensors"},
+    )
+    workflow.metadata["model_assets"] = [row]
+    monkeypatch.setattr("vibecomfy.registry.models_loader.load_registry",
+                        lambda: pytest.fail("authored model row must not require registry lookup"))
+    requirements = referenced_model_requirements(workflow, require_resolved=True)
+    assert requirements == [row]
+    assert _model_assets_from_workflow(workflow, models_root=tmp_path) == [row]
+    assert fetch.local_path(row, root=tmp_path) == tmp_path / DEST
+    assert calls == [("HEAD", URL)]
+    assert not list(tmp_path.iterdir())
