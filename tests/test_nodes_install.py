@@ -7,6 +7,7 @@ from typing import Sequence
 
 import pytest
 
+from tests.fixtures.node_restore_checkout import assert_staged_restore
 from vibecomfy.node_packs import LockEntry, read_lockfile, write_lockfile
 from vibecomfy.node_packs import (
     install_pack,
@@ -87,6 +88,9 @@ class FakeRunner:
         if call[:2] == ["git", "clone"]:
             if self.fail_clone:
                 raise subprocess.CalledProcessError(1, call, stderr="clone failed")
+            if "--no-checkout" in call:
+                Path(call[-1]).mkdir(parents=True)
+                self.origin_url = call[-2]
             return subprocess.CompletedProcess(call, 0, stdout="", stderr="")
         if call[:4] == ["git", "-C", call[2], "status"]:
             return subprocess.CompletedProcess(call, 0, stdout=self.porcelain, stderr="")
@@ -418,8 +422,8 @@ def test_batch_install_collects_all_pack_outcomes_and_preserves_force_and_restor
         ("ComfyUI-KJNodes", "installed", shipped["ComfyUI-KJNodes"].commit),
         ("ExamplePack", "installed", RESTORE_PIN),
     ]
-    assert ["git", "clone", "https://example.test/example.git", str(install_root / "ExamplePack")] in runner.calls
-    assert ["git", "-C", str(install_root / "ExamplePack"), "checkout", RESTORE_PIN] in runner.calls
+    assert_staged_restore(runner.calls, install_root, "ExamplePack",
+                          "https://example.test/example.git", RESTORE_PIN)
 
 
 def test_batch_install_commit_ref_uses_restore_entry_and_writes_verified_pin(tmp_path: Path) -> None:
@@ -452,8 +456,8 @@ def test_batch_install_commit_ref_uses_restore_entry_and_writes_verified_pin(tmp
     assert [(item.name, item.status, item.git_commit_sha) for item in result.results] == [
         ("ExamplePack", "installed", commit),
     ]
-    assert ["git", "clone", "https://authored.example/example.git", str(install_root / "ExamplePack")] in runner.calls
-    assert ["git", "-C", str(install_root / "ExamplePack"), "checkout", commit] in runner.calls
+    assert_staged_restore(runner.calls, install_root, "ExamplePack",
+                          "https://authored.example/example.git", commit)
     assert read_lockfile(tmp_path / "custom_nodes.lock") == [
         LockEntry(
             name="ExamplePack",
@@ -519,7 +523,8 @@ def test_install_pack_existing_checkout_ref_fetches_and_locks_verified_head(tmp_
 
     assert result.status == "refreshed"
     assert result.git_commit_sha == "newhead"
-    assert ["git", "-C", str(install_dir), "fetch", "origin"] in runner.calls
+    assert ["git", "-C", str(install_dir), "fetch", "--", "https://example.test/some-pack.git",
+            "HEAD", "+refs/heads/*:refs/remotes/origin/*"] in runner.calls
     assert ["git", "-C", str(install_dir), "checkout", "newhead"] in runner.calls
     assert read_lockfile(tmp_path / "custom_nodes.lock") == [
         LockEntry(
@@ -601,14 +606,8 @@ def test_batch_install_resolves_changed_authored_source_as_new_identity(
 
     assert result.ok is True
     assert result.results[0].git_commit_sha == new_commit
-    assert [
-        "git", "clone", "https://new.example/example.git",
-        str(tmp_path / "custom_nodes" / "ExamplePack"),
-    ] in runner.calls
-    assert [
-        "git", "-C", str(tmp_path / "custom_nodes" / "ExamplePack"),
-        "checkout", new_commit,
-    ] in runner.calls
+    assert_staged_restore(runner.calls, tmp_path / "custom_nodes", "ExamplePack",
+                          "https://new.example/example.git", new_commit)
     [resolved] = read_lockfile(tmp_path / "custom_nodes.lock")
     assert resolved.url == "https://new.example/example.git"
     assert resolved.version == "v2.0.0"
@@ -1291,11 +1290,9 @@ def test_restore_clones_and_checks_out_pinned_sha(tmp_path: Path) -> None:
 
     assert result.status == "installed"
     assert result.git_commit_sha == RESTORE_PIN
-    assert runner.calls == [
-        ["git", "clone", "https://example.test/example.git", str(tmp_path / "custom_nodes" / "ExamplePack")],
-        ["git", "-C", str(tmp_path / "custom_nodes" / "ExamplePack"), "checkout", RESTORE_PIN],
-        ["git", "-C", str(tmp_path / "custom_nodes" / "ExamplePack"), "rev-parse", "HEAD"],
-    ]
+    assert_staged_restore(runner.calls, tmp_path / "custom_nodes", "ExamplePack",
+                          "https://example.test/example.git", RESTORE_PIN)
+    assert len(runner.calls) == 7
 
 
 def test_restore_installs_known_pack_pip_dependencies(tmp_path: Path) -> None:
@@ -1310,12 +1307,8 @@ def test_restore_installs_known_pack_pip_dependencies(tmp_path: Path) -> None:
     )
 
     assert result.status == "installed"
-    assert [
-        "git",
-        "clone",
-        "https://github.com/kijai/ComfyUI-WanVideoWrapper.git",
-        str(tmp_path / "custom_nodes" / "ComfyUI-WanVideoWrapper"),
-    ] in runner.calls
+    assert_staged_restore(runner.calls, tmp_path / "custom_nodes", "ComfyUI-WanVideoWrapper",
+                          "https://github.com/kijai/ComfyUI-WanVideoWrapper.git", entry.git_commit_sha)
     assert any(call[1:4] == ["-m", "pip", "install"] and "onnx" in call for call in runner.calls)
 
 

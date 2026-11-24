@@ -45,8 +45,8 @@ class RecipeRunner:
         assert check and capture_output and text
         output = ""
         if call[:2] == ["git", "clone"]:
-            self.checkout_tree(Path(call[3]))
-            self.origin = call[2]
+            self.checkout_tree(Path(call[-1]))
+            self.origin = call[-2]
         elif call[:2] == ["git", "-C"]:
             operation = call[3]
             if operation == "checkout":
