@@ -1935,7 +1935,26 @@ def _merge_definition_wrapper_imports(
     return merged
 
 
-def _prepare_source_layout(prepared: dict[str, Any], definitions: Any) -> dict[str, Any]:
+def _source_bindings_for_emit(prepared: dict[str, Any], definitions: Any) -> dict[str, Any]:
+    """Resolve executable names only through the current wrapper registry."""
+    nodes = door_nodes(prepared)
+    imports = _wrapper_imports_for_nodes(
+        _all_nodes_for_imports(nodes, prepared.get("subgraph_definitions", {}))
+    )
+    imports = _merge_definition_wrapper_imports(imports, definitions)
+    return {
+        "imports": [[name, members] for name, members in imports.items()],
+        "constructors": [
+            [nid, [_wrapper_module_for_class(str(node.class_type)),
+                   _wrapper_symbol_for_class(str(node.class_type))]]
+            for nid, node in nodes.items()
+        ],
+    }
+
+
+def _prepare_source_layout(
+    prepared: dict[str, Any], definitions: Any, *, bindings: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Extract structural decisions; no literal or generated source is retained.
 
     Both cold and warm emission use this one preparation function.  It runs
@@ -1948,20 +1967,13 @@ def _prepare_source_layout(prepared: dict[str, Any], definitions: Any) -> dict[s
         prepared, nodes, prepared.get("ordering_edges_in", edges_in)
     )
     groups = _build_section_groups(nodes, edges_in)
-    imports = _wrapper_imports_for_nodes(
-        _all_nodes_for_imports(nodes, prepared.get("subgraph_definitions", {}))
-    )
-    imports = _merge_definition_wrapper_imports(imports, definitions)
+    if bindings is None:
+        bindings = _source_bindings_for_emit(prepared, definitions)
     return {
         "node_order": _topological_node_order(nodes, ordering),
         # Pair lists retain the original insertion order across canonical JSON.
         "sections": [[name, members] for name, members in groups.items()],
-        "imports": [[name, members] for name, members in imports.items()],
-        "constructors": [
-            [nid, [_wrapper_module_for_class(str(node.class_type)),
-                   _wrapper_symbol_for_class(str(node.class_type))]]
-            for nid, node in nodes.items()
-        ],
+        **bindings,
     }
 
 
@@ -1990,14 +2002,35 @@ def _source_layout_for_emit(
         "nodes": [[str(nid), str(node.uid), str(node.class_type)] for nid, node in nodes.items()],
         "edges": edge_record(edges_in),
         "ordering_edges": edge_record(ordering),
+        # The existing topological sorter also observes retained API-shaped
+        # links in input/widget channels, even when no VibeEdge carries them.
+        "embedded_links": [
+            [str(nid), channel, field, list(value)]
+            for nid, node in nodes.items()
+            for channel in ("inputs", "widgets")
+            for field, value in getattr(node, channel).items() if _is_link(value)
+        ],
         "definition_classes": [[nid, node.class_type] for nid, node in _definition_wrapper_nodes(definitions).items()],
         "options": options,
     }
-    layout = emission_session.resolve(signature, lambda: _prepare_source_layout(prepared, definitions))
-    if (len(layout["node_order"]) != len(nodes) or set(layout["node_order"]) != set(nodes)
-            or set(dict(layout["constructors"])) != set(nodes)):
-        raise TemplateNotReusable("prepared emission layout has a foreign node roster")
-    return layout
+    # The entry checksum detects corruption; it does not confer authority to
+    # import a module or call a constructor.  Verify executable names against
+    # the current registry before generated Python can reach staged execution.
+    bindings = _source_bindings_for_emit(prepared, definitions)
+    def validate_layout(layout: dict[str, Any]) -> None:
+        if (len(layout["node_order"]) != len(nodes) or set(layout["node_order"]) != set(nodes)
+                or set(dict(layout["constructors"])) != set(nodes)):
+            raise TemplateNotReusable("prepared emission layout has a foreign node roster")
+        if any(layout[name] != bindings[name] for name in ("imports", "constructors")):
+            raise TemplateNotReusable("prepared emission bindings differ from the current registry")
+        if any(name not in _SECTION_ORDER or any(nid not in nodes for nid in members)
+               for name, members in layout["sections"]):
+            raise TemplateNotReusable("prepared emission layout has foreign sections")
+
+    return emission_session.resolve(
+        signature, lambda: _prepare_source_layout(prepared, definitions, bindings=bindings),
+        validate=validate_layout,
+    )
 
 
 def _canonical_definition_helpers(

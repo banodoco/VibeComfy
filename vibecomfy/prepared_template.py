@@ -17,17 +17,19 @@ recursive constructors, markers and all validation still run every time.
 
 The Agent owns filesystem storage, locking, current witnesses and cache/timing
 events.  There is no filesystem cache, process registry, approval, provider,
-pickle, import path or callable in this record.  Its ordered tagged recipe keeps
+pickle or callable in this record.  Retained source bindings are verified against
+the current wrapper registry before use; they cannot authorize imports.  Its ordered tagged recipe keeps
 dict order, tuples, explicit None and authored defaults, unlike sorted envelope
 JSON.  Unknown types and unmodelled state refuse preparation with a reason; the
 caller must report it and take its ordinary full-preparation path.
 """
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import math
-import copy
+import re
 from dataclasses import dataclass, fields, is_dataclass
 from functools import lru_cache
 from typing import Any, Callable, Mapping, Sequence, TYPE_CHECKING
@@ -335,6 +337,7 @@ def _walk_recipe(value: Any, slots: Mapping[str, ValueSlot], values: Mapping[str
     fs = _recipe_fields(cls)
     if list(result) != [f.name for f in fs]:
         raise TemplateNotReusable(f"prepared {cls.__name__} fields differ from the loaded compiler")
+    _check_record_shape(cls.__name__, dict(pairs))
     if values is None:
         return None
     instance = cls(**{f.name: result[f.name] for f in fs if f.init})
@@ -344,6 +347,51 @@ def _walk_recipe(value: Any, slots: Mapping[str, ValueSlot], values: Mapping[str
     for name in extras:
         setattr(instance, name, None)
     return instance
+
+
+def _check_record_shape(name: str, encoded: Mapping[str, Any]) -> None:
+    """Reject malformed container/IR substitutions before any construction."""
+    def tag(field: str, allowed: set[str]) -> None:
+        if encoded[field][0] not in allowed:
+            raise TemplateNotReusable(f"invalid prepared {name}.{field} shape")
+
+    def record(field: str, expected: str) -> None:
+        if encoded[field][:2] != ["record", expected]:
+            raise TemplateNotReusable(f"invalid prepared {name}.{field} record")
+
+    def members(field: str, kind: str, expected: str) -> None:
+        tag(field, {kind})
+        rows = encoded[field][1]
+        children = [pair[1] for pair in rows] if kind == "map" else rows
+        if any(child[:2] != ["record", expected] for child in children):
+            raise TemplateNotReusable(f"invalid prepared {name}.{field} members")
+
+    if name == "VibeWorkflow":
+        record("source", "WorkflowSource")
+        record("requirements", "WorkflowRequirements")
+        members("nodes", "map", "VibeNode")
+        members("edges", "list", "VibeEdge")
+        members("inputs", "map", "VibeInput")
+        members("outputs", "list", "VibeOutput")
+        for field in ("metadata", "interfaces", "virtual_wires", "variants", "_id_map"):
+            tag(field, {"map"})
+        for field in ("groups", "boundary_ports"):
+            tag(field, {"list"})
+        tag("definitions", {"map", "list"})
+        tag("_manual_input_names", {"set"})
+    elif name == "VibeNode":
+        for field in ("inputs", "widgets", "metadata"):
+            tag(field, {"map"})
+        for field in ("id", "uid", "class_type"):
+            if encoded[field][0] != "atom" or type(encoded[field][1]) is not str:
+                raise TemplateNotReusable(f"invalid prepared node {field}")
+    elif name == "WorkflowSource":
+        tag("provenance", {"map"})
+    elif name == "WorkflowRequirements":
+        for field in ("models", "custom_nodes", "missing_models", "missing_nodes", "unsupported", "custom_node_refs"):
+            tag(field, {"list"})
+        if encoded["runtime"] != ["atom", None]:
+            record("runtime", "RuntimeRequirements")
 
 
 def _clone_literal(value: Any) -> Any:
@@ -361,6 +409,12 @@ def _check_value(slot: ValueSlot, value: Any) -> None:
     if not good:
         raise ValueError(f"value for prepared slot {slot.name!r} must be {slot.kind}")
     _check_literal(value)
+    if (isinstance(value, list) and len(value) == 2 and isinstance(value[1], int)
+            and re.fullmatch(r"\d+(?::\d+|::\d+)*", str(value[0]))):
+        # The existing Comfy emitter can interpret this top-level shape as a
+        # graph reference.  It has no unambiguous literal witness here, so even
+        # a JSON socket with this shape takes the ordinary full-preparation path.
+        raise TemplateNotReusable(f"slot {slot.name!r} has an unwitnessed graph-link shape")
 
 
 def _check_literal(value: Any, depth: int = 0) -> None:
@@ -428,6 +482,17 @@ class PreparedTemplate:
             record = json.loads(data, object_pairs_hook=_no_duplicate_keys, parse_constant=_no_json_constant)
         except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
             raise TemplateNotReusable("invalid prepared entry JSON") from exc
+        try:
+            return cls._from_record(record)
+        except TemplateNotReusable:
+            raise
+        except (TypeError, ValueError, KeyError, IndexError, OverflowError, RecursionError) as exc:
+            # This boundary only decodes cache data.  No builder, renderer or
+            # approval runs here; their errors are never converted to misses.
+            raise TemplateNotReusable("invalid prepared entry encoding") from exc
+
+    @classmethod
+    def _from_record(cls, record: Any) -> "PreparedTemplate":
         if not isinstance(record, dict) or set(record) != _RECORD_FIELDS:
             raise TemplateNotReusable("prepared entry is not a closed record")
         if record["format"] != FORMAT or record["backend"] != BACKEND:
@@ -513,7 +578,8 @@ class EmissionSession:
     Each staged/final emitter request selects its layout by its *current*
     projected structure/options.  An unseen layout is a recorded miss and
     recompute, never a guessed reuse.  The Agent translates these events into
-    its cache counters; no product exception is caught here.
+    its cache counters.  Only a cached-layout validation refusal is converted
+    into a miss; fresh preparation and product errors keep their normal path.
     """
 
     def __init__(self, layouts: list[dict[str, Any]],
@@ -529,16 +595,29 @@ class EmissionSession:
         if self._on_event is not None:
             self._on_event(event)
 
-    def resolve(self, signature: Any, prepare: Callable[[], dict[str, Any]]) -> dict[str, Any]:
+    def resolve(self, signature: Any, prepare: Callable[[], dict[str, Any]], *,
+                validate: Callable[[dict[str, Any]], None] | None = None) -> dict[str, Any]:
         key = canonical_digest(signature)
         row = self._layouts.get(key)
-        if row is not None:
-            self._event("hit")
-            return _json_copy(row["layout"])
         reason = "key_changed:structure" if self._layouts else "absent"
+        if row is not None:
+            layout = _json_copy(row["layout"])
+            try:
+                if validate is not None:
+                    validate(layout)
+            except TemplateNotReusable:
+                # No cached names are used or reported as a hit before the
+                # current emitter's registry/roster checks have succeeded.
+                reason = "entry_invalid"
+                del self._layouts[key]
+            else:
+                self._event("hit")
+                return layout
         self._event("miss", reason)
         self._event("recompute", reason)
         layout = prepare()
+        if validate is not None:
+            validate(layout)
         row = {"signature": signature, "layout": layout}
         _check_layouts([row])
         if len(self._layouts) >= _MAX_LAYOUTS:
@@ -614,7 +693,12 @@ def fill_template(template: PreparedTemplate, values: Mapping[str, Any], *,
         raise ValueError("every prepared slot requires exactly one current value")
     for slot in slots:
         _check_value(slot, values[slot.name])
-    workflow = _walk_recipe(payload["recipe"], {s.name: s for s in slots}, values)
+    try:
+        workflow = _walk_recipe(payload["recipe"], {s.name: s for s in slots}, values)
+    except TemplateNotReusable:
+        raise
+    except (TypeError, ValueError, KeyError, IndexError, AttributeError, OverflowError) as exc:
+        raise TemplateNotReusable("prepared IR could not be reconstructed") from exc
     # Identity admission remains current; this is not schema/approval compile.
     report = workflow.validate_identity()
     if not report.ok:
