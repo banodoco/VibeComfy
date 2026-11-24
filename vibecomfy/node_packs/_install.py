@@ -216,9 +216,15 @@ def install_pack(
     resolve_latest: bool = False,
 ) -> InstallResult:
     """Install a pack; an omitted lock path writes the cwd's target lock."""
+    from vibecomfy import resources
+
+    if name is None and repo is None: raise ValueError("install_pack requires either name or repo")
+    try:
+        resources.require_writable_node_lock(lockfile_path)
+    except ValueError as exc:
+        return InstallResult(name or _pack_name_from_repo(repo or ""), "failed", None, str(exc))
     if install_root is None:
         install_root = default_install_root()
-    if name is None and repo is None: raise ValueError("install_pack requires either name or repo")
     pack = _pack_by_name(name) if name is not None else None
     resolved_ref: PackRef | None = None
     if pack is None and repo is None and name is not None:

@@ -150,6 +150,43 @@ def test_cli_refuses_shipped_catalog_before_restore(tmp_path, catalog, monkeypat
     assert catalog.read_bytes() == before
 
 
+@pytest.mark.parametrize("alias", [False, True], ids=["direct", "symlink"])
+def test_install_pack_refuses_shipped_catalog_before_resolution(tmp_path, catalog, monkeypatch, alias):
+    target = catalog
+    if alias:
+        target = tmp_path / "catalog-link.lock"
+        target.symlink_to(catalog)
+    root = tmp_path / "custom_nodes"
+    before = catalog.read_bytes()
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("install resolved a pack or invoked a subprocess before catalog refusal")
+
+    monkeypatch.setattr(install, "_pack_by_name", forbidden)
+    result = install.install_pack(
+        name="LockTrust", repo=URL, install_root=root, lockfile_path=target,
+        runner=forbidden, cm_cli_resolver=forbidden,
+    )
+    assert result.status == "failed" and "shipped catalog" in result.error
+    assert result.name == "LockTrust"
+    assert not root.exists() and catalog.read_bytes() == before
+
+
+def test_nodes_lock_refuses_shipped_catalog_before_read_or_write(tmp_path, catalog, monkeypatch, capsys):
+    before = catalog.read_bytes()
+    monkeypatch.chdir(catalog.parent)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("nodes lock reached its reader, checkout or writer before catalog refusal")
+
+    monkeypatch.setattr(nodes, "read_lockfile", forbidden)
+    monkeypatch.setattr(nodes, "_installed_nodepack_dir", forbidden)
+    monkeypatch.setattr(nodes, "write_lockfile", forbidden)
+    assert nodes._cmd_nodes_lock(SimpleNamespace(path="custom_nodes.lock", with_source_sha256=True)) == 1
+    assert "shipped catalog" in capsys.readouterr().err
+    assert catalog.read_bytes() == before
+
+
 def test_batch_refuses_shipped_catalog_before_preflight(tmp_path, catalog, monkeypatch):
     entry = LockEntry("LockTrust", "a" * 40, URL, class_set=("LockTrustNode",), pip_packages=("example==1",))
     write_lockfile([entry], catalog)

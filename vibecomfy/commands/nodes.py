@@ -760,8 +760,15 @@ def _cmd_nodes_ensure(args: argparse.Namespace) -> int:
 
 def _cmd_nodes_lock(args: argparse.Namespace) -> int:
     """Refresh the writable target lock; the default is cwd-relative."""
+    from vibecomfy import resources
+
     lockfile_path = Path(getattr(args, "path", "custom_nodes.lock"))
-    entries = read_lockfile(lockfile_path)
+    try:
+        resources.require_writable_node_lock(lockfile_path)
+        entries = read_lockfile(lockfile_path)
+    except (OSError, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
     locked: list[LockEntry] = []
     for entry in entries:
         pack_dir = _installed_nodepack_dir(entry.name)
