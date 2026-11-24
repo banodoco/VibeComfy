@@ -10,7 +10,7 @@ import pytest
 from tests.fixtures.node_recipe_runner import RecipeRunner
 from tests.fixtures.node_restore_checkout import assert_staged_restore
 from vibecomfy.node_approvals import approval_record
-from vibecomfy.node_packs import LockEntry, read_lockfile, restore_pack
+from vibecomfy.node_packs import LockEntry, install_pack, read_lockfile, restore_pack
 from vibecomfy.node_packs import _install as install
 
 APPROVED = "https://example.test/Owner/Pack.git"
@@ -21,6 +21,7 @@ class OfflineGit:
     def __init__(self, upstream):
         self.upstream = upstream
         self.calls = []
+        self.head_reads = []
 
     def __call__(self, args, **kwargs):
         call = list(args)
@@ -33,7 +34,10 @@ class OfflineGit:
             "-c", f"url.{self.upstream.as_uri()}.insteadOf={APPROVED}",
             "-c", f"url.{self.upstream.as_uri()}.insteadOf={OTHER_CASE}",
         ]
-        return subprocess.run([*prefix, *call[1:]], **kwargs)
+        result = subprocess.run([*prefix, *call[1:]], **kwargs)
+        if call[:2] == ["git", "-C"] and call[3:] == ["rev-parse", "HEAD"]:
+            self.head_reads.append((call, result.stdout.strip()))
+        return result
 
     def git(self, *args):
         return self(["git", *args], check=True, capture_output=True, text=True).stdout.strip()
@@ -125,11 +129,17 @@ def test_restore_publishes_only_verified_pin_from_approved_url(tmp_path, source,
         if call[:2] == ["git", "clone"]:
             staged = Path(call[-1])
             staged_paths.append(staged)
-            assert not live.exists()
+            assert live.exists() is existing
+            if existing:
+                assert (live / "nodes.py").read_text() == "UNAPPROVED_DEFAULT = True\n"
             assert not staged.is_relative_to(root)
             assert not (staged / "nodes.py").exists(), "default branch must never be checked out"
         elif call[:2] == ["git", "-C"] and Path(call[2]) in staged_paths:
-            assert not live.exists(), "staged Git operations must precede publication"
+            assert live.exists() is existing, "staged Git operations must precede publication"
+            if existing:
+                assert (live / "nodes.py").read_text() == "UNAPPROVED_DEFAULT = True\n"
+            if call[3] == "rev-parse":
+                assert result.stdout.strip() == pin
             if call[3] == "checkout":
                 assert (Path(call[2]) / "nodes.py").read_text() == "APPROVED = True\n"
         return result
@@ -137,7 +147,7 @@ def test_restore_publishes_only_verified_pin_from_approved_url(tmp_path, source,
     result = _restore(root, lock, pin, observe)
     assert result.status == ("refreshed" if existing else "installed")
     assert result.git_commit_sha == pin
-    assert_staged_restore(runner.calls, root, "Pack", APPROVED, pin)
+    assert_staged_restore(runner, root, "Pack", APPROVED, pin)
     assert [call for call in runner.calls if call[3:4] == ["fetch"]] == [
         ["git", "-C", str(staged_paths[0]), "fetch", "--", APPROVED, pin]
     ]
@@ -148,19 +158,18 @@ def test_restore_publishes_only_verified_pin_from_approved_url(tmp_path, source,
     assert not list(tmp_path.glob(".vibecomfy-restore-*"))
 
 
-def test_failed_changed_pin_quarantines_previous_checkout_outside_root(tmp_path, source):
+def test_failed_changed_pin_keeps_previous_checkout_live_and_untouched(tmp_path, source):
     runner, _, default = source
     root, lock = tmp_path / "custom_nodes", tmp_path / "custom_nodes.lock"
     live = _existing(root, runner)
+    original = {p.relative_to(live): p.read_bytes() for p in live.rglob("*") if p.is_file()}
     result = _restore(root, lock, "0" * 40, runner)
     assert result.status == "failed"
-    assert not live.exists()
+    assert live.is_dir()
     assert not lock.exists()
-    [previous] = tmp_path.glob(".vibecomfy-restore-*/previous")
-    assert str(previous) in result.error
-    assert runner.git("-C", str(previous), "rev-parse", "HEAD") == default
-    assert (previous / "nodes.py").read_text() == "UNAPPROVED_DEFAULT = True\n"
-    assert not (previous.parent / "checkout").exists()
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == default
+    assert original == {p.relative_to(live): p.read_bytes() for p in live.rglob("*") if p.is_file()}
+    assert not list(tmp_path.glob(".vibecomfy-restore-*"))
 
 
 @pytest.mark.parametrize("tamper", ["origin", "head"], ids=["origin", "head"])
@@ -185,11 +194,16 @@ def test_staged_verification_failure_never_publishes(tmp_path, source, tamper):
     assert not list(tmp_path.glob(".vibecomfy-restore-*"))
 
 
-def test_exact_pin_accepts_scheme_and_host_case_only(tmp_path, source):
+@pytest.mark.parametrize("origin", [
+    "HTTPS://EXAMPLE.TEST/Owner/Pack.git",
+    "git@EXAMPLE.TEST:Owner/Pack.git/",
+    "https://example.test/Owner/Pack/",
+], ids=["scheme-host-case", "ssh", "suffix-slash"])
+def test_exact_pin_accepts_scheme_and_host_case_only(tmp_path, source, origin):
     runner, _, default = source
     root, lock = tmp_path / "custom_nodes", tmp_path / "custom_nodes.lock"
     live = _existing(root, runner)
-    runner.git("-C", str(live), "config", "remote.origin.url", "HTTPS://EXAMPLE.TEST/Owner/Pack.git")
+    runner.git("-C", str(live), "config", "remote.origin.url", origin)
     runner.calls.clear()
     result = _restore(root, lock, default, runner)
     assert result.status == "refreshed"
@@ -223,3 +237,121 @@ def test_failed_dependency_install_withdraws_published_candidate(tmp_path):
     assert not (root / "Pack").exists()
     assert not lock.exists()
     assert (root / install.INSTALL_STATE_DIR / "Pack.json").exists()
+
+
+def test_ssh_checkout_with_different_path_case_is_refused(tmp_path, source):
+    runner, pin, default = source
+    root, lock = tmp_path / "custom_nodes", tmp_path / "custom_nodes.lock"
+    live = _existing(root, runner)
+    runner.git("-C", str(live), "config", "remote.origin.url", "git@example.test:Owner/pack.git")
+    runner.calls.clear()
+    result = _restore(root, lock, pin, runner)
+    assert result.status == "failed" and "repository differs" in result.error
+    assert runner.calls == [["git", "-C", str(live), "config", "--get", "remote.origin.url"]]
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == default
+    assert not lock.exists()
+
+
+def test_tag_only_pin_fetch_uses_approved_url_and_verifies_head(tmp_path, source):
+    runner, _, default = source
+    upstream = str(runner.upstream)
+    # Make the requested commit reachable from a tag but no branch.
+    runner.git("-C", upstream, "checkout", "--orphan", "tag-only-branch")
+    (runner.upstream / "nodes.py").write_text("TAG_ONLY = True\n", encoding="utf-8")
+    runner.git("-C", upstream, "add", "nodes.py")
+    runner.git("-C", upstream, "commit", "-m", "tag only")
+    pin = runner.git("-C", upstream, "rev-parse", "HEAD")
+    runner.git("-C", upstream, "tag", "only-tag", pin)
+    runner.git("-C", upstream, "checkout", "main")
+    runner.git("-C", upstream, "branch", "-D", "tag-only-branch")
+    assert runner.git("-C", upstream, "branch", "--contains", pin) == ""
+    runner.calls.clear()
+    root, lock = tmp_path / "custom_nodes", tmp_path / "custom_nodes.lock"
+    live = root / "Pack"
+    attempts = []
+
+    def server_refuses_sha_want(args, **kwargs):
+        call = list(args)
+        if call[3:4] == ["fetch"]:
+            attempts.append(call)
+            assert call[4:6] == ["--", APPROVED]
+            assert not live.exists()
+            if call[-1] == pin:
+                raise subprocess.CalledProcessError(1, call, stderr="server refuses SHA want")
+        return runner(call, **kwargs)
+
+    result = _restore(root, lock, pin, server_refuses_sha_want)
+    assert result.status == "installed"
+    assert result.git_commit_sha == pin != default
+    [clone] = [call for call in runner.calls if call[:2] == ["git", "clone"]]
+    staged = Path(clone[-1])
+    assert not staged.is_relative_to(root)
+    assert attempts == [
+        ["git", "-C", str(staged), "fetch", "--", APPROVED, pin],
+        ["git", "-C", str(staged), "fetch", "--", APPROVED, "+refs/tags/*:refs/tags/*"],
+    ]
+    assert (["git", "-C", str(staged), "rev-parse", "HEAD"], pin) in runner.head_reads
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == pin
+    assert (live / "nodes.py").read_text() == "TAG_ONLY = True\n"
+    assert read_lockfile(lock) == [LockEntry("Pack", pin, APPROVED)]
+
+
+@pytest.mark.parametrize("pinned", [False, True], ids=["explicit-default", "explicit-pin"])
+def test_explicit_install_uses_same_verified_staging_path(tmp_path, source, pinned):
+    runner, pin, default = source
+    root, lock = tmp_path / "custom_nodes", tmp_path / "custom_nodes.lock"
+    live = root / "Pack"
+    stage = []
+
+    def observe(args, **kwargs):
+        call = list(args)
+        result = runner(call, **kwargs)
+        if call[:2] == ["git", "clone"]:
+            stage.append(Path(call[-1]))
+            assert not live.exists()
+            assert not stage[0].is_relative_to(root)
+            assert not (stage[0] / "nodes.py").exists()
+        elif stage and call[:2] == ["git", "-C"] and Path(call[2]) == stage[0]:
+            assert not live.exists()
+        return result
+
+    result = install_pack(repo=APPROVED, install_root=root, lockfile_path=lock, runner=observe,
+                          cm_cli_resolver=lambda *_: None,
+                          checkout_ref=pin if pinned else None, expected_commit=pin if pinned else None)
+    assert result.status == "installed"
+    expected = pin if pinned else default
+    assert result.git_commit_sha == expected
+    assert_staged_restore(runner, root, "Pack", APPROVED, expected, fetch=pinned)
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == expected
+    assert read_lockfile(lock)[0].git_commit_sha == expected
+
+
+def test_explicit_missing_pin_never_publishes_default_branch(tmp_path, source):
+    runner, _, _ = source
+    root, lock = tmp_path / "custom_nodes", tmp_path / "custom_nodes.lock"
+    result = install_pack(repo=APPROVED, install_root=root, lockfile_path=lock, runner=runner,
+                          cm_cli_resolver=lambda *_: ["cm-cli"],
+                          checkout_ref="0" * 40, expected_commit="0" * 40)
+    assert result.status == "failed"
+    assert not (root / "Pack").exists()
+    assert not lock.exists()
+    assert not list(tmp_path.glob(".vibecomfy-restore-*"))
+
+
+def test_failed_replacement_lock_write_rolls_back_previous_checkout(tmp_path, source, monkeypatch):
+    runner, pin, default = source
+    root, lock = tmp_path / "custom_nodes", tmp_path / "custom_nodes.lock"
+    live = _existing(root, runner)
+    original = (live / "nodes.py").read_bytes()
+
+    def fail_lock(*args, **kwargs):
+        raise OSError("recorded lock write failure")
+
+    monkeypatch.setattr(install, "upsert_lockfile_entry", fail_lock)
+    result = _restore(root, lock, pin, runner)
+    assert result.status == "failed"
+    assert "recorded lock write failure" in result.error
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == default
+    assert (live / "nodes.py").read_bytes() == original
+    assert not lock.exists()
+    assert not list(tmp_path.glob(".vibecomfy-restore-*"))

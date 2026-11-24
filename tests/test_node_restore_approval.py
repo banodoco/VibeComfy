@@ -61,7 +61,7 @@ def test_approved_recipe_uses_controlled_installer(target):
     result = install.restore_pack(entry, install_root=target[0], lockfile_path=target[1],
                                   runner=runner, approvals=[record(entry)], placement_class="runpod")
     assert result.status == "installed"
-    assert_staged_restore(runner.calls, target[0], entry.name, entry.url, entry.git_commit_sha)
+    assert_staged_restore(runner, target[0], entry.name, entry.url, entry.git_commit_sha)
     assert len(runner.installs) == 4
     assert runner.installs[0][-2:] == ["-r", str((target[0] / entry.name / entry.requirements_txt).resolve())]
     assert [call[-2:] for call in runner.installs[1:]] == [["--no-deps", item] for item in entry.pip_no_deps]
@@ -137,7 +137,7 @@ def test_shipped_ref_without_records_restores_but_changed_commit_is_refused(targ
     result = install.restore_pack(entry, install_root=target[0], lockfile_path=target[1],
                                   runner=runner, placement_class="runpod")
     assert result.status == "installed"
-    assert_staged_restore(runner.calls, target[0], entry.name, entry.url, entry.git_commit_sha)
+    assert_staged_restore(runner, target[0], entry.name, entry.url, entry.git_commit_sha)
     before = target[1].read_bytes()
     changed = replace(entry, commit="b" * 40, git_commit_sha="b" * 40)
     forbidden = RecipeRunner()
@@ -154,7 +154,7 @@ def test_batch_without_target_lock_restores_only_shipped_full_pin(target):
     runner = RecipeRunner()
     result = install.install_required_packs([pack], install_root=target[0], lockfile_path=target[1], runner=runner)
     assert result.ok
-    assert_staged_restore(runner.calls, target[0], entry.name, entry.url, entry.git_commit_sha)
+    assert_staged_restore(runner, target[0], entry.name, entry.url, entry.git_commit_sha)
     assert not any("unshown==99" in call for call in runner.calls)
     assert read_lockfile(target[1]) == [entry]
 
@@ -187,7 +187,7 @@ def test_batch_approved_full_pin_preserves_version_annotation_without_executing_
         approvals=[record(entry)], placement_class="runpod", install_root=target[0],
         lockfile_path=target[1], runner=runner)
     assert result.ok
-    assert_staged_restore(runner.calls, target[0], entry.name, entry.url, entry.commit)
+    assert_staged_restore(runner, target[0], entry.name, entry.url, entry.commit)
     assert not any(call[-1] == "v1.2.3" for call in runner.calls)
     [saved] = read_lockfile(target[1])
     assert saved.commit == entry.commit and saved.version == "v1.2.3"

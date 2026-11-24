@@ -522,6 +522,7 @@ def test_b7_install_robustness(tmp_path: Path):
             self.fail_dry_run = fail_dry_run
             self.dirty = dirty
             self.calls: list[list[str]] = []
+            self.origin = "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git"
 
         def __call__(
             self,
@@ -535,7 +536,10 @@ def test_b7_install_robustness(tmp_path: Path):
             call = list(args)
             self.calls.append(call)
             if call[:2] == ["git", "clone"]:
-                Path(call[3]).mkdir(parents=True)
+                Path(call[-1]).mkdir(parents=True)
+                self.origin = call[-2]
+                return subprocess.CompletedProcess(call, 0, stdout="", stderr="")
+            if call[:4] == ["git", "-C", call[2], "checkout"]:
                 return subprocess.CompletedProcess(call, 0, stdout="", stderr="")
             if call == [call[0], "-m", "pip", "install", "--help"]:
                 return subprocess.CompletedProcess(call, 0, stdout="--dry-run\n--report\n", stderr="")
@@ -551,7 +555,7 @@ def test_b7_install_robustness(tmp_path: Path):
             if call[:4] == ["git", "-C", call[2], "status"]:
                 return subprocess.CompletedProcess(call, 0, stdout=" M file.py\n" if self.dirty else "", stderr="")
             if call[:5] == ["git", "-C", call[2], "config", "--get"] and call[5:] == ["remote.origin.url"]:
-                return subprocess.CompletedProcess(call, 0, stdout="https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git\n", stderr="")
+                return subprocess.CompletedProcess(call, 0, stdout=self.origin + "\n", stderr="")
             if call[:4] == ["git", "-C", call[2], "rev-parse"]:
                 return subprocess.CompletedProcess(call, 0, stdout="forcehead\n", stderr="")
             raise AssertionError(f"unexpected subprocess call: {call!r}")
