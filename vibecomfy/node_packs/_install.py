@@ -506,7 +506,7 @@ def restore_pack(
     retain catalog pip dependencies, but never discover or run install.py.
     """
     try:
-        validate_restore_approvals((entry,), approvals, placement_class=placement_class)
+        validate_restore_approvals((entry,), approvals, placement_class=placement_class, lockfile_path=lockfile_path)
     except ValueError as exc:
         return InstallResult(entry.name, "failed", None, str(exc))
     entry = _reviewed_dependencies(entry)
@@ -744,7 +744,7 @@ def _install_required_packs_impl(
             _batch_restore_entry(pack, install_refs.get(pack.name), restore_entries or ())
             for pack in ordered_packs
         )
-        validate_restore_approvals(selected_entries, approvals, placement_class=placement_class)
+        validate_restore_approvals(selected_entries, approvals, placement_class=placement_class, lockfile_path=lockfile_path)
         selected_entries = tuple(_reviewed_dependencies(entry) for entry in selected_entries)
     except ValueError as exc:
         error = str(exc)
