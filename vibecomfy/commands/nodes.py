@@ -788,10 +788,27 @@ def _cmd_nodes_lock(args: argparse.Namespace) -> int:
 
 def _cmd_nodes_restore(args: argparse.Namespace) -> int:
     """Replay a target lock (cwd-relative by default), not the shipped catalog."""
-    entries = read_lockfile(Path(args.lockfile))
+    try:
+        lockpath = Path(args.lockfile)
+        if lockpath.is_symlink() or not lockpath.is_file():
+            raise ValueError("node restore requires an existing regular target lock")
+        entries = read_lockfile(lockpath)
+        approval_path = getattr(args, "approvals", None)
+        approvals = []
+        if approval_path is not None:
+            approval_file = Path(approval_path)
+            if approval_file.is_symlink() or not approval_file.is_file():
+                raise ValueError("node restore requires a regular approval file")
+            approvals = json.loads(approval_file.read_text(encoding="utf-8"))
+        placement_class = getattr(args, "placement_class", "local")
+        node_packs_install.validate_restore_approvals(entries, approvals, placement_class=placement_class)
+    except (OSError, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
     ok = True
     for entry in entries:
-        result = node_packs_install.restore_pack(entry)
+        result = node_packs_install.restore_pack(entry, approvals=approvals,
+            placement_class=placement_class, lockfile_path=lockpath)
         detail = f" {result.git_commit_sha}" if result.git_commit_sha else ""
         patch_detail = f" (declared patches verified: {result.verified_patches})" if getattr(result, "verified_patches", 0) else ""
         print(f"{result.name}: {result.status}{detail}{patch_detail}")
@@ -1327,6 +1344,8 @@ def register(subparsers) -> None:
     nodes_lock.set_defaults(func=_cmd_nodes_lock)
     nodes_restore = nodes_sub.add_parser("restore")
     nodes_restore.add_argument("--lockfile", default="custom_nodes.lock")
+    nodes_restore.add_argument("--approvals", help="JSON records approving every exact ref, recipe and placement")
+    nodes_restore.add_argument("--placement-class", choices=("local", "attached", "runpod"), default="local")
     nodes_restore.set_defaults(func=_cmd_nodes_restore)
 
     nodes_coverage = nodes_sub.add_parser("coverage", help="Schema completeness report for a workflow's class types.")

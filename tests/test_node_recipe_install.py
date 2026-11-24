@@ -7,6 +7,7 @@ from dataclasses import replace
 import pytest
 
 from tests.fixtures.node_recipe_runner import RecipeRunner
+from vibecomfy.node_approvals import approval_record
 from vibecomfy.node_packs import CustomNodePack, LockEntry, read_lockfile, write_lockfile
 from vibecomfy.node_packs import _install as install
 
@@ -45,7 +46,14 @@ def recipe_entry(**changes):
 
 def restore(entry, target, runner):
     root, lock, _ = target
-    return install.restore_pack(entry, install_root=root, lockfile_path=lock, runner=runner)
+    # The missing-pin negative case must reach production validation unchanged.
+    records = approved(entry) if entry.git_commit_sha is not None else []
+    return install.restore_pack(entry, install_root=root, lockfile_path=lock, runner=runner, approvals=records)
+
+
+def approved(entry):
+    return [approval_record({"repo": entry.url, "commit": entry.git_commit_sha,
+        "requirements_txt": entry.requirements_txt, "pip_no_deps": list(entry.pip_no_deps)}, placement_class="local")]
 
 
 def test_restore_recipe_clone_checkout_requirements_then_ordered_no_deps(target):
@@ -82,8 +90,10 @@ def test_restore_recipe_is_authoritative_over_same_name_catalog(target, monkeypa
     assert read_lockfile(target[1]) == [entry]
 
 
-def test_restore_uses_entry_pip_packages_without_catalog(target):
+def test_restore_uses_entry_pip_packages_without_catalog(target, monkeypatch):
     entry = recipe_entry(requirements_txt=None, pip_no_deps=(), pip_packages=("entry-only==2",))
+    # Legacy pip_packages authority is the exact shipped review witness.
+    monkeypatch.setattr("vibecomfy.node_packs.read_lockfile", lambda: [entry])
     runner = RecipeRunner()
     assert restore(entry, target, runner).status == "installed"
     assert len(runner.installs) == 1
@@ -208,18 +218,21 @@ def test_batch_restores_recipe_from_exact_entry(target):
     runner = RecipeRunner()
     result = install.install_required_packs(
         [pack], restore_entries=[entry], install_root=target[0], lockfile_path=target[1], runner=runner,
+        approvals=approved(entry),
     )
     assert result.ok
     assert len(runner.installs) == 4
     assert read_lockfile(target[1]) == [entry]
 
 
-def test_batch_preflight_uses_entry_dependencies_instead_of_catalog(target):
+def test_batch_preflight_uses_entry_dependencies_instead_of_catalog(target, monkeypatch):
     entry = recipe_entry(pip_packages=("entry-only==2",))
+    monkeypatch.setattr("vibecomfy.node_packs.read_lockfile", lambda: [entry])
     pack = CustomNodePack(entry.name, entry.url, frozenset(entry.class_set), ("catalog-only==99",))
     runner = RecipeRunner()
     result = install.install_required_packs(
         [pack], restore_entries=[entry], install_root=target[0], lockfile_path=target[1], runner=runner,
+        approvals=approved(entry),
     )
     assert result.ok
     assert result.preflight.packages == ("entry-only==2",)
@@ -236,6 +249,7 @@ def test_recipe_keeps_declared_runtime_requirements_protected(target):
     result = install.install_required_packs(
         [pack], restore_entries=[entry], install_root=target[0], lockfile_path=target[1], runner=runner,
         runtime_requirements=("requests>=2",),
+        approvals=approved(entry),
     )
     assert result.ok
     assert len(runner.installs) == 4
