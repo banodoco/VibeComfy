@@ -52,6 +52,7 @@ def emit_canonical_python(
     preserve_authored_graph: bool = False,
     require_model_records: bool = False,
     read_set=None,
+    emission_session=None,
 ) -> str:
     """Emit the sole executable Python workflow source.
 
@@ -146,6 +147,7 @@ def emit_canonical_python(
         preserve_authored_graph=preserve_authored_graph,
         preserve_draft_names=not require_model_records,
         read_set=read_set,
+        **({"emission_session": emission_session} if emission_session is not None else {}),
     )
 
 
@@ -162,6 +164,7 @@ def emit_ready_template_python(
     object_info_identities: dict[str, Any] | None = None,
     preserve_node_ids: bool = False,
     preserve_authored_graph: bool = False,
+    emission_session=None,
 ) -> str:
     """One-way ready-template migration into canonical executable source."""
     migrated = workflow.copy()
@@ -181,6 +184,7 @@ def emit_ready_template_python(
         preserve_node_ids=preserve_node_ids,
         preserve_authored_graph=preserve_authored_graph,
         require_model_records=True,
+        **({"emission_session": emission_session} if emission_session is not None else {}),
     )
 
 
@@ -199,6 +203,7 @@ def emit_scratchpad_python(
     external_custody: bool = False,
     preserve_authored_graph: bool = False,
     read_set=None,
+    emission_session=None,
 ) -> str:
     if not keep_virtual_wires or prune_dead_branches:
         message = (
@@ -239,6 +244,7 @@ def emit_scratchpad_python(
         external_custody=external_custody,
         preserve_authored_graph=preserve_authored_graph,
         read_set=read_set,
+        **({"emission_session": emission_session} if emission_session is not None else {}),
     )
 
 
@@ -250,3 +256,4 @@ __all__ = [
     "emit_agent_edit_python",
     "_emit_build_function",
 ]
+

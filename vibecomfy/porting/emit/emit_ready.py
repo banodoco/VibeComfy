@@ -823,6 +823,7 @@ def emit_ready_template_python(
     preserve_authored_graph: bool = False,
     preserve_draft_names: bool = False,
     read_set=None,
+    emission_session=None,
 ) -> str:
     from vibecomfy.porting.emitter import _use_object_info_identities, _drain_lookup_warning_diagnostics  # noqa: PLC0415
     with _use_object_info_identities(object_info_identities):
@@ -842,6 +843,7 @@ def emit_ready_template_python(
             preserve_authored_graph=preserve_authored_graph,
             preserve_draft_names=preserve_draft_names,
             read_set=read_set,
+            emission_session=emission_session,
         )
         lookup_warnings = _drain_lookup_warning_diagnostics(diagnostics)
         if lookup_warnings:
@@ -869,6 +871,7 @@ def _emit_ready_template_python_inner(
     preserve_authored_graph: bool = False,
     preserve_draft_names: bool = False,
     read_set=None,
+    emission_session=None,
 ) -> str:
     from vibecomfy.porting.emit.emit_prepare import _prepare_workflow_for_emit  # noqa: PLC0415
     _preflight_object_info_identity_resolution(workflow, read_set=read_set)
@@ -972,17 +975,20 @@ def _emit_ready_template_python_inner(
         read_set=read_set,
     )
     constant_lines, constant_map = _drop_output_prefix_constants(constant_lines, constant_map)
-    section_groups = _build_section_groups(workflow_nodes, edges_in)
     definition_lines, definitions_expr = _canonical_definition_helpers(
         workflow.definitions,
         interfaces=workflow.interfaces,
         boundary_ports=workflow.boundary_ports,
         external_custody=external_custody,
     )
-    wrapper_imports = _wrapper_imports_for_nodes(_all_nodes_for_imports(workflow_nodes, subgraph_definitions))
-    wrapper_imports = _merge_definition_wrapper_imports(
-        wrapper_imports, workflow.definitions
+    source_layout = _source_layout_for_emit(
+        prepared, workflow.definitions,
+        options=[omit_terminal_ui_only, keep_virtual_wires, preserve_node_ids,
+                 external_custody, preserve_authored_graph, preserve_draft_names],
+        emission_session=emission_session,
     )
+    section_groups = dict(source_layout["sections"])
+    wrapper_imports = dict(source_layout["imports"])
     output_var_names = prepared["output_var_names"]
     # Keep every constructed node bound to one stable Python variable.  Named
     # ``.out(...)`` handles express fanout/slot selection without discarding
@@ -1170,6 +1176,7 @@ def _emit_ready_template_python_inner(
             external_custody=external_custody,
             preserve_authored_graph=preserve_authored_graph,
             read_set=read_set,
+            source_layout=source_layout,
         )
     )
     out_lines.append("")
@@ -1880,10 +1887,8 @@ def _plain_canonical_value(value: Any) -> Any:
     return value
 
 
-def _merge_definition_wrapper_imports(
-    imports: Mapping[str, list[str]], definitions: Any
-) -> dict[str, list[str]]:
-    """Add public wrapper imports required by IR-owned definition-local nodes."""
+def _definition_wrapper_nodes(definitions: Any) -> dict[str, Any]:
+    """The existing definition import walk, shared with the layout witness."""
     from types import SimpleNamespace
 
     nodes: dict[str, Any] = {}
@@ -1915,11 +1920,84 @@ def _merge_definition_wrapper_imports(
     if isinstance(entries, (list, tuple)):
         for index, definition in enumerate(entries):
             walk(definition, str(index))
+    return nodes
+
+
+def _merge_definition_wrapper_imports(
+    imports: Mapping[str, list[str]], definitions: Any
+) -> dict[str, list[str]]:
+    """Add public wrapper imports required by IR-owned definition-local nodes."""
+    nodes = _definition_wrapper_nodes(definitions)
     additions = _wrapper_imports_for_nodes(nodes)
     merged = {module: sorted(names) for module, names in imports.items()}
     for module, names in additions.items():
         merged[module] = sorted({*merged.get(module, []), *names})
     return merged
+
+
+def _prepare_source_layout(prepared: dict[str, Any], definitions: Any) -> dict[str, Any]:
+    """Extract structural decisions; no literal or generated source is retained.
+
+    Both cold and warm emission use this one preparation function.  It runs
+    *after* the ordinary current-value execution projection, whose helper
+    lowering can change topology.  Definitions still render per request.
+    """
+    nodes = door_nodes(prepared)
+    edges_in = prepared["edges_in"]
+    ordering = _edges_in_with_subgraph_external_refs(
+        prepared, nodes, prepared.get("ordering_edges_in", edges_in)
+    )
+    groups = _build_section_groups(nodes, edges_in)
+    imports = _wrapper_imports_for_nodes(
+        _all_nodes_for_imports(nodes, prepared.get("subgraph_definitions", {}))
+    )
+    imports = _merge_definition_wrapper_imports(imports, definitions)
+    return {
+        "node_order": _topological_node_order(nodes, ordering),
+        # Pair lists retain the original insertion order across canonical JSON.
+        "sections": [[name, members] for name, members in groups.items()],
+        "imports": [[name, members] for name, members in imports.items()],
+        "constructors": [
+            [nid, [_wrapper_module_for_class(str(node.class_type)),
+                   _wrapper_symbol_for_class(str(node.class_type))]]
+            for nid, node in nodes.items()
+        ],
+    }
+
+
+def _source_layout_for_emit(
+    prepared: dict[str, Any], definitions: Any, *, options: list[bool],
+    emission_session=None,
+) -> dict[str, Any]:
+    if emission_session is None:
+        return _prepare_source_layout(prepared, definitions)
+    from vibecomfy.prepared_template import EmissionSession, TemplateNotReusable
+
+    if not isinstance(emission_session, EmissionSession):
+        raise TypeError("emission_session must be a prepared-template EmissionSession")
+    nodes = door_nodes(prepared)
+    edges_in = prepared["edges_in"]
+    ordering = _edges_in_with_subgraph_external_refs(
+        prepared, nodes, prepared.get("ordering_edges_in", edges_in)
+    )
+
+    def edge_record(index: Mapping[str, Any]) -> list[Any]:
+        return [[nid, [[str(e.from_node), str(e.from_output), str(e.to_node), str(e.to_input)]
+                       for e in edges]] for nid, edges in index.items()]
+
+    signature = {
+        "format": "vibecomfy.source-layout/v1",
+        "nodes": [[str(nid), str(node.uid), str(node.class_type)] for nid, node in nodes.items()],
+        "edges": edge_record(edges_in),
+        "ordering_edges": edge_record(ordering),
+        "definition_classes": [[nid, node.class_type] for nid, node in _definition_wrapper_nodes(definitions).items()],
+        "options": options,
+    }
+    layout = emission_session.resolve(signature, lambda: _prepare_source_layout(prepared, definitions))
+    if (len(layout["node_order"]) != len(nodes) or set(layout["node_order"]) != set(nodes)
+            or set(dict(layout["constructors"])) != set(nodes)):
+        raise TemplateNotReusable("prepared emission layout has a foreign node roster")
+    return layout
 
 
 def _canonical_definition_helpers(
@@ -2860,6 +2938,7 @@ def _emit_build_function(
     external_custody: bool = False,
     preserve_authored_graph: bool = False,
     read_set=None,
+    source_layout: dict[str, Any] | None = None,
 ) -> list[str]:
     from vibecomfy.porting.emitter import (  # noqa: PLC0415
         EmissionDiagnostic,
@@ -2914,7 +2993,11 @@ def _emit_build_function(
         section_nids.update(nids)
 
     # Build ordered list of (section_name, nid) for topological-sorted nodes
-    topo_order = _topological_node_order(workflow_nodes, ordering_edges_in)
+    topo_order = (
+        source_layout["node_order"] if source_layout is not None
+        else _topological_node_order(workflow_nodes, ordering_edges_in)
+    )
+    constructors = dict(source_layout["constructors"]) if source_layout is not None else None
     sorted_id_order = sorted(workflow_nodes, key=_id_sort_key)
     section_order_map: dict[str, str] = {}  # nid -> section_name
     for section_name in _SECTION_ORDER:
@@ -3102,7 +3185,10 @@ def _emit_build_function(
                 out_lines.append(single_line)
             continue
 
-        wrapper_module = _wrapper_module_for_class(str(node.class_type)) if use_shared_helpers else None
+        wrapper_module = (
+            constructors[nid][0] if constructors is not None
+            else _wrapper_module_for_class(str(node.class_type)) if use_shared_helpers else None
+        )
         preserve_fields = {
             field
             for old_id, field in (registered_inputs or {}).values()
@@ -3221,7 +3307,11 @@ def _emit_build_function(
                 # raw_call (UUID fallback, no schema) needs explicit _outputs.
                 if extras_expr is not None:
                     all_args.append(("**", extras_expr))
-                call_name = _wrapper_symbol_for_class(str(node.class_type)) or str(node.class_type)
+                wrapper_symbol = (
+                    constructors[nid][1] if constructors is not None
+                    else _wrapper_symbol_for_class(str(node.class_type))
+                )
+                call_name = wrapper_symbol or str(node.class_type)
                 assignment_target = _assignment_target(
                     var,
                     output_var_names.get(str(nid)),
@@ -3729,3 +3819,4 @@ def _declared_exec_outputs(node: Any) -> list[tuple[str, str | None]] | None:
             return None
         outputs.append((name, output_type if isinstance(output_type, str) and output_type else None))
     return outputs
+

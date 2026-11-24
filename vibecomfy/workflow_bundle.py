@@ -1588,6 +1588,7 @@ def _canonicalize_for_v2_pair(
     parent_revision: str,
     preserve_authored_graph: bool = False,
     read_set=None,
+    emission_session=None,
 ) -> tuple[VibeWorkflow, Mapping[str, Any] | None]:
     """Materialize the clean Python identity before publishing its companion.
 
@@ -1704,6 +1705,7 @@ def _canonicalize_for_v2_pair(
         external_custody=True,
         preserve_authored_graph=preserve_authored_graph,
         read_set=read_set,
+        **({"emission_session": emission_session} if emission_session is not None else {}),
     )
     with tempfile.TemporaryDirectory(prefix="vibecomfy-v2-canonicalize-") as temp_dir:
         staged_path = Path(temp_dir) / path.name
@@ -3240,8 +3242,15 @@ def emit_bundle(
     destination: str | Path,
     provenance: Any,
     parent_revision: str = "",
+    *,
+    emission_session=None,
 ) -> WorkflowBundle:
-    """Write a canonical ``build()`` source candidate and return its bundle."""
+    """Write a canonical ``build()`` source candidate and return its bundle.
+
+    An optional prepared-template session reuses only structural source layout.
+    Current canonicalisation, sidecar/marker construction and publication checks
+    remain in this exact path, including when a layout is reused.
+    """
     from vibecomfy.porting.object_info.consume import BundleReadSet
 
     read_set = BundleReadSet()
@@ -3259,6 +3268,7 @@ def emit_bundle(
         operation="authored",
         parent_revision=parent_revision,
         read_set=read_set,
+        **({"emission_session": emission_session} if emission_session is not None else {}),
     )
     sidecar = _build_v2_sidecar(
         workflow,
@@ -3288,6 +3298,7 @@ def emit_bundle(
         provenance=_source_provenance(bundle.provenance),
         external_custody=True,
         read_set=read_set,
+        **({"emission_session": emission_session} if emission_session is not None else {}),
     )
     _atomic_publish_pair(path, source, bundle.ui_sidecar, expected=bundle, read_set=read_set)
     return bundle
@@ -3974,6 +3985,7 @@ def emit_bundle_with_candidate(
     extra_members: Mapping[str | Path, bytes] | None = None,
     preserved_python_source: bytes | None = None,
     preserve_authored_graph: bool = False,
+    emission_session=None,
 ) -> WorkflowBundle:
     """Internal shared writer for emit/capture candidate bundles.
 
@@ -4011,6 +4023,7 @@ def emit_bundle_with_candidate(
         parent_revision=parent_revision,
         preserve_authored_graph=preserve_authored_graph,
         read_set=read_set,
+        **({"emission_session": emission_session} if emission_session is not None else {}),
     )
     sidecar = _build_v2_sidecar(
         workflow,
@@ -4082,6 +4095,7 @@ def emit_bundle_with_candidate(
             preserve_node_ids=preserve_authored_graph,
             preserve_authored_graph=preserve_authored_graph,
             read_set=read_set,
+            **({"emission_session": emission_session} if emission_session is not None else {}),
         )
     else:
         source = emit_scratchpad_python(
@@ -4093,6 +4107,7 @@ def emit_bundle_with_candidate(
             preserve_node_ids=preserve_authored_graph,
             preserve_authored_graph=preserve_authored_graph,
             read_set=read_set,
+            **({"emission_session": emission_session} if emission_session is not None else {}),
         )
     if preserved_python_source is not None:
         source = _preserve_python_source_with_marker(preserved_python_source, source)
@@ -4119,3 +4134,4 @@ __all__ = [
     "materialize_ui_json",
     "validate_sidecar",
 ]
+
