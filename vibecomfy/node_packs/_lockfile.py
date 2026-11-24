@@ -238,26 +238,45 @@ def _read_toml_lockfile(text: str) -> list[LockEntry]:
 
 
 def _read_toml_lockfile_payload(data: dict[str, Any]) -> list[LockEntry]:
+    """Read one complete recognized layout; never discard a malformed row."""
+    def parse_row(label: str, name: Any, raw: Any) -> LockEntry:
+        if not isinstance(raw, dict):
+            raise ValueError(f"Lock row {label} must be a table")
+        try:
+            return _entry_from_mapping(name, raw)
+        except ValueError as exc:
+            raise ValueError(f"Lock row {label}: {exc}") from exc
+
+    if "entries" in data or "nodepacks" in data:
+        layout = "entries" if "entries" in data else "nodepacks"
+        unexpected = [name for name in data if name != layout]
+        if unexpected:
+            raise ValueError(f"Unknown lock layout row {unexpected[0]!r} alongside {layout!r}")
+        rows = data[layout]
+        if layout == "entries":
+            if not isinstance(rows, list):
+                raise ValueError("Lock layout 'entries' must be an array of tables")
+            return [
+                parse_row(f"entries[{index}]", None, raw)
+                for index, raw in enumerate(rows)
+            ]
+        if not isinstance(rows, dict):
+            raise ValueError("Lock layout 'nodepacks' must be a table")
+        return [parse_row(f"nodepacks.{name}", name, raw) for name, raw in rows.items()]
+
+    # Older TOML locks used a top-level table per Git pack.
     entries: list[LockEntry] = []
-    if isinstance(data.get("entries"), list):
-        for raw in data["entries"]:
-            if isinstance(raw, dict):
-                entries.append(_entry_from_mapping(raw.get("name"), raw))
-        return entries
-    nodepacks = data.get("nodepacks")
-    if isinstance(nodepacks, dict):
-        for name, raw in nodepacks.items():
-            if isinstance(raw, dict):
-                entries.append(_entry_from_mapping(name, raw))
-        return entries
     for name, raw in data.items():
-        if isinstance(raw, dict) and ("git_commit_sha" in raw or "git_sha" in raw):
-            entries.append(_entry_from_mapping(name, raw))
+        if not isinstance(raw, dict) or not ({"git_commit_sha", "git_sha"} & raw.keys()):
+            raise ValueError(f"Unknown lock layout row {name!r}: expected a Git pack table")
+        entries.append(parse_row(name, name, raw))
     return entries
 
 
 def _entry_from_mapping(name: Any, raw: dict[str, Any]) -> LockEntry:
-    entry_name = str(raw.get("name") or name)
+    entry_name = raw.get("name", name)
+    if not isinstance(entry_name, str) or not entry_name.strip():
+        raise ValueError("Lock entry name must be a nonempty string")
     raw_source = raw.get("source")
     if raw_source is not None and not isinstance(raw_source, str):
         raise ValueError(f"Lock entry {entry_name!r} source must be a string")
@@ -282,7 +301,7 @@ def _entry_from_mapping(name: Any, raw: dict[str, Any]) -> LockEntry:
         raise ValueError(f"Lock entry {entry_name!r} is missing url")
     if source == "local" and path is None:
         raise ValueError(f"Lock entry {entry_name!r} is missing path")
-    source_sha256 = raw.get("source_sha256") or {}
+    source_sha256 = raw.get("source_sha256", {})
     if not isinstance(source_sha256, dict):
         raise ValueError(f"Lock entry {entry_name!r} source_sha256 must be a table")
     class_set = _string_tuple(raw.get("class_set"), "class_set", entry_name)
