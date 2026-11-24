@@ -3,6 +3,7 @@ import contextvars
 import hashlib
 import importlib.metadata
 import importlib.util, json, os, re, shutil, socket, subprocess, sys, tempfile, time
+import shlex
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Callable, Literal, Mapping, Protocol, Sequence
@@ -565,29 +566,25 @@ def preflight_pip_requirements(packs: Sequence[CustomNodePack], *, runner: Runne
         return PipPreflightResult(ok=True)
     if (requirement_error := _runtime_requirement_conflict(_ACTIVE_RUNTIME_REQUIREMENTS.get())) is not None:
         return PipPreflightResult(ok=False, packages=packages, error=requirement_error)
-    try:
-        help_result = runner([sys.executable, "-m", "pip", "install", "--help"], check=True, capture_output=True, text=True)
-    except (OSError, subprocess.CalledProcessError) as exc:
-        return PipPreflightResult(ok=False, packages=packages, unsupported=True, error=_error_text(exc) or "failed to check pip install capabilities")
-    help_text = f"{help_result.stdout}\n{help_result.stderr}"
-    if "--dry-run" not in help_text or "--report" not in help_text:
-        return PipPreflightResult(ok=False, packages=packages, unsupported=True, error="pip install does not support required --dry-run --report preflight")
     with tempfile.TemporaryDirectory(prefix="vibecomfy-pip-preflight-") as tmp:
-        report_path = Path(tmp) / "pip-report.json"
+        workspace = Path(tmp).resolve()
+        current_directory = Path.cwd().resolve()
+        if current_directory != current_directory.parent and workspace.is_relative_to(current_directory):
+            return PipPreflightResult(ok=False, packages=packages, error="pip working directory must be outside the checkout")
         try:
-            command = [sys.executable, "-m", "pip", "install", "--dry-run", "--report", str(report_path)]
-            active_constraint = _ACTIVE_PIP_CONSTRAINT.get()
-            if active_constraint is not None:
-                command.extend(["--constraint", str(active_constraint)])
-            runner(
-                [*command, *packages],
-                check=True,
-                capture_output=True,
-                text=True,
+            help_result = runner(
+                [sys.executable, "-I", "-m", "pip", "install", "--help"],
+                check=True, capture_output=True, text=True, cwd=workspace,
             )
         except (OSError, subprocess.CalledProcessError) as exc:
-            return PipPreflightResult(ok=False, packages=packages, error=_error_text(exc) or "pip dry-run preflight failed")
-        conflict = _pip_plan_conflict(report_path, _protected_runtime_packages())
+            return PipPreflightResult(ok=False, packages=packages, unsupported=True, error=_error_text(exc) or "failed to check pip install capabilities")
+        help_text = f"{help_result.stdout}\n{help_result.stderr}"
+        if "--dry-run" not in help_text or "--report" not in help_text:
+            return PipPreflightResult(ok=False, packages=packages, unsupported=True, error="pip install does not support required --dry-run --report preflight")
+        conflict = _run_pip_step(
+            packages, runner=runner, cwd=workspace, protected=_protected_runtime_packages(),
+            constraint_path=_ACTIVE_PIP_CONSTRAINT.get(), report_path=workspace / "pip-report.json",
+        )
         if conflict is not None:
             return PipPreflightResult(ok=False, packages=packages, error=conflict)
     return PipPreflightResult(ok=True, packages=packages)
@@ -596,24 +593,8 @@ def preflight_pip_requirements(packs: Sequence[CustomNodePack], *, runner: Runne
 def _write_runtime_constraints(runtime_requirements: Sequence[str] = ()) -> Path:
     fd, raw_path = tempfile.mkstemp(prefix="vibecomfy-runtime-constraints-", suffix=".txt")
     os.close(fd)
-    path = Path(raw_path)
-    versions: dict[str, str] = _protected_runtime_packages()
-    for raw_requirement in runtime_requirements:
-        try:
-            requirement = Requirement(str(raw_requirement))
-        except InvalidRequirement:
-            continue
-        if requirement.marker is not None and not requirement.marker.evaluate():
-            continue
-        package = canonicalize_name(requirement.name)
-        try:
-            observed = importlib.metadata.version(package)
-        except importlib.metadata.PackageNotFoundError:
-            continue
-        # Preserve the authored range. Pin only when the installed version is
-        # compatible; incompatible installed state is reported by preflight.
-        if requirement.specifier.contains(observed, prereleases=True):
-            versions[package] = observed
+    path = Path(raw_path).resolve()
+    versions = _protected_runtime_packages(runtime_requirements)
     path.write_text(
         "\n".join(f"{package}=={version}" for package, version in sorted(versions.items())) + "\n",
         encoding="utf-8",
@@ -1065,7 +1046,7 @@ def _checkout_ref_and_verify(
     return None
 def _looks_like_commit(value: str | None) -> bool:
     return bool(value is not None and re.fullmatch(r"[0-9a-fA-F]{7,40}", value))
-def _protected_runtime_packages() -> dict[str, str]:
+def _protected_runtime_packages(runtime_requirements: Sequence[str] | None = None) -> dict[str, str]:
     """Return installed foundational packages whose versions node pip may not change."""
     names = {"torch"}
     raw = os.environ.get("VIBECOMFY_PROTECTED_RUNTIME_PACKAGES", "")
@@ -1076,6 +1057,22 @@ def _protected_runtime_packages() -> dict[str, str]:
             observed[package] = importlib.metadata.version(package)
         except importlib.metadata.PackageNotFoundError:
             continue
+    requirements = _ACTIVE_RUNTIME_REQUIREMENTS.get() if runtime_requirements is None else runtime_requirements
+    for raw_requirement in requirements:
+        try:
+            requirement = Requirement(str(raw_requirement))
+        except InvalidRequirement:
+            # _runtime_requirement_conflict reports malformed declarations.
+            continue
+        if requirement.marker is not None and not requirement.marker.evaluate():
+            continue
+        package = canonicalize_name(requirement.name)
+        try:
+            version = importlib.metadata.version(package)
+        except importlib.metadata.PackageNotFoundError:
+            continue
+        if not requirement.specifier or requirement.specifier.contains(version, prereleases=True):
+            observed[package] = version
     return observed
 
 
@@ -1107,6 +1104,120 @@ def _pip_plan_conflict(report_path: Path, protected: Mapping[str, str]) -> str |
     return None
 
 
+def _requirements_tree_error(requirements: Path, checkout: Path) -> str | None:
+    """Validate every pip include before pip reads any of the recipe.
+
+    Accept explicit -r/-c and their full long forms. Abbreviated options,
+    environment substitutions and non-UTF-8 files are refused, so pip cannot
+    reinterpret an include differently after this check. Paths retain their
+    spelling for relative includes, while confinement/cycles use real paths.
+    """
+    pending: list[tuple[Path, tuple[Path, ...]]] = [(requirements, ())]
+    checked: set[Path] = set()
+    while pending:
+        path, ancestors = pending.pop()
+        path = Path(os.path.abspath(path))
+        try:
+            resolved = path.resolve(strict=True)
+            if not resolved.is_relative_to(checkout) or not resolved.is_file():
+                return f"requirements include {path} must be a file inside its checkout"
+            if resolved in ancestors:
+                return f"cyclic requirements include at {path}"
+            if path in checked:
+                continue
+            content = path.read_text(encoding="utf-8-sig")
+        except (OSError, RuntimeError, UnicodeError) as exc:
+            return f"cannot read requirements include {path}: {exc}"
+        checked.add(path)
+        for header in content.splitlines()[:2]:
+            encoding = re.search(r"coding[:=]\s*([-\w.]+)", header)
+            if encoding and encoding[1].lower().replace("_", "-") not in {"utf-8", "utf8"}:
+                return f"requirements file {path} must use UTF-8 encoding"
+        # Match pip's continuation-before-comment order. Options are inspected
+        # with shlex; dependency text itself is passed to pip unchanged.
+        logical_lines: list[str] = []
+        continued: list[str] = []
+        for line in content.splitlines():
+            comment = re.match(r"(^|\s+)#", line)
+            if line.endswith("\\") and not comment:
+                continued.append(line.strip("\\"))
+            else:
+                logical_lines.append("".join(continued) + (" " if comment else "") + line)
+                continued.clear()
+        if continued:
+            logical_lines.append("".join(continued))
+        for raw_line in logical_lines:
+            line = re.sub(r"(^|\s+)#.*$", "", raw_line).strip()
+            if not line:
+                continue
+            if re.search(r"\$\{[A-Z0-9_]+\}", line):
+                return f"requirements file {path} cannot use environment substitutions"
+            try:
+                tokens = shlex.split(line)
+            except ValueError as exc:
+                return f"cannot parse requirements file {path}: {exc}"
+            index = 0
+            while index < len(tokens):
+                token = tokens[index]
+                index += 1
+                include: str | None = None
+                option, equals, value = token.partition("=")
+                if option in {"--requirement", "--constraint"}:
+                    if equals:
+                        include = value
+                    elif index < len(tokens):
+                        include = tokens[index]
+                        index += 1
+                    else:
+                        return f"requirements include {token} in {path} has no path"
+                elif token.startswith("--") and any(full.startswith(option) for full in ("--requirement", "--constraint")):
+                    return f"requirements file {path} must spell include options in full: {token}"
+                elif token.startswith(("-r", "-c")):
+                    if len(token) > 2:
+                        include = token[2:]
+                    elif index < len(tokens):
+                        include = tokens[index]
+                        index += 1
+                    else:
+                        return f"requirements include {token} in {path} has no path"
+                if include is not None:
+                    if (not include or ":" in include or "\\" in include or include.startswith("-")
+                            or any(ord(char) < 32 or ord(char) == 127 for char in include)):
+                        return f"requirements include {include!r} in {path} must be a local checkout path"
+                    pending.append((path.parent / include, (*ancestors, resolved)))
+    return None
+
+
+def _run_pip_step(
+    arguments: Sequence[str], *, runner: Runner, cwd: Path,
+    protected: Mapping[str, str], constraint_path: Path | None,
+    report_path: Path | None = None,
+) -> str | None:
+    """One isolated pip invocation, with the same checks on both exit paths."""
+    command = [sys.executable, "-I", "-m", "pip", "install"]
+    phase = "preflight" if report_path is not None else "install"
+    if report_path is not None:
+        command.extend(["--dry-run", "--report", str(report_path)])
+    if constraint_path is not None:
+        command.extend(["--constraint", str(constraint_path)])
+    error = None
+    try:
+        runner([*command, *arguments], check=True, capture_output=True, text=True, cwd=cwd)
+    except (OSError, subprocess.CalledProcessError) as exc:
+        error = _error_text(exc) or f"pip {phase} failed"
+    for package, version in protected.items():
+        try:
+            observed = importlib.metadata.version(package)
+        except importlib.metadata.PackageNotFoundError:
+            observed = None
+        if observed != version:
+            change = f"custom-node pip {phase} changed protected runtime package {package} from {version} to {observed}"
+            return f"{change}; {error}" if error else change
+    if error is not None:
+        return error
+    return _pip_plan_conflict(report_path, protected) if report_path is not None else None
+
+
 def _install_pack_pip_packages(
     name: str,
     pack: CustomNodePack | None,
@@ -1126,17 +1237,20 @@ def _install_pack_pip_packages(
     if restore_entry is not None and declared:
         packages = restore_entry.pip_packages
     steps: list[tuple[str, ...]] = [tuple(packages)] if packages else []
-    pip_cwd = install_dir.resolve() if declared and install_dir is not None else None
+    checkout = install_dir.resolve() if install_dir is not None else None
+    requirements = None
     if restore_entry is not None:
         if restore_entry.requirements_txt is not None:
-            if pip_cwd is None:
+            if checkout is None:
                 return f"requirements file for {name} needs a checked-out pack directory"
             try:
-                requirements = (pip_cwd / restore_entry.requirements_txt).resolve(strict=True)
+                requirements = (checkout / restore_entry.requirements_txt).resolve(strict=True)
             except (OSError, RuntimeError) as exc:
                 return f"cannot read requirements file for {name}: {exc}"
-            if not requirements.is_relative_to(pip_cwd) or not requirements.is_file():
+            if not requirements.is_relative_to(checkout) or not requirements.is_file():
                 return f"requirements file for {name} must be a file inside its checkout"
+            if (include_error := _requirements_tree_error(requirements, checkout)) is not None:
+                return include_error
             steps.append(("-r", str(requirements)))
         steps.extend(("--no-deps", package) for package in restore_entry.pip_no_deps)
     if not steps:
@@ -1144,63 +1258,43 @@ def _install_pack_pip_packages(
     if (requirement_error := _runtime_requirement_conflict(_ACTIVE_RUNTIME_REQUIREMENTS.get())) is not None:
         return requirement_error
     protected = _protected_runtime_packages()
-    for raw_requirement in _ACTIVE_RUNTIME_REQUIREMENTS.get():
-        try:
-            requirement = Requirement(str(raw_requirement))
-            if requirement.marker is not None and not requirement.marker.evaluate():
-                continue
-            observed = importlib.metadata.version(requirement.name)
-            if not requirement.specifier or requirement.specifier.contains(observed, prereleases=True):
-                protected[canonicalize_name(requirement.name)] = observed
-        except (InvalidRequirement, importlib.metadata.PackageNotFoundError):
-            continue
     active_constraint = _ACTIVE_PIP_CONSTRAINT.get()
     owned_constraint = active_constraint is None
     if owned_constraint:
         active_constraint = _write_runtime_constraints(_ACTIVE_RUNTIME_REQUIREMENTS.get())
-    runner_options: dict[str, Any] = {"check": True, "capture_output": True, "text": True}
-    if pip_cwd is not None:
-        runner_options["cwd"] = pip_cwd
     try:
         with tempfile.TemporaryDirectory(prefix="vibecomfy-node-pip-") as tmp:
+            workspace = Path(tmp).resolve()
+            if checkout is not None and workspace.is_relative_to(checkout):
+                return f"pip working directory for {name} must be outside its checkout"
+
+            def run_step(arguments: Sequence[str], report_path: Path | None = None) -> str | None:
+                # A previous package build can have changed an include. Check
+                # the complete file graph again immediately before consumption.
+                if requirements is not None and checkout is not None:
+                    if (include_error := _requirements_tree_error(requirements, checkout)) is not None:
+                        return include_error
+                return _run_pip_step(
+                    arguments, runner=runner, cwd=workspace, protected=protected,
+                    constraint_path=active_constraint, report_path=report_path,
+                )
+
             # Check the entire recipe before any pip mutation. Each no-deps
             # requirement is resolved separately with the same flags it will
             # use on installation, preserving the authored sequence.
             for index, arguments in enumerate(steps):
-                report_path = Path(tmp) / f"pip-report-{index}.json"
-                command = [sys.executable, "-m", "pip", "install", "--dry-run", "--report", str(report_path)]
-                if active_constraint is not None:
-                    command.extend(["--constraint", str(active_constraint)])
-                try:
-                    runner([*command, *arguments], **runner_options)
-                except (OSError, subprocess.CalledProcessError) as exc:
-                    return _error_text(exc) or f"failed to preflight pip dependencies for {name}"
-                conflict = _pip_plan_conflict(report_path, protected)
-                if conflict is not None:
-                    return conflict
-            for arguments in steps:
-                command = [sys.executable, "-m", "pip", "install"]
-                if active_constraint is not None:
-                    command.extend(["--constraint", str(active_constraint)])
-                try:
-                    runner([*command, *arguments], **runner_options)
-                except (OSError, subprocess.CalledProcessError) as exc:
-                    return _error_text(exc) or f"failed to install pip packages for {name}"
-                # Stop immediately if a build changed a protected package,
-                # including a declared runtime requirement outside the defaults.
-                for package, version in protected.items():
-                    try:
-                        observed = importlib.metadata.version(package)
-                    except importlib.metadata.PackageNotFoundError:
-                        observed = None
-                    if observed != version:
-                        return f"custom-node pip install changed protected runtime package {package} from {version} to {observed}"
+                if (error := run_step(arguments, workspace / f"pip-whole-{index}.json")) is not None:
+                    return error
+            for index, arguments in enumerate(steps):
+                # Resolve against the environment left by the preceding step,
+                # retaining the whole-recipe preflight above as an early gate.
+                if (error := run_step(arguments, workspace / f"pip-current-{index}.json")) is not None:
+                    return error
+                if (error := run_step(arguments)) is not None:
+                    return error
     finally:
         if owned_constraint and active_constraint is not None:
-            try:
-                active_constraint.unlink()
-            except OSError:
-                pass
+            active_constraint.unlink(missing_ok=True)
     return None
 def _finalize_install(
     name: str,
