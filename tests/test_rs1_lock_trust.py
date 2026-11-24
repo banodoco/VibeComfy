@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 from dataclasses import replace
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -119,6 +119,22 @@ def test_restore_refuses_shipped_catalog_before_install(tmp_path, catalog, alias
     assert not root.exists() and catalog.read_bytes() == before
 
 
+def test_restore_refuses_hardlink_to_catalog_before_install(tmp_path, catalog):
+    entry = LockEntry("LockTrust", "a" * 40, URL, class_set=("LockTrustNode",))
+    alias = tmp_path / "linked-target.lock"
+    os.link(catalog, alias)
+    before = catalog.read_bytes()
+    root = tmp_path / "custom_nodes"
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("subprocess called before refusing catalog inode")
+
+    result = install.restore_pack(entry, install_root=root, lockfile_path=alias,
+                                  approvals=[_approval(entry)], runner=forbidden)
+    assert result.status == "failed" and "shipped catalog" in result.error
+    assert not root.exists() and catalog.read_bytes() == before
+
+
 def test_cli_refuses_shipped_catalog_before_restore(tmp_path, catalog, monkeypatch, capsys):
     entry = LockEntry("LockTrust", "a" * 40, URL, class_set=("LockTrustNode",))
     write_lockfile([entry], catalog)
@@ -154,6 +170,8 @@ _BAD_LAYOUTS = [
     pytest.param("[Unknown]\nvalue = 17\n", "Unknown", id="unknown-table"),
     pytest.param("entries = {LockTrust = " + _VALID + "}\n", "entries", id="wrong-array-type"),
     pytest.param("nodepacks = [" + _VALID + "]\n", "nodepacks", id="wrong-map-type"),
+    pytest.param('entries = [' + _VALID.replace('name = "LockTrust", ', '') + ']\n',
+                 "entries[0]", id="unnamed-row"),
 ]
 
 
@@ -173,3 +191,19 @@ def test_malformed_lock_refuses_entire_restore_before_side_effects(tmp_path, cat
         read_lockfile(lock)
     assert row in str(failure.value)
     assert lock.read_bytes() == before
+
+
+def test_direct_restore_refuses_malformed_destination_before_install(tmp_path, catalog):
+    entry = LockEntry("LockTrust", "a" * 40, URL, class_set=("LockTrustNode",))
+    target = tmp_path / "target.lock"
+    target.write_text("unknown = 17\n", encoding="utf-8")
+    before = target.read_bytes()
+    root = tmp_path / "custom_nodes"
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("subprocess called before rejecting malformed destination")
+
+    result = install.restore_pack(entry, install_root=root, lockfile_path=target,
+                                  approvals=[_approval(entry)], runner=forbidden)
+    assert result.status == "failed" and "unknown" in result.error
+    assert not root.exists() and target.read_bytes() == before
