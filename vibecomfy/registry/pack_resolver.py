@@ -1136,6 +1136,7 @@ class _ManagerEvidenceClient(_ExternalJsonCache):
                 not in mapped_urls
             }
             metadata.update(extension_metadata)
+        slug_to_classes = _manager_slug_to_classes(class_to_packs)
         matched_slugs: set[str] = set()
         exact_classes: dict[str, list[str]] = {}
         normalized_query = _normalize_lookup_key(query)
@@ -1150,7 +1151,7 @@ class _ManagerEvidenceClient(_ExternalJsonCache):
                         matched_slugs.add(slug)
                         exact_classes.setdefault(slug, []).append(class_name)
             for slug, record in metadata.items():
-                haystack = " ".join(_manager_search_terms(slug, record, class_to_packs)).lower()
+                haystack = " ".join(_manager_search_terms(slug, record, slug_to_classes)).lower()
                 if query.lower() in haystack or normalized_query in _normalize_lookup_key(haystack):
                     matched_slugs.add(slug)
 
@@ -1517,7 +1518,17 @@ def _pack_ref_from_manager_record(slug: str, record: Mapping[str, Any]) -> PackR
     )
 
 
-def _manager_search_terms(slug: str, record: Mapping[str, Any], class_to_packs: Mapping[str, tuple[str, ...]]) -> list[str]:
+def _manager_slug_to_classes(class_to_packs: Mapping[str, tuple[str, ...]]) -> dict[str, list[str]]:
+    # Inverts class_to_packs once; lists keep class_to_packs' iteration order.
+    # dict.fromkeys mirrors the old per-class `slug in slugs` test: one entry per class.
+    result: dict[str, list[str]] = {}
+    for class_name, slugs in class_to_packs.items():
+        for slug in dict.fromkeys(slugs):
+            result.setdefault(slug, []).append(class_name)
+    return result
+
+
+def _manager_search_terms(slug: str, record: Mapping[str, Any], slug_to_classes: Mapping[str, list[str]]) -> list[str]:
     terms = [slug]
     for key in ("title", "name", "description", "nickname", "author", "files", "reference", "repository"):
         value = record.get(key)
@@ -1525,7 +1536,7 @@ def _manager_search_terms(slug: str, record: Mapping[str, Any], class_to_packs: 
             terms.append(value)
         elif isinstance(value, list):
             terms.extend(str(item) for item in value)
-    terms.extend(class_name for class_name, slugs in class_to_packs.items() if slug in slugs)
+    terms.extend(slug_to_classes.get(slug, ()))
     return terms
 
 
