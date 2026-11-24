@@ -54,6 +54,10 @@ _logger = logging.getLogger(__name__)
 class WorkflowBundleError(ValueError):
     """Raised when a bundle cannot be loaded or fails a closed boundary."""
 
+    def __init__(self, *args: object, validation_errors: list[dict[str, Any]] | None = None) -> None:
+        super().__init__(*args)
+        self.validation_errors = validation_errors
+
 
 class WorkflowReconciliationError(WorkflowBundleError):
     """A canonical graph cannot compile until its missing classes are resolved."""
@@ -2821,6 +2825,7 @@ class WorkflowBundle:
             from vibecomfy.schema.validate import (
                 validate_api_against_schema,
                 validate_api_link_shapes,
+                validation_errors_payload,
             )
 
             schema_issues = [
@@ -2836,7 +2841,10 @@ class WorkflowBundle:
         errors = [issue for issue in schema_issues if getattr(issue, "severity", "error") == "error"]
         if errors:
             missing = [issue for issue in errors if issue.code == "missing_required_input"]
-            raise WorkflowBundleError("; ".join(str(issue.message) for issue in missing) if missing else str(errors[0].message))
+            raise WorkflowBundleError(
+                "; ".join(str(issue.message) for issue in missing) if missing else str(errors[0].message),
+                validation_errors=validation_errors_payload(errors),
+            )
         ui_projection = self.materialize_ui(schema_provider=schema_provider)
         return ApprovedProjectionRecord(
             revision_id=self.revision_id,
