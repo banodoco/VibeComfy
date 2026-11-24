@@ -29,6 +29,63 @@ def test_import_entry_and_cli(tmp_path, monkeypatch, capsys):
         import_as_entry(source, "my-style")
 
 
+def test_import_entry_uses_explicit_schema_for_ui_widgets_and_replacement(tmp_path):
+    from vibecomfy.schema.provider import TargetSchemaProvider
+    from vibecomfy.security.provenance import Provenance
+    from vibecomfy.workflow_bundle import load_bundle
+
+    # This custom node's widget names exist only in the supplied target schema.
+    custom_class = "VibeComfyEntrySchemaWitness"
+    schema = {
+        custom_class: {
+            "input": {"required": {"seed": ["INT", {"default": 0}]}},
+            "input_order": {"required": ["seed"]},
+            "output": ["IMAGE"], "output_name": ["IMAGE"], "output_is_list": [False],
+            "output_node": False, "name": custom_class,
+        },
+        "SaveImage": {
+            "input": {"required": {"images": ["IMAGE"], "filename_prefix": ["STRING", {"default": "out"}]}},
+            "input_order": {"required": ["images", "filename_prefix"]},
+            "output": [], "output_name": [], "output_is_list": [],
+            "output_node": True, "name": "SaveImage",
+        },
+    }
+    provider = TargetSchemaProvider.from_object_info(schema, server_url="http://127.0.0.1:8188")
+    graph = {
+        "last_node_id": 2, "last_link_id": 1, "version": 0.4,
+        "nodes": [
+            {"id": 1, "type": custom_class, "pos": [0, 0], "size": [200, 100],
+             "flags": {}, "order": 0, "mode": 0, "inputs": [],
+             "outputs": [{"name": "IMAGE", "type": "IMAGE", "links": [1], "slot_index": 0}],
+             "properties": {"Node name for S&R": custom_class}, "widgets_values": [7]},
+            {"id": 2, "type": "SaveImage", "pos": [300, 0], "size": [200, 100],
+             "flags": {}, "order": 1, "mode": 0,
+             "inputs": [{"name": "images", "type": "IMAGE", "link": 1}], "outputs": [],
+             "properties": {"Node name for S&R": "SaveImage"}, "widgets_values": ["out"]},
+        ],
+        "links": [[1, 1, 0, 2, 0, "IMAGE"]],
+    }
+    source = tmp_path / "custom-ui.json"
+    root = tmp_path / "entries"
+    old_bundle = None
+    old_bytes = None
+    for seed in (7, 19):
+        graph["nodes"][0]["widgets_values"] = [seed]
+        raw = json.dumps(graph).encode()
+        source.write_bytes(raw)
+        entry = import_as_entry(source, "schema-witness", root, replace=old_bundle is not None,
+                                schema_provider=provider)
+        bundle = Path(entry["bundle"])
+        assert entry["binds"]["seed"] == "seed"
+        workflow = load_bundle(bundle / "workflow.py", trust=Provenance.USER_CONFIRMED).workflow
+        assert workflow.inputs["seed"].value == seed
+        assert (bundle / "source.json").read_bytes() == raw
+        if old_bundle is not None:
+            assert bundle != old_bundle
+            assert (old_bundle / "source.json").read_bytes() == old_bytes
+        old_bundle, old_bytes = bundle, raw
+
+
 def test_manifest_validation_and_relative_bundle(tmp_path):
     path = tmp_path / "entry.json"
     manifest = {"id": "a", "kind": "image", "modes": ["t2i"], "bundle": "bundle", "needs": [], "binds": {"prompt": "prompt", "width": {"node": "1", "field": "width"}}, "defaults": {}}
