@@ -272,6 +272,13 @@ def test_tag_only_pin_fetch_uses_approved_url_and_verifies_head(tmp_path, source
 
     def server_refuses_sha_want(args, **kwargs):
         call = list(args)
+        if call[:2] == ["git", "clone"]:
+            # Suppress the initial tag transfer so the fallback has to
+            # retrieve an object that is genuinely absent from the clone.
+            result = runner([*call[:3], "--no-tags", *call[3:]], **kwargs)
+            with pytest.raises(subprocess.CalledProcessError):
+                runner.git("-C", call[-1], "cat-file", "-e", f"{pin}^{{commit}}")
+            return result
         if call[3:4] == ["fetch"]:
             attempts.append(call)
             assert call[4:6] == ["--", APPROVED]
