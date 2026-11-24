@@ -342,7 +342,6 @@ def _prepare_workflow_unlocked(
         from vibecomfy.node_packs import (
             build_install_refs_by_name,
             missing_packs_for_workflow,
-            preflight_pip_requirements,
             read_lockfile,
             validate_install_refs,
         )
@@ -414,13 +413,9 @@ def _prepare_workflow_unlocked(
             raise PreparationError(f"custom-node planning failed: {exc}") from exc
         if ref_error is not None:
             raise PreparationError(ref_error)
-        if packs:
-            preflight = preflight_pip_requirements(packs)
-            if not preflight.ok:
-                raise PreparationError(
-                    "custom-node dependency preflight failed: "
-                    + (preflight.error or "pip preflight failed")
-                )
+        # Dependency resolution belongs to install_required_packs, after it
+        # has admitted the complete batch and selected its reviewed recipes.
+        # Even a pip dry run can execute distribution metadata hooks.
 
     if download_workers is None:
         raw_workers = os.environ.get("VIBECOMFY_DOWNLOAD_WORKERS", "2")
