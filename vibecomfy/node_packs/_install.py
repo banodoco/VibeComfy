@@ -3,7 +3,7 @@ import contextvars
 import hashlib
 import importlib.metadata
 import importlib.util, json, os, re, shutil, socket, subprocess, sys, tempfile, time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Callable, Literal, Mapping, Protocol, Sequence
 from urllib.parse import urlparse
@@ -215,6 +215,7 @@ def install_pack(
     allow_source_change: bool = False,
     resolve_latest: bool = False,
 ) -> InstallResult:
+    """Install a pack; an omitted lock path writes the cwd's target lock."""
     if install_root is None:
         install_root = default_install_root()
     if name is None and repo is None: raise ValueError("install_pack requires either name or repo")
@@ -369,13 +370,35 @@ def _install_pack_via_clone(
     )
 
 
-def restore_pack(entry: LockEntry, *, install_root: Path | None = None, runner: Runner = subprocess.run, lockfile_path: Path = Path("custom_nodes.lock")) -> InstallResult:
+def _entry_has_dependencies(entry: LockEntry | None) -> bool:
+    return entry is not None and bool(
+        entry.pip_packages or entry.requirements_txt is not None or entry.pip_no_deps
+    )
+
+
+def restore_pack(
+    entry: LockEntry,
+    *,
+    install_root: Path | None = None,
+    runner: Runner = subprocess.run,
+    lockfile_path: Path = Path("custom_nodes.lock"),
+) -> InstallResult:
+    """Restore this entry; an omitted lock path writes the cwd's target lock.
+
+    Declared dependencies and recipes come from the entry. Bare legacy entries
+    retain catalog pip dependencies, but never discover or run install.py.
+    """
     if install_root is None:
         install_root = default_install_root()
+    declared = _entry_has_dependencies(entry)
+    if declared and not entry.git_commit_sha:
+        return InstallResult(entry.name, "failed", None, f"declared dependencies for {entry.name} require a pinned git commit")
     install_dir = install_root / entry.name
-    pack = _pack_by_name(entry.name)
+    pack = None if declared else _pack_by_name(entry.name)
     sentinel = _install_sentinel(install_root, entry.name)
     if _has_incomplete_install(sentinel): return InstallResult(entry.name, "failed", None, sentinel.reason)
+    status: InstallStatus = "installed"
+    verified = 0
     if install_dir.exists():
         current_head = _git_head(install_dir, runner)
         dirty = _git_porcelain(install_dir, runner)
@@ -385,31 +408,32 @@ def restore_pack(entry: LockEntry, *, install_root: Path | None = None, runner: 
             if dirty and entry.patches and current_head != entry.git_commit_sha:
                 reason += f" (declared patch {entry.patches[0].path} requires locked HEAD)"
             return InstallResult(entry.name, "failed" if dirty is None else "skipped_dirty", current_head, reason)
-        if current_head == entry.git_commit_sha: return InstallResult(entry.name, "refreshed", entry.git_commit_sha, None, verified)
+        if current_head == entry.git_commit_sha:
+            if not declared:
+                return InstallResult(entry.name, "refreshed", entry.git_commit_sha, None, verified)
+        else:
+            try:
+                sentinel.write(phase="restore_fetch", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
+                runner(["git", "-C", str(install_dir), "fetch", "origin"], check=True, capture_output=True, text=True)
+                sentinel.write(phase="restore_checkout", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
+                runner(["git", "-C", str(install_dir), "checkout", entry.git_commit_sha], check=True, capture_output=True, text=True)
+            except (OSError, subprocess.CalledProcessError) as exc:
+                return InstallResult(entry.name, "failed", None, _error_text(exc) or f"failed to restore {entry.name}")
+        status = "refreshed"
+    else:
+        sentinel.write(phase="restore_start", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
         try:
-            sentinel.write(phase="restore_fetch", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
-            runner(["git", "-C", str(install_dir), "fetch", "origin"], check=True, capture_output=True, text=True)
+            sentinel.write(phase="clone", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
+            runner(["git", "clone", entry.url, str(install_dir)], check=True, capture_output=True, text=True)
             sentinel.write(phase="restore_checkout", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
             runner(["git", "-C", str(install_dir), "checkout", entry.git_commit_sha], check=True, capture_output=True, text=True)
-        except (OSError, subprocess.CalledProcessError) as exc: return InstallResult(entry.name, "failed", None, _error_text(exc) or f"failed to restore {entry.name}")
-        result = _finalize_install(
-            entry.name, entry.url or "", install_dir, lockfile_path, runner,
-            pack=pack, expected_commit=entry.git_commit_sha, sentinel=sentinel,
-        )
-        if result.status != "installed":
-            return result
-        return InstallResult(result.name, "refreshed", result.git_commit_sha, result.error)
-    sentinel.write(phase="restore_start", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
-    try:
-        sentinel.write(phase="clone", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
-        runner(["git", "clone", entry.url, str(install_dir)], check=True, capture_output=True, text=True)
-        sentinel.write(phase="restore_checkout", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
-        runner(["git", "-C", str(install_dir), "checkout", entry.git_commit_sha], check=True, capture_output=True, text=True)
-    except (OSError, subprocess.CalledProcessError) as exc: return InstallResult(entry.name, "failed", None, _error_text(exc) or f"failed to restore {entry.name}")
-    return _finalize_install(
+        except (OSError, subprocess.CalledProcessError) as exc:
+            return InstallResult(entry.name, "failed", None, _error_text(exc) or f"failed to restore {entry.name}")
+    result = _finalize_install(
         entry.name, entry.url or "", install_dir, lockfile_path, runner,
-        pack=pack, expected_commit=entry.git_commit_sha, sentinel=sentinel,
+        pack=pack, expected_commit=entry.git_commit_sha, sentinel=sentinel, restore_entry=entry,
     )
+    return replace(result, status=status, verified_patches=verified) if result.status == "installed" else result
 def _refresh_existing(
     name: str,
     repo_url: str,
@@ -567,6 +591,7 @@ def install_required_packs(
     cm_cli_resolver: Callable[[Path, Runner], list[str] | None] = _resolve_cm_cli,
     runtime_requirements: Sequence[str] = (),
 ) -> InstallBatchResult:
+    """Install under runtime constraints, writing the cwd's target lock if omitted."""
     constraint_path = _write_runtime_constraints(runtime_requirements)
     token = _ACTIVE_PIP_CONSTRAINT.set(constraint_path)
     requirements_token = _ACTIVE_RUNTIME_REQUIREMENTS.set(tuple(runtime_requirements))
@@ -601,6 +626,7 @@ def _install_required_packs_impl(
     runner: Runner = subprocess.run,
     cm_cli_resolver: Callable[[Path, Runner], list[str] | None] = _resolve_cm_cli,
 ) -> InstallBatchResult:
+    """Apply the selected packs to a writable target lock, cwd-relative if omitted."""
     ordered_packs = tuple(packs)
     install_refs = install_refs_by_name or {}
     ref_error = validate_install_refs(ordered_packs, install_refs, restore_entries or ())
@@ -611,7 +637,17 @@ def _install_required_packs_impl(
             results=tuple(InstallResult(pack.name, "failed", None, error) for pack in ordered_packs),
             preflight=PipPreflightResult(ok=False, error=error),
         )
-    preflight = preflight_pip_requirements(ordered_packs, runner=runner)
+    selected_entries = tuple(
+        _matching_lock_entry(pack, install_refs.get(pack.name), restore_entries or ()) for pack in ordered_packs
+    )
+    # Preflight the same dependency authority that restore will install.
+    # Catalog pip dependencies must not leak into an entry's declared recipe.
+    preflight_packs = tuple(
+        replace(pack, pip_packages=entry.pip_packages)
+        if entry is not None and _entry_has_dependencies(entry) else pack
+        for pack, entry in zip(ordered_packs, selected_entries)
+    )
+    preflight = preflight_pip_requirements(preflight_packs, runner=runner)
     if not preflight.ok:
         error = preflight.error or "pip preflight failed"
         return InstallBatchResult(
@@ -620,12 +656,10 @@ def _install_required_packs_impl(
             preflight=preflight,
         )
     results: list[InstallResult] = []
-    for pack in ordered_packs:
+    for pack, entry in zip(ordered_packs, selected_entries):
         authored_ref = install_refs.get(pack.name)
-        # A lock is a resolution receipt.  Reuse it when it exactly matches
-        # the authored URL and optional selector; otherwise resolve the URL
-        # (default branch for an unpinned ref) and record a new full commit.
-        entry = _matching_lock_entry(pack, authored_ref, restore_entries or ())
+        # The selected entry is the exact witness chosen before preflight.
+        # Without one, resolve the authored ref and record a new full commit.
         install_ref = _pack_ref_from_install_ref(authored_ref)
         if install_ref is not None and not install_ref.slug:
             install_ref = _pack_ref_with_slug(install_ref, pack.name)
@@ -984,8 +1018,39 @@ def _pip_plan_conflict(report_path: Path, protected: Mapping[str, str]) -> str |
     return None
 
 
-def _install_pack_pip_packages(name: str, pack: CustomNodePack | None, runner: Runner) -> str | None:
-    if pack is None or not pack.pip_packages:
+def _install_pack_pip_packages(
+    name: str,
+    pack: CustomNodePack | None,
+    runner: Runner,
+    *,
+    restore_entry: LockEntry | None = None,
+    install_dir: Path | None = None,
+) -> str | None:
+    """Preflight and install every dependency step through the same pip guard.
+
+    A declared entry recipe is authoritative, including its empty pip_packages.
+    Only bare legacy entries use the catalog's established pip dependencies.
+    Requirements files are explicit: no file discovery or install.py execution.
+    """
+    declared = _entry_has_dependencies(restore_entry)
+    packages = pack.pip_packages if pack is not None else ()
+    if restore_entry is not None and declared:
+        packages = restore_entry.pip_packages
+    steps: list[tuple[str, ...]] = [tuple(packages)] if packages else []
+    pip_cwd = install_dir.resolve() if declared and install_dir is not None else None
+    if restore_entry is not None:
+        if restore_entry.requirements_txt is not None:
+            if pip_cwd is None:
+                return f"requirements file for {name} needs a checked-out pack directory"
+            try:
+                requirements = (pip_cwd / restore_entry.requirements_txt).resolve(strict=True)
+            except (OSError, RuntimeError) as exc:
+                return f"cannot read requirements file for {name}: {exc}"
+            if not requirements.is_relative_to(pip_cwd) or not requirements.is_file():
+                return f"requirements file for {name} must be a file inside its checkout"
+            steps.append(("-r", str(requirements)))
+        steps.extend(("--no-deps", package) for package in restore_entry.pip_no_deps)
+    if not steps:
         return None
     if (requirement_error := _runtime_requirement_conflict(_ACTIVE_RUNTIME_REQUIREMENTS.get())) is not None:
         return requirement_error
@@ -1003,45 +1068,50 @@ def _install_pack_pip_packages(name: str, pack: CustomNodePack | None, runner: R
     active_constraint = _ACTIVE_PIP_CONSTRAINT.get()
     owned_constraint = active_constraint is None
     if owned_constraint:
-        active_constraint = _write_runtime_constraints()
-    def cleanup_constraint() -> None:
+        active_constraint = _write_runtime_constraints(_ACTIVE_RUNTIME_REQUIREMENTS.get())
+    runner_options: dict[str, Any] = {"check": True, "capture_output": True, "text": True}
+    if pip_cwd is not None:
+        runner_options["cwd"] = pip_cwd
+    try:
+        with tempfile.TemporaryDirectory(prefix="vibecomfy-node-pip-") as tmp:
+            # Check the entire recipe before any pip mutation. Each no-deps
+            # requirement is resolved separately with the same flags it will
+            # use on installation, preserving the authored sequence.
+            for index, arguments in enumerate(steps):
+                report_path = Path(tmp) / f"pip-report-{index}.json"
+                command = [sys.executable, "-m", "pip", "install", "--dry-run", "--report", str(report_path)]
+                if active_constraint is not None:
+                    command.extend(["--constraint", str(active_constraint)])
+                try:
+                    runner([*command, *arguments], **runner_options)
+                except (OSError, subprocess.CalledProcessError) as exc:
+                    return _error_text(exc) or f"failed to preflight pip dependencies for {name}"
+                conflict = _pip_plan_conflict(report_path, protected)
+                if conflict is not None:
+                    return conflict
+            for arguments in steps:
+                command = [sys.executable, "-m", "pip", "install"]
+                if active_constraint is not None:
+                    command.extend(["--constraint", str(active_constraint)])
+                try:
+                    runner([*command, *arguments], **runner_options)
+                except (OSError, subprocess.CalledProcessError) as exc:
+                    return _error_text(exc) or f"failed to install pip packages for {name}"
+                # Stop immediately if a build changed a protected package,
+                # including a declared runtime requirement outside the defaults.
+                for package, version in protected.items():
+                    try:
+                        observed = importlib.metadata.version(package)
+                    except importlib.metadata.PackageNotFoundError:
+                        observed = None
+                    if observed != version:
+                        return f"custom-node pip install changed protected runtime package {package} from {version} to {observed}"
+    finally:
         if owned_constraint and active_constraint is not None:
             try:
                 active_constraint.unlink()
             except OSError:
                 pass
-    with tempfile.TemporaryDirectory(prefix="vibecomfy-node-pip-") as tmp:
-        report_path = Path(tmp) / "pip-report.json"
-        try:
-            # Resolve with dependencies intact, but do not mutate. This catches
-            # transitive Torch churn before the real install transaction.
-            command = [sys.executable, "-m", "pip", "install", "--dry-run", "--report", str(report_path)]
-            if active_constraint is not None:
-                command.extend(["--constraint", str(active_constraint)])
-            runner(
-                [*command, *pack.pip_packages],
-                check=True, capture_output=True, text=True,
-            )
-        except (OSError, subprocess.CalledProcessError) as exc:
-            cleanup_constraint()
-            return _error_text(exc) or f"failed to preflight pip dependencies for {name}"
-        conflict = _pip_plan_conflict(report_path, protected)
-        if conflict is not None:
-            cleanup_constraint()
-            return conflict
-        try:
-            command = [sys.executable, "-m", "pip", "install"]
-            if active_constraint is not None:
-                command.extend(["--constraint", str(active_constraint)])
-            runner([*command, *pack.pip_packages], check=True, capture_output=True, text=True)
-        except (OSError, subprocess.CalledProcessError) as exc:
-            cleanup_constraint()
-            return _error_text(exc) or f"failed to install pip packages for {name}"
-    cleanup_constraint()
-    after = _protected_runtime_packages()
-    for package, version in protected.items():
-        if after.get(package) != version:
-            return f"custom-node pip install changed protected runtime package {package} from {version} to {after.get(package)}"
     return None
 def _finalize_install(
     name: str,
@@ -1054,18 +1124,30 @@ def _finalize_install(
     pack_ref: PackRef | None = None,
     expected_commit: str | None = None,
     sentinel: _InstallSentinel,
+    restore_entry: LockEntry | None = None,
 ) -> InstallResult:
-    """Shared install finalization: pip deps, git HEAD verify, lockfile upsert, sentinel clear.
+    """Verify and install dependencies, then persist the lock and clear the sentinel.
 
-    All five install/restore paths (clone, cm-cli success, refresh,
-    restore-existing, restore-clone) route through this single helper so that
+    Every path that installs dependencies (clone, cm-cli success, refresh,
+    restore-existing, restore-clone) routes through this single helper so that
     durable invariants — pip dependency installation, commit verification,
     lockfile entry derivation and upsert, and sentinel clearance — are
     applied uniformly and only after all work succeeds.
     """
-    # 1. Install pip dependencies (no-op when pack has none).
+    # Read a recipe only from the requested checkout, before pip can consume
+    # its requirements file. Verify again after pip, as for every install.
+    if _entry_has_dependencies(restore_entry):
+        sentinel.write(phase="verification", name=name, repo_url=repo_url, install_dir=install_dir)
+        head = _git_head(install_dir, runner)
+        if head is None:
+            return InstallResult(name, "failed", None, f"failed to read git HEAD for {install_dir}")
+        if expected_commit is not None and head != expected_commit:
+            return InstallResult(name, "failed", head, f"expected git HEAD {expected_commit} for {install_dir}, got {head}")
+    # 1. Install pip dependencies and the entry's declared recipe.
     sentinel.write(phase="pip", name=name, repo_url=repo_url, install_dir=install_dir)
-    if (pip_error := _install_pack_pip_packages(name, pack, runner)) is not None:
+    if (pip_error := _install_pack_pip_packages(
+        name, pack, runner, restore_entry=restore_entry, install_dir=install_dir,
+    )) is not None:
         return InstallResult(name, "failed", None, pip_error)
     # 2. Verify git HEAD.
     sentinel.write(phase="verification", name=name, repo_url=repo_url, install_dir=install_dir)
@@ -1074,8 +1156,11 @@ def _finalize_install(
         return InstallResult(name, "failed", None, f"failed to read git HEAD for {install_dir}")
     if expected_commit is not None and sha != expected_commit:
         return InstallResult(name, "failed", sha, f"expected git HEAD {expected_commit} for {install_dir}, got {sha}")
-    # 3. Derive lockfile entry.
-    entry = _lock_entry_for_pack(name, sha, repo_url, pack=pack, pack_ref=pack_ref)
+    # 3. Preserve the exact restore declaration, including its recipe and
+    # evidence. New catalog installs still derive their resolution receipt.
+    entry = restore_entry
+    if entry is None:
+        entry = _lock_entry_for_pack(name, sha, repo_url, pack=pack, pack_ref=pack_ref)
     if entry is None:
         return InstallResult(name, "failed", None, f"failed to derive class_set for registry-driven pack {name}")
     # 4. Upsert lockfile and clear sentinel — only after all durable work succeeds.
