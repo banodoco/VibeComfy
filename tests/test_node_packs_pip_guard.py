@@ -41,8 +41,11 @@ def test_node_pip_allows_compatible_torch_and_verifies_after_install(monkeypatch
         "pack", CustomNodePack("pack", "https://example.test/pack", frozenset({"Node"}), ("dep",)), runner
     )
     assert error is None
-    assert len(calls) == 2
-    assert "--no-deps" not in calls[1]
+    assert len(calls) == 3
+    assert "--dry-run" in calls[0] and "--dry-run" in calls[1]
+    assert "--dry-run" not in calls[2]
+    assert "--no-deps" not in calls[2]
+    assert all(call[1:5] == ["-I", "-m", "pip", "install"] for call in calls)
 
 
 def test_node_pip_rejects_malformed_resolution_report(monkeypatch) -> None:
@@ -60,7 +63,29 @@ def test_node_pip_rejects_malformed_resolution_report(monkeypatch) -> None:
 
 
 def test_batch_preflight_blocks_before_clone_or_lock_write(monkeypatch, tmp_path: Path) -> None:
+    from vibecomfy import resources
+    from vibecomfy.node_approvals import approval_record
+
     monkeypatch.setattr(install.importlib.metadata, "version", lambda name: "2.10.0+cu130")
+    # Shipped witness: the pack's exact repo, commit, recipe and pip_packages, at the
+    # resource seam that reviewed_lock_entry reads through read_lockfile().
+    sha = "a" * 40
+    url = "https://example.test/pack"
+    shipped_lock = tmp_path / "shipped_custom_nodes.lock"
+    shipped_lock.write_text(
+        f'[[entries]]\nname = "pack"\nurl = "{url}"\ngit_commit_sha = "{sha}"\n'
+        f'commit = "{sha}"\npip_packages = ["dep"]\n',
+        encoding="utf-8",
+    )
+    original_location = resources._resource_location
+    monkeypatch.setattr(
+        resources, "_resource_location",
+        lambda name: shipped_lock if name == "custom_nodes_lock" else original_location(name),
+    )
+    approval = approval_record(
+        {"repo": url, "commit": sha, "requirements_txt": None, "pip_no_deps": []},
+        placement_class="local",
+    )
     calls: list[list[str]] = []
 
     def runner(command, **kwargs):
@@ -71,10 +96,10 @@ def test_batch_preflight_blocks_before_clone_or_lock_write(monkeypatch, tmp_path
         report.write_text(json.dumps({"install": [{"metadata": {"name": "torch", "version": "2.11.0"}}]}))
         return type("Result", (), {"stdout": "", "stderr": ""})()
 
-    pack = CustomNodePack("pack", "https://example.test/pack", frozenset({"Node"}), ("dep",))
+    pack = CustomNodePack("pack", url, frozenset({"Node"}), ("dep",))
     result = install_required_packs(
         [pack], install_root=tmp_path / "custom_nodes", lockfile_path=tmp_path / "custom_nodes.lock", runner=runner,
-        cm_cli_resolver=lambda _root, _runner: None,
+        cm_cli_resolver=lambda _root, _runner: None, approvals=[approval],
     )
     assert not result.ok
     assert result.preflight.error and "protected runtime package torch" in result.preflight.error

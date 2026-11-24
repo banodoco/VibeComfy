@@ -356,6 +356,8 @@ class _SentinelFakeRunner:
         if call[:2] == ["git", "clone"]:
             if self.fail_clone:
                 raise _subprocess.CalledProcessError(1, call, stderr="clone failed")
+            Path(call[-1]).mkdir(parents=True)
+            self.origin_url = call[-2]
             return _subprocess.CompletedProcess(call, 0, stdout="", stderr="")
         if len(call) >= 4 and call[:4] == ["git", "-C", call[2], "status"]:
             return _subprocess.CompletedProcess(call, 0, stdout=self.porcelain, stderr="")
@@ -368,7 +370,7 @@ class _SentinelFakeRunner:
             return _subprocess.CompletedProcess(call, 0, stdout="", stderr="")
         if len(call) >= 4 and call[:4] == ["git", "-C", call[2], "checkout"]:
             return _subprocess.CompletedProcess(call, 0, stdout="", stderr="")
-        if len(call) >= 4 and call[1:4] == ["-m", "pip", "install"]:
+        if call[1:5] == ["-I", "-m", "pip", "install"]:
             if self.fail_pip:
                 raise _subprocess.CalledProcessError(1, call, stderr="pip install failed")
             return _subprocess.CompletedProcess(call, 0, stdout="", stderr="")
@@ -731,17 +733,24 @@ def test_sentinel_cleared_after_restore_full_success(tmp_path):
     install_dir.mkdir(parents=True)
     sentinel_path = install_root / INSTALL_STATE_DIR / "ExamplePack.json"
 
-    runner = _SentinelFakeRunner(
-        sha="pinnedsha", porcelain="", origin_url="https://example.test/example.git"
-    )
+    sha = "a" * 40
+    url = "https://example.test/example.git"
+    runner = _SentinelFakeRunner(sha=sha, porcelain="", origin_url=url)
 
-    entry = LockEntry("ExamplePack", "pinnedsha", "https://example.test/example.git")
+    entry = LockEntry("ExamplePack", sha, url)
+    from vibecomfy.node_approvals import approval_record
+
+    approval = approval_record(
+        {"repo": url, "commit": sha, "requirements_txt": None, "pip_no_deps": []},
+        placement_class="local",
+    )
 
     result = restore_pack(
         entry,
         install_root=install_root,
         lockfile_path=lockfile_path,
         runner=runner,
+        approvals=[approval],
     )
 
     assert result.status == "refreshed"
