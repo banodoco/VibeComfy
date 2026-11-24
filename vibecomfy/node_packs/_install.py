@@ -778,6 +778,14 @@ def _portable_requirement_packs(workflow: VibeWorkflow) -> list[CustomNodePack]:
     return result
 
 
+@dataclass(frozen=True)
+class _AuthoredPackRef(PackRef):
+    """Selection-only carrier; the registry selector itself has no recipe."""
+
+    requirements_txt: str | None = None
+    pip_no_deps: tuple[str, ...] = ()
+
+
 def build_install_refs_by_name(
     workflow: VibeWorkflow,
     packs: Sequence[CustomNodePack],
@@ -859,10 +867,16 @@ def _matching_lock_entry(
     install_ref: PackRef | LockEntry | dict[str, Any] | str | None,
     restore_entries: Sequence[LockEntry],
 ) -> LockEntry | None:
-    """Return an exact lock witness for a URL/ref, if one exists."""
+    """Return a lock witness only for the same selector and authored recipe."""
+    from vibecomfy.node_recipes import recipe_sha256
+
     if isinstance(install_ref, LockEntry):
         return install_ref
     ref = _pack_ref_from_install_ref(install_ref)
+    wanted_recipe = recipe_sha256(
+        {"requirements_txt": ref.requirements_txt, "pip_no_deps": ref.pip_no_deps}
+        if isinstance(ref, _AuthoredPackRef) else {}
+    )
     candidates = [
         entry for entry in restore_entries
         if entry.name == pack.name or entry.slug == pack.name or (ref is not None and entry.slug == ref.slug)
@@ -887,6 +901,9 @@ def _matching_lock_entry(
             continue
         locked_commit = entry.commit or entry.git_commit_sha
         if ref.commit and locked_commit != ref.commit:
+            continue
+        if recipe_sha256({"requirements_txt": entry.requirements_txt,
+                          "pip_no_deps": entry.pip_no_deps}) != wanted_recipe:
             continue
         # A commit-only ref is exact only when the lock carries that commit;
         # URL-only and version-only refs are likewise witnessed by the URL or
@@ -966,6 +983,8 @@ def _lock_entry_for_pack(name: str, sha: str, repo_url: str, *, pack: CustomNode
         class_set=class_set,
         pip_packages=pack.pip_packages if pack is not None else (),
         class_schema_sha256=pack.class_schema_sha256 if pack_ref is not None and pack is not None else None,
+        requirements_txt=pack_ref.requirements_txt if isinstance(pack_ref, _AuthoredPackRef) else None,
+        pip_no_deps=pack_ref.pip_no_deps if isinstance(pack_ref, _AuthoredPackRef) else (),
     )
 def _restore_entry_from_install_ref(pack: CustomNodePack, install_ref: PackRef | LockEntry | dict[str, Any] | str | None) -> LockEntry | None:
     if install_ref is None:
@@ -978,7 +997,10 @@ def _restore_entry_from_install_ref(pack: CustomNodePack, install_ref: PackRef |
     repo_url = pack_ref.url or pack.repo
     if not pack_ref.slug:
         pack_ref = _pack_ref_with_slug(pack_ref, pack.name)
-    return _lock_entry_for_pack(pack.name, pack_ref.commit or "", repo_url, pack=pack, pack_ref=pack_ref)
+    entry = _lock_entry_for_pack(pack.name, pack_ref.commit or "", repo_url, pack=pack, pack_ref=pack_ref)
+    # A synthesized authored row has no reviewed legacy dependency witness.
+    # Admission restores those packages only from an exact shipped recipe.
+    return replace(entry, pip_packages=()) if entry is not None else None
 def _pack_ref_from_install_ref(install_ref: PackRef | LockEntry | dict[str, Any] | str | None) -> PackRef | None:
     if install_ref is None or isinstance(install_ref, LockEntry):
         return None
@@ -986,7 +1008,10 @@ def _pack_ref_from_install_ref(install_ref: PackRef | LockEntry | dict[str, Any]
         return install_ref
     if isinstance(install_ref, str):
         return PackRef(slug="", source="git", version=install_ref, commit=install_ref if _looks_like_commit(install_ref) else None)
-    return PackRef(
+    from vibecomfy.node_recipes import RECIPE_FIELDS, canonical_recipe
+
+    recipe = canonical_recipe({key: install_ref[key] for key in RECIPE_FIELDS if key in install_ref})
+    selector = PackRef(
         slug=str(install_ref.get("slug") or install_ref.get("name") or ""),
         source=str(install_ref.get("source") or "git"),
         version=str(install_ref["version"]) if install_ref.get("version") is not None else None,
@@ -997,18 +1022,15 @@ def _pack_ref_from_install_ref(install_ref: PackRef | LockEntry | dict[str, Any]
         registry_id=str(install_ref["registry_id"]) if install_ref.get("registry_id") is not None else None,
         download_url=str(install_ref["download_url"]) if install_ref.get("download_url") is not None else None,
     )
-def _pack_ref_with_slug(pack_ref: PackRef, slug: str) -> PackRef:
-    return PackRef(
-        slug=slug,
-        source=pack_ref.source,
-        version=pack_ref.version,
-        commit=pack_ref.commit,
-        url=pack_ref.url,
-        path=pack_ref.path,
-        name=pack_ref.name,
-        registry_id=pack_ref.registry_id,
-        download_url=pack_ref.download_url,
+    if recipe["requirements_txt"] is None and not recipe["pip_no_deps"]:
+        return selector
+    return _AuthoredPackRef(
+        **selector.to_dict(),
+        requirements_txt=recipe["requirements_txt"],
+        pip_no_deps=tuple(recipe["pip_no_deps"]),
     )
+def _pack_ref_with_slug(pack_ref: PackRef, slug: str) -> PackRef:
+    return replace(pack_ref, slug=slug)
 def _checkout_ref_and_verify(
     name: str,
     repo_url: str,
