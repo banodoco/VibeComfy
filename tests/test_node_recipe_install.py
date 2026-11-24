@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from tests.fixtures.node_recipe_runner import RecipeRunner
+from tests.fixtures.node_restore_checkout import assert_staged_restore
 from vibecomfy.node_approvals import approval_record
 from vibecomfy.node_packs import CustomNodePack, LockEntry, read_lockfile, write_lockfile
 from vibecomfy.node_packs import _install as install
@@ -63,10 +64,7 @@ def test_restore_recipe_clone_checkout_requirements_then_ordered_no_deps(target)
     runner = RecipeRunner()
     result = restore(entry, target, runner)
     assert result.status == "installed"
-    assert runner.calls[:2] == [
-        ["git", "clone", entry.url, str(root / entry.name)],
-        ["git", "-C", str(root / entry.name), "checkout", PIN],
-    ]
+    assert_staged_restore(runner, root, entry.name, entry.url, PIN)
     assert len(runner.installs) == 4
     assert runner.installs[0][-2:] == ["-r", str((root / entry.name / entry.requirements_txt).resolve())]
     assert [call[-2:] for call in runner.installs[1:]] == [["--no-deps", package] for package in NO_DEPS]
@@ -114,7 +112,10 @@ def test_existing_checkout_applies_own_recipe(target, initial_head):
     result = restore(entry, target, runner)
     assert result.status == "refreshed"
     assert len(runner.installs) == 4
-    assert not any(call[:2] == ["git", "clone"] for call in runner.calls)
+    if initial_head == PIN:
+        assert not any(call[:2] == ["git", "clone"] for call in runner.calls)
+    else:
+        assert_staged_restore(runner, target[0], entry.name, entry.url, PIN)
     checkouts = [call for call in runner.calls if call[:2] == ["git", "-C"] and call[3] == "checkout"]
     assert len(checkouts) == (0 if initial_head == PIN else 1)
     assert read_lockfile(target[1]) == [entry]
