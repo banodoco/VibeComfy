@@ -84,7 +84,7 @@ def pack_version_evidence(
     # is not evidence of the authored identity.
     by_name: dict[str, list[int]] = {}
     for index, ref in enumerate(refs):
-        for name in {ref.get("slug"), ref.get("name")}:
+        for name in (ref.get("slug"), ref.get("name")):
             if isinstance(name, str) and name:
                 by_name.setdefault(name.casefold(), []).append(index)
     authored: dict[int, set[str]] = {}
@@ -130,7 +130,9 @@ def pack_version_evidence(
         else:
             # A human-readable version on a ref might be source annotation,
             # not a verified tag-to-commit mapping. Expose it as a label only.
-            relation = "unverified"
+            relation = ("same_version_label" if versions == [lock_label]
+                        else "different_version_label" if lock_label is not None
+                        else "unverified")
         evidence.append({
             "pack": slug,
             "repository": repo,
