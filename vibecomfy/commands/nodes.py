@@ -788,8 +788,11 @@ def _cmd_nodes_lock(args: argparse.Namespace) -> int:
 
 def _cmd_nodes_restore(args: argparse.Namespace) -> int:
     """Replay a target lock (cwd-relative by default), not the shipped catalog."""
+    from vibecomfy import resources
+
     try:
         lockpath = Path(args.lockfile)
+        resources.require_writable_node_lock(lockpath)
         if lockpath.is_symlink() or not lockpath.is_file():
             raise ValueError("node restore requires an existing regular target lock")
         entries = read_lockfile(lockpath)
