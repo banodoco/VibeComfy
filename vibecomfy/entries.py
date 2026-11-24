@@ -231,7 +231,9 @@ def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | N
         # complete immutable revision, including any revision-local sidecars.
         if replacing:
             manifest["bundle"] = f"{staging.name}/bundle"
-            publication = staging / ".publish-entry.json"
+            # No-hook VibeComfy callers retain the historical layout. Hook
+            # revisions keep their local entry.json as the sidecar anchor.
+            publication = staging / (".publish-entry.json" if before_publish is not None else "entry.json")
             publication.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
             os.replace(publication, destination / "entry.json")
         else:
