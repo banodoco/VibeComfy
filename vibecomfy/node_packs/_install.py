@@ -376,30 +376,75 @@ def _entry_has_dependencies(entry: LockEntry | None) -> bool:
     )
 
 
+def _approval_node(entry: LockEntry) -> dict[str, Any]:
+    """Project only the source and declarative recipe covered by LE-2a."""
+    if (not entry.name or entry.name in {".", ".."} or Path(entry.name).name != entry.name
+            or any(char.isspace() or char in "/\\" for char in entry.name)):
+        raise ValueError("invalid node restore directory")
+    if entry.source != "git" or entry.path or entry.version:
+        raise ValueError("node code approval requires a pinned Git repository")
+    if entry.commit != entry.git_commit_sha:
+        raise ValueError("node restore commit aliases disagree")
+    return {"repo": entry.url, "commit": entry.git_commit_sha,
+            "requirements_txt": entry.requirements_txt, "pip_no_deps": list(entry.pip_no_deps)}
+
+
+def validate_restore_approvals(entries, approvals, *, placement_class):
+    """Admit the whole target lock before git, pip, sentinels or lock writes."""
+    from vibecomfy.node_approvals import require_approved_nodes, reviewed_lock_entry
+
+    if len({entry.name.casefold() for entry in entries}) != len(entries):
+        raise ValueError("duplicate node restore directory")
+    nodes = [_approval_node(entry) for entry in entries]
+    records = require_approved_nodes(nodes, approvals, placement_class=placement_class)
+    for entry, node in zip(entries, nodes):
+        if entry.pip_packages:
+            reviewed = reviewed_lock_entry(node)
+            if reviewed is None or entry.pip_packages != reviewed.pip_packages:
+                raise ValueError("node code approval does not cover pip_packages; declare requirements_txt or pip_no_deps")
+    return records
+
+
 def restore_pack(
     entry: LockEntry,
     *,
     install_root: Path | None = None,
     runner: Runner = subprocess.run,
     lockfile_path: Path = Path("custom_nodes.lock"),
+    approvals: Sequence[Mapping[str, Any]] = (),
+    placement_class: str = "local",
 ) -> InstallResult:
     """Restore this entry; an omitted lock path writes the cwd's target lock.
 
     Declared dependencies and recipes come from the entry. Bare legacy entries
     retain catalog pip dependencies, but never discover or run install.py.
     """
+    try:
+        validate_restore_approvals((entry,), approvals, placement_class=placement_class)
+    except ValueError as exc:
+        return InstallResult(entry.name, "failed", None, str(exc))
+    from vibecomfy.node_approvals import reviewed_lock_entry
+    reviewed = reviewed_lock_entry(_approval_node(entry))
+    if reviewed is not None and not entry.pip_packages:
+        entry = replace(entry, pip_packages=reviewed.pip_packages)
     if install_root is None:
         install_root = default_install_root()
     declared = _entry_has_dependencies(entry)
     if declared and not entry.git_commit_sha:
         return InstallResult(entry.name, "failed", None, f"declared dependencies for {entry.name} require a pinned git commit")
     install_dir = install_root / entry.name
-    pack = None if declared else _pack_by_name(entry.name)
+    if install_dir.is_symlink():
+        return InstallResult(entry.name, "failed", None, "node restore directory must not be a symlink")
+    # Consent covers the entry's recipe, never a same-named ambient catalog recipe.
+    pack = None
     sentinel = _install_sentinel(install_root, entry.name)
     if _has_incomplete_install(sentinel): return InstallResult(entry.name, "failed", None, sentinel.reason)
     status: InstallStatus = "installed"
     verified = 0
     if install_dir.exists():
+        origin = _git_origin(install_dir, runner)
+        if origin is None or _normalize_git_remote(origin) != _normalize_git_remote(entry.url or ""):
+            return InstallResult(entry.name, "failed", None, "approved node repository differs from the existing checkout")
         current_head = _git_head(install_dir, runner)
         dirty = _git_porcelain(install_dir, runner)
         verified = _verified_declared_patches(install_dir, dirty, entry, current_head) if dirty else 0
@@ -590,6 +635,8 @@ def install_required_packs(
     runner: Runner = subprocess.run,
     cm_cli_resolver: Callable[[Path, Runner], list[str] | None] = _resolve_cm_cli,
     runtime_requirements: Sequence[str] = (),
+    approvals: Sequence[Mapping[str, Any]] = (),
+    placement_class: str = "local",
 ) -> InstallBatchResult:
     """Install under runtime constraints, writing the cwd's target lock if omitted."""
     constraint_path = _write_runtime_constraints(runtime_requirements)
@@ -605,6 +652,8 @@ def install_required_packs(
             lockfile_path=lockfile_path,
             runner=runner,
             cm_cli_resolver=cm_cli_resolver,
+            approvals=approvals,
+            placement_class=placement_class,
         )
     finally:
         _ACTIVE_PIP_CONSTRAINT.reset(token)
@@ -625,6 +674,8 @@ def _install_required_packs_impl(
     lockfile_path: Path = Path("custom_nodes.lock"),
     runner: Runner = subprocess.run,
     cm_cli_resolver: Callable[[Path, Runner], list[str] | None] = _resolve_cm_cli,
+    approvals: Sequence[Mapping[str, Any]] = (),
+    placement_class: str = "local",
 ) -> InstallBatchResult:
     """Apply the selected packs to a writable target lock, cwd-relative if omitted."""
     ordered_packs = tuple(packs)
@@ -640,6 +691,14 @@ def _install_required_packs_impl(
     selected_entries = tuple(
         _matching_lock_entry(pack, install_refs.get(pack.name), restore_entries or ()) for pack in ordered_packs
     )
+    try:
+        validate_restore_approvals(tuple(entry for entry in selected_entries if entry is not None),
+                                  approvals, placement_class=placement_class)
+    except ValueError as exc:
+        error = str(exc)
+        return InstallBatchResult(ok=False,
+            results=tuple(InstallResult(pack.name, "failed", None, error) for pack in ordered_packs),
+            preflight=PipPreflightResult(ok=False, error=error))
     # Preflight the same dependency authority that restore will install.
     # Catalog pip dependencies must not leak into an entry's declared recipe.
     preflight_packs = tuple(
@@ -664,7 +723,8 @@ def _install_required_packs_impl(
         if install_ref is not None and not install_ref.slug:
             install_ref = _pack_ref_with_slug(install_ref, pack.name)
         result = (
-            restore_pack(entry, install_root=install_root, runner=runner, lockfile_path=lockfile_path)
+            restore_pack(entry, install_root=install_root, runner=runner, lockfile_path=lockfile_path,
+                         approvals=approvals, placement_class=placement_class)
             if entry is not None
             else install_pack(
                 name=pack.name,
@@ -1373,3 +1433,4 @@ def _resolve_node_index_path(path: Path) -> Path:
     repo_index = Path(__file__).resolve().parent.parent.parent / "node_index.json"
     return repo_index if repo_index.exists() else path
 def _error_text(exc: BaseException) -> str | None: return next((text.strip() for value in (getattr(exc, "stderr", None), getattr(exc, "stdout", None)) if isinstance((text := value.decode(errors="replace") if isinstance(value, bytes) else value), str) and text.strip()), str(exc) or None)
+

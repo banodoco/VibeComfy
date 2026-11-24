@@ -109,6 +109,26 @@ def validate_approvals(records: Any) -> list[NodeApproval]:
     return result
 
 
+def reviewed_lock_entry(node):
+    """Find an exact source/recipe witness in the shipped, read-only catalog."""
+    from vibecomfy.node_packs import read_lockfile
+    from vibecomfy.node_recipes import recipe_sha256
+
+    wanted = approval_record(node, placement_class="local")
+    for row in read_lockfile():
+        if (row.url == node["repo"] and (row.git_commit_sha or row.commit) == node["commit"]
+                and recipe_sha256({"requirements_txt": row.requirements_txt,
+                                   "pip_no_deps": row.pip_no_deps}) == wanted["recipe_sha256"]):
+            return row
+    return None
+
+
+def reviewed_approvals(nodes, *, placement_class):
+    """Issue records only for exact shipped source and recipe declarations."""
+    return [approval_record(node, placement_class=placement_class)
+            for node in nodes if reviewed_lock_entry(node) is not None]
+
+
 def require_approved_nodes(
     nodes: Sequence[Mapping[str, Any]],
     records: Any,
