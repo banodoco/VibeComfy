@@ -79,6 +79,14 @@ def _is_resource_path(name: str, path: Path) -> bool:
     return path.resolve() == _resource_location(name).resolve()
 
 
+def require_writable_node_lock(path: Path) -> None:
+    """Reject a writable target that aliases the trusted shipped catalog."""
+    target = path.resolve()
+    shipped = _resource_location("custom_nodes_lock").resolve()
+    if target == shipped or (target.exists() and shipped.exists() and target.samefile(shipped)):
+        raise ValueError(f"node restore target lock resolves to the shipped catalog: {path}")
+
+
 def _resource_path(name: str) -> Path:
     path = _resource_location(name)
     exists = path.is_dir() if name == "ready_templates" else path.is_file()
