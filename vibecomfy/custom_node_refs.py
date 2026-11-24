@@ -4,8 +4,8 @@ import os
 import re
 import subprocess
 from dataclasses import dataclass, replace
-from urllib.parse import urlsplit
 from typing import Any, Iterable, Mapping
+from urllib.parse import urlsplit
 
 from vibecomfy.node_packs import LockEntry
 from vibecomfy.node_recipes import RECIPE_FIELDS, canonical_recipe
@@ -27,7 +27,6 @@ __all__ = [
 ]
 
 
-
 _FULL_COMMIT = re.compile(r"[0-9a-fA-F]{40}")
 _REPOSITORY_SLUG = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 _REF_NAME = re.compile(r"[A-Za-z0-9_./-]+")
@@ -45,6 +44,9 @@ def _added_repository(value: str) -> tuple[str, str, str]:
             or parsed.password is not None or parsed.query or parsed.fragment
             or "\\" in url or "@" in url or not ref):
         raise ValueError("--add requires an HTTPS repository URL without credentials, query or fragment")
+    # Accessing port also rejects malformed numeric ports before a full-SHA
+    # declaration can bypass Git lookup.
+    _ = parsed.port
     url = url.rstrip("/")
     slug = parsed.path.rstrip("/").rsplit("/", 1)[-1].removesuffix(".git")
     if not _REPOSITORY_SLUG.fullmatch(slug) or slug in {".", ".."}:
@@ -105,7 +107,7 @@ def resolve_added_node_refs(add: Iterable[str]) -> list[dict[str, Any]]:
     for value in add:
         url, slug, ref = _added_repository(value)
         resolved.append({"slug": slug, "source": "git", "url": url,
-                         "commit": _resolve_added_commit(url, ref)})
+                         "commit": _resolve_added_commit(url, ref), "entry_add": True})
     normalized, _ = normalize_custom_node_requirements({"custom_node_refs": resolved})
     return list(normalized.get("custom_node_refs", ()))
 
@@ -117,7 +119,17 @@ def apply_added_node_refs(workflow: VibeWorkflow, refs: Iterable[Mapping[str, An
     its repository basename asserts which node classes the repo implements.
     Exact source/commit conflicts fail in the existing normalizer.
     """
-    additions = [dict(ref) for ref in refs]
+    additions = []
+    for raw in refs:
+        ref = dict(raw)
+        url, commit = ref.get("url"), ref.get("commit")
+        if (not isinstance(url, str) or not isinstance(commit, str)
+                or not _FULL_COMMIT.fullmatch(commit)):
+            raise ValueError("resolved --add declaration requires a repository URL and full commit SHA")
+        canonical_url, slug, _ = _added_repository(url)
+        if ref.get("slug") != slug or ref.get("source") != "git" or canonical_url != url:
+            raise ValueError("resolved --add declaration has inconsistent source identity")
+        additions.append({**ref, "commit": commit.lower(), "entry_add": True})
     if not additions:
         return
     workflow._admit_legacy_custom_node_refs_once()

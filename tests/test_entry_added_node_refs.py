@@ -34,7 +34,7 @@ def test_resolve_add_from_recorded_remote(monkeypatch, suffix, reply, expected):
 
     monkeypatch.setattr(subprocess, "run", ls_remote)
     assert resolve_added_node_refs([URL + suffix]) == [
-        {"slug": "ComfyUI-SAM-Audio", "source": "git", "url": URL, "commit": expected}
+        {"slug": "ComfyUI-SAM-Audio", "source": "git", "url": URL, "commit": expected, "entry_add": True}
     ]
     assert len(calls) == 1
 
@@ -69,7 +69,11 @@ def test_add_round_trips_in_canonical_entry_without_second_lookup(tmp_path, monk
     original_bytes = source.read_bytes()
     calls = []
 
+    real_run = subprocess.run
+
     def ls_remote(argv, **kwargs):
+        if not isinstance(argv, (list, tuple)) or "ls-remote" not in argv:
+            return real_run(argv, **kwargs)
         calls.append(argv)
         return subprocess.CompletedProcess(argv, 0, f"{PIN}\tHEAD\n", "")
 
@@ -80,7 +84,7 @@ def test_add_round_trips_in_canonical_entry_without_second_lookup(tmp_path, monk
     entry = import_as_entry(source, "added", tmp_path / "entries", add=[URL])
     folder = Path(entry["bundle"])
     wf = load_bundle(folder / "workflow.py", trust=Provenance.USER_CONFIRMED).workflow
-    expected = {"slug": "ComfyUI-SAM-Audio", "source": "git", "url": URL, "commit": PIN}
+    expected = {"slug": "ComfyUI-SAM-Audio", "source": "git", "url": URL, "commit": PIN, "entry_add": True}
     assert expected in wf.requirements.custom_node_refs
     assert (folder / "source.json").read_bytes() == original_bytes
     replay = import_as_entry(folder, "replay", tmp_path / "entries")
@@ -89,3 +93,22 @@ def test_add_round_trips_in_canonical_entry_without_second_lookup(tmp_path, monk
     assert len(calls) == 1
     assert resolve_added_node_refs([URL + "@" + PIN]) == [expected]
     assert len(calls) == 1
+
+
+def test_pre_resolved_declaration_rejects_non_full_commit_before_publication(tmp_path):
+    from vibecomfy.custom_node_refs import apply_added_node_refs
+    from vibecomfy.workflow import VibeWorkflow, WorkflowSource
+
+    workflow = VibeWorkflow("test", WorkflowSource("test"))
+    with pytest.raises(ValueError, match="full commit"):
+        apply_added_node_refs(workflow, [{
+            "slug": "ComfyUI-SAM-Audio", "source": "git", "url": URL, "commit": "main"
+        }])
+    assert not workflow.requirements.custom_node_refs
+
+
+def test_conflicting_added_pins_are_not_silently_replaced():
+    from vibecomfy.custom_node_refs import CustomNodeRefConflict
+
+    with pytest.raises(CustomNodeRefConflict):
+        resolve_added_node_refs([URL + "@" + PIN, URL + "@" + TAG])
