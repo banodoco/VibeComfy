@@ -161,12 +161,14 @@ def merge_entry_added_node_refs(
 
 
 def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | None = None, *, replace: bool = False, add: Iterable[str] = (),
-                    added_node_refs: Iterable[Mapping[str, Any]] = ()) -> dict[str, Any]:
+                    added_node_refs: Iterable[Mapping[str, Any]] = (), schema_provider: Any = None) -> dict[str, Any]:
     """Import a complete bundle; explicitly replace an entry by swapping its manifest.
 
     The entry directory and older bundle paths stay intact for readers that
     already loaded the old manifest. Retiring those bundles requires separate
     reader-aware cleanup; never remove them during publication.
+    For JSON sources, an explicitly supplied schema provider governs the
+    canonical import; otherwise the import service selects its offline schema.
     """
     from vibecomfy.custom_node_refs import apply_added_node_refs, resolve_added_node_refs
     from vibecomfy.porting.import_service import import_workflow_bytes
@@ -195,7 +197,7 @@ def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | N
     # approved identity is exactly the one written, even if a branch moved.
     refs = merge_entry_added_node_refs(retained_refs, [*added_node_refs, *resolve_added_node_refs(add)])
     artifacts = import_workflow_bytes(source_path.read_bytes(), workflow_id=entry_id, infer_inputs=True,
-                                      added_node_refs=refs) if is_json else None
+                                      added_node_refs=refs, schema_provider=schema_provider) if is_json else None
     root.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix="revision-", dir=destination)) if replacing else Path(tempfile.mkdtemp(prefix=f".{entry_id}.", dir=root))
     try:
