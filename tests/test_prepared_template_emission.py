@@ -467,10 +467,26 @@ def test_cached_bindings_cannot_authorize_imports_before_staging(
 def test_resealed_valid_roster_permutation_is_rederived_before_emission(
     tmp_path: Path, field: str,
 ) -> None:
-    workflow = _workflow()
-    workflow.add_node("Integer", _id="2", uid="second-independent-integer", value=9)
-    template = prepare_template(workflow, _slots(), key_context=_context())
-    cold = fill_template(template, {"seed": 7}, current_key_inputs=_current(template))
+    from vibecomfy.porting.emit.emit_constants import _SECTION_NODE_THRESHOLD
+
+    if field == "sections":
+        workflow = _request_workflow()
+        # Nine retained nodes cross the eight-node threshold. LoadImage and
+        # SaveImage supply distinct, real Inputs/Outputs section groups.
+        for number in range(5, 10):
+            workflow.add_node("LoadImage", _id=str(number), uid=f"section-input-{number}",
+                              image=f"authored-{number}.png")
+        workflow = _retain_fixture_native_rosters(workflow)
+        assert len(workflow.nodes) > _SECTION_NODE_THRESHOLD
+        slots = _request_slots()
+        values = {"prompt": AUTHORED_PROMPT, "seed": 7, "width": 512,
+                  "height": 512, "prefix": "authored"}
+    else:
+        workflow = _workflow()
+        workflow.add_node("Integer", _id="2", uid="second-independent-integer", value=9)
+        slots, values = _slots(), {"seed": 7}
+    template = prepare_template(workflow, slots, key_context=_context())
+    cold = fill_template(template, values, current_key_inputs=_current(template))
     _emit(cold.workflow, tmp_path / "populate" / "workflow.py", "bundle", session=cold.emission)
     record = cold.snapshot().to_record()
     changed = 0
@@ -480,14 +496,26 @@ def test_resealed_valid_roster_permutation_is_rederived_before_emission(
             layout[field].reverse()  # Independent nodes: still topologically valid.
             changed += 1
         elif field == "sections":
-            for _, members in layout[field]:
-                if len(members) > 1:
-                    members.reverse()  # Same groups/membership, different byte order.
-                    changed += 1
+            assert len(layout["node_order"]) > _SECTION_NODE_THRESHOLD
+            sections = layout[field]
+            assert len(sections) == 2 and {name for name, _ in sections} == {"Inputs", "Outputs"}
+            # The renderer uses node->section membership, not member-list or
+            # mapping insertion order. Reverse the groups' node assignments:
+            # valid labels/coverage remain, but emitted comment order reverses.
+            layout[field] = [[name, members] for (name, _), members in
+                             zip(sections, reversed([members for _, members in sections]))]
+            assert sorted(nid for _, members in sections for nid in members) == sorted(
+                nid for _, members in layout[field] for nid in members)
+            assert layout[field] != sections
+            changed += 1
     assert changed > 0
     resealed = PreparedTemplate.from_bytes(_seal(record))
-    warm = fill_template(resealed, {"seed": 7}, current_key_inputs=_current(resealed))
+    warm = fill_template(resealed, values, current_key_inputs=_current(resealed))
     full = _emit(workflow, tmp_path / "full" / "workflow.py", "bundle")
+    if field == "sections":
+        comments = [line.strip() for line in full.python_path.read_bytes().splitlines()
+                    if line.strip() in {b"# Inputs", b"# Outputs"}]
+        assert len(comments) == 2 and set(comments) == {b"# Inputs", b"# Outputs"}
     published = _emit(warm.workflow, tmp_path / "warm" / "workflow.py", "bundle", session=warm.emission)
     _assert_pair_equal(full, published)
     assert any((event.outcome, event.reason) == ("recompute", "entry_invalid")
