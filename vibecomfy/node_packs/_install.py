@@ -346,8 +346,66 @@ def _install_pack_via_clone(
     checkout_ref: str | None = None,
     expected_commit: str | None = None,
     sentinel: _InstallSentinel | None = None,
+    restore_entry: LockEntry | None = None,
+    replace_existing: bool = False,
 ) -> InstallResult:
     sentinel = sentinel or _install_sentinel(install_dir.parent, name)
+    if restore_entry is not None:
+        # A restore must never materialize the default branch (or a failed pin)
+        # inside a ComfyUI search root. Use a sibling of the resolved root, not
+        # a system temp directory: publication must be a same-filesystem rename.
+        root = install_dir.parent.resolve()
+        if root == root.parent:
+            return InstallResult(name, "failed", None, "cannot stage node restore outside the install root")
+        sentinel.write(phase="clone", name=name, repo_url=repo_url, install_dir=install_dir)
+        try:
+            work_dir = Path(tempfile.mkdtemp(prefix=".vibecomfy-restore-", dir=root.parent))
+        except OSError as exc:
+            return InstallResult(name, "failed", None, f"failed to create restore staging: {_error_text(exc)}")
+        staged = work_dir / "checkout"
+        previous = work_dir / "previous"
+        published = False
+        result: InstallResult | None = None
+        try:
+            if replace_existing:
+                # Only a clean checkout of the approved origin reaches here.
+                # Keep it outside the loadable root if the replacement fails.
+                install_dir.rename(previous)
+            runner(["git", "clone", "--no-checkout", "--", repo_url, str(staged)],
+                   check=True, capture_output=True, text=True)
+            checkout_error = _checkout_ref_and_verify(
+                name, repo_url, staged, checkout_ref, expected_commit, runner,
+                sentinel=sentinel, fetch=True, verify_origin=True,
+            )
+            if checkout_error is not None:
+                result = InstallResult(name, "failed", None, checkout_error)
+            else:
+                if install_dir.exists() or install_dir.is_symlink():
+                    raise FileExistsError(f"node restore destination appeared during staging: {install_dir}")
+                sentinel.write(phase="publish", name=name, repo_url=repo_url, install_dir=install_dir)
+                staged.rename(install_dir)
+                published = True
+                result = _finalize_install(
+                    name, repo_url, install_dir, lockfile_path, runner,
+                    pack=pack, expected_commit=expected_commit, sentinel=sentinel,
+                    restore_entry=restore_entry,
+                )
+        except (OSError, subprocess.CalledProcessError) as exc:
+            result = InstallResult(name, "failed", None, _error_text(exc) or f"failed to restore {name}")
+        finally:
+            succeeded = result is not None and result.status == "installed"
+            if published and not succeeded:
+                # Remove the candidate from the search root before cleanup.
+                # An unexpected cleanup error is not silently swallowed.
+                install_dir.rename(staged)
+            if not succeeded and previous.exists():
+                if staged.exists():
+                    shutil.rmtree(staged)
+                if result is not None:
+                    result = replace(result, error=f"{result.error}; previous checkout retained at {previous}")
+            else:
+                shutil.rmtree(work_dir)
+        return result
     try:
         sentinel.write(phase="clone", name=name, repo_url=repo_url, install_dir=install_dir)
         runner(["git", "clone", repo_url, str(install_dir)], check=True, capture_output=True, text=True)
@@ -471,23 +529,19 @@ def restore_pack(
             if not declared:
                 return InstallResult(entry.name, "refreshed", entry.git_commit_sha, None, verified)
         else:
-            try:
-                sentinel.write(phase="restore_fetch", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
-                runner(["git", "-C", str(install_dir), "fetch", "origin"], check=True, capture_output=True, text=True)
-                sentinel.write(phase="restore_checkout", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
-                runner(["git", "-C", str(install_dir), "checkout", entry.git_commit_sha], check=True, capture_output=True, text=True)
-            except (OSError, subprocess.CalledProcessError) as exc:
-                return InstallResult(entry.name, "failed", None, _error_text(exc) or f"failed to restore {entry.name}")
+            result = _install_pack_via_clone(
+                entry.name, entry.url or "", pack, install_dir, lockfile_path, runner,
+                checkout_ref=entry.git_commit_sha, expected_commit=entry.git_commit_sha,
+                sentinel=sentinel, restore_entry=entry, replace_existing=True,
+            )
+            return replace(result, status="refreshed") if result.status == "installed" else result
         status = "refreshed"
     else:
-        sentinel.write(phase="restore_start", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
-        try:
-            sentinel.write(phase="clone", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
-            runner(["git", "clone", entry.url, str(install_dir)], check=True, capture_output=True, text=True)
-            sentinel.write(phase="restore_checkout", name=entry.name, repo_url=entry.url or "", install_dir=install_dir)
-            runner(["git", "-C", str(install_dir), "checkout", entry.git_commit_sha], check=True, capture_output=True, text=True)
-        except (OSError, subprocess.CalledProcessError) as exc:
-            return InstallResult(entry.name, "failed", None, _error_text(exc) or f"failed to restore {entry.name}")
+        return _install_pack_via_clone(
+            entry.name, entry.url or "", pack, install_dir, lockfile_path, runner,
+            checkout_ref=entry.git_commit_sha, expected_commit=entry.git_commit_sha,
+            sentinel=sentinel, restore_entry=entry,
+        )
     result = _finalize_install(
         entry.name, entry.url or "", install_dir, lockfile_path, runner,
         pack=pack, expected_commit=entry.git_commit_sha, sentinel=sentinel, restore_entry=entry,
@@ -1020,13 +1074,22 @@ def _checkout_ref_and_verify(
     sentinel: _InstallSentinel,
     fetch: bool,
     resolve_latest: bool = False,
+    verify_origin: bool = False,
 ) -> str | None:
+    if verify_origin:
+        origin = _git_origin(install_dir, runner)
+        if origin is None or _normalize_git_remote(origin) != _normalize_git_remote(repo_url):
+            return f"approved node repository differs from staged checkout for {name}"
     if checkout_ref is None and not (fetch and resolve_latest):
         return None
     try:
         if fetch:
             sentinel.write(phase="fetch", name=name, repo_url=repo_url, install_dir=install_dir)
-            runner(["git", "-C", str(install_dir), "fetch", "origin"], check=True, capture_output=True, text=True)
+            # Do not let an existing checkout select the fetch source.
+            refspecs = ([checkout_ref] if verify_origin and checkout_ref is not None
+                        else ["HEAD", "+refs/heads/*:refs/remotes/origin/*"])
+            runner(["git", "-C", str(install_dir), "fetch", "--", repo_url, *refspecs],
+                   check=True, capture_output=True, text=True)
         if checkout_ref is not None or resolve_latest:
             checkout_target = checkout_ref or "FETCH_HEAD"
             sentinel.write(phase="checkout", name=name, repo_url=repo_url, install_dir=install_dir)
@@ -1035,11 +1098,17 @@ def _checkout_ref_and_verify(
         return _error_text(exc) or f"failed to checkout {checkout_ref} for {name}"
     if expected_commit is None:
         return None
+    if verify_origin:
+        sentinel.write(phase="verification", name=name, repo_url=repo_url, install_dir=install_dir)
     head = _git_head(install_dir, runner)
     if head is None:
         return f"failed to read git HEAD for {install_dir}"
     if head != expected_commit:
         return f"expected git HEAD {expected_commit} for {install_dir}, got {head}"
+    if verify_origin:
+        origin = _git_origin(install_dir, runner)
+        if origin is None or _normalize_git_remote(origin) != _normalize_git_remote(repo_url):
+            return f"approved node repository differs from staged checkout for {name}"
     return None
 def _looks_like_commit(value: str | None) -> bool:
     return bool(value is not None and re.fullmatch(r"[0-9a-fA-F]{7,40}", value))
@@ -1418,11 +1487,14 @@ def _git_origin(pack_dir: Path, runner: Runner) -> str | None: return (_git(pack
 def _git_head(pack_dir: Path, runner: Runner) -> str | None: return (_git(pack_dir, ["rev-parse", "HEAD"], runner) or "").strip() or None
 def _normalize_git_remote(value: str) -> str:
     cleaned = value.strip()
-    if cleaned.endswith(".git"):
-        cleaned = cleaned[:-4]
-    if cleaned.startswith("git@github.com:"):
-        cleaned = f"https://github.com/{cleaned.split(':', 1)[1]}"
-    return cleaned.rstrip("/").lower()
+    # Only scheme and host are case-insensitive. In particular a path, .git
+    # suffix, trailing slash, userinfo or transport is not an alias for consent.
+    match = re.fullmatch(r"([A-Za-z][A-Za-z0-9+.-]*)://([^/?#]+)(.*)", cleaned)
+    if match is None:
+        return cleaned
+    scheme, authority, tail = match.groups()
+    userinfo, separator, host = authority.rpartition("@")
+    return f"{scheme.casefold()}://{userinfo}{separator}{host.casefold()}{tail}"
 def _known_schema_classes(path: Path = Path("node_index.json")) -> set[str]:
     path = _resolve_node_index_path(path)
     if not path.exists():
