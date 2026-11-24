@@ -274,7 +274,7 @@ def install_pack(
         ctx=current_gate_context(),
     )
     sentinel.write(phase="start", name=pack_name, repo_url=repo_url, install_dir=install_dir)
-    if cm_cli_argv is None:
+    if cm_cli_argv is None or checkout_ref is not None or expected_commit is not None or resolve_latest:
         return _install_pack_via_clone(
             pack_name,
             repo_url,
@@ -316,7 +316,7 @@ def install_pack(
             expected_commit=expected_commit,
             sentinel=sentinel,
         )
-    checkout_error = _checkout_ref_and_verify(
+    _, checkout_error = _checkout_ref_and_verify(
         pack_name,
         repo_url,
         install_dir,
@@ -350,82 +350,68 @@ def _install_pack_via_clone(
     replace_existing: bool = False,
 ) -> InstallResult:
     sentinel = sentinel or _install_sentinel(install_dir.parent, name)
-    if restore_entry is not None:
-        # A restore must never materialize the default branch (or a failed pin)
-        # inside a ComfyUI search root. Use a sibling of the resolved root, not
-        # a system temp directory: publication must be a same-filesystem rename.
-        root = install_dir.parent.resolve()
-        if root == root.parent:
-            return InstallResult(name, "failed", None, "cannot stage node restore outside the install root")
-        sentinel.write(phase="clone", name=name, repo_url=repo_url, install_dir=install_dir)
-        try:
-            work_dir = Path(tempfile.mkdtemp(prefix=".vibecomfy-restore-", dir=root.parent))
-        except OSError as exc:
-            return InstallResult(name, "failed", None, f"failed to create restore staging: {_error_text(exc)}")
-        staged = work_dir / "checkout"
-        previous = work_dir / "previous"
-        published = False
-        result: InstallResult | None = None
-        try:
-            if replace_existing:
-                # Only a clean checkout of the approved origin reaches here.
-                # Keep it outside the loadable root if the replacement fails.
-                install_dir.rename(previous)
-            runner(["git", "clone", "--no-checkout", "--", repo_url, str(staged)],
-                   check=True, capture_output=True, text=True)
-            checkout_error = _checkout_ref_and_verify(
-                name, repo_url, staged, checkout_ref, expected_commit, runner,
-                sentinel=sentinel, fetch=True, verify_origin=True,
-            )
-            if checkout_error is not None:
-                result = InstallResult(name, "failed", None, checkout_error)
-            else:
-                if install_dir.exists() or install_dir.is_symlink():
-                    raise FileExistsError(f"node restore destination appeared during staging: {install_dir}")
-                sentinel.write(phase="publish", name=name, repo_url=repo_url, install_dir=install_dir)
-                staged.rename(install_dir)
-                published = True
-                result = _finalize_install(
-                    name, repo_url, install_dir, lockfile_path, runner,
-                    pack=pack, expected_commit=expected_commit, sentinel=sentinel,
-                    restore_entry=restore_entry,
-                )
-        except (OSError, subprocess.CalledProcessError) as exc:
-            result = InstallResult(name, "failed", None, _error_text(exc) or f"failed to restore {name}")
-        finally:
-            succeeded = result is not None and result.status == "installed"
-            if published and not succeeded:
-                # Remove the candidate from the search root before cleanup.
-                # An unexpected cleanup error is not silently swallowed.
-                install_dir.rename(staged)
-            if not succeeded and previous.exists():
-                if staged.exists():
-                    shutil.rmtree(staged)
-                if result is not None:
-                    result = replace(result, error=f"{result.error}; previous checkout retained at {previous}")
-            else:
-                shutil.rmtree(work_dir)
-        return result
+    # Both explicit Git installs and approved restores use the same checkout
+    # transaction. Staging is a sibling of the resolved search root so the
+    # final publication is a same-filesystem rename, never a copy.
+    root = install_dir.parent.resolve()
+    if root == root.parent:
+        return InstallResult(name, "failed", None, "cannot stage node install outside the install root")
+    sentinel.write(phase="clone", name=name, repo_url=repo_url, install_dir=install_dir)
     try:
-        sentinel.write(phase="clone", name=name, repo_url=repo_url, install_dir=install_dir)
-        runner(["git", "clone", repo_url, str(install_dir)], check=True, capture_output=True, text=True)
-    except (OSError, subprocess.CalledProcessError) as exc: return InstallResult(name, "failed", None, _error_text(exc) or f"failed to clone {repo_url}")
-    checkout_error = _checkout_ref_and_verify(
-        name,
-        repo_url,
-        install_dir,
-        checkout_ref,
-        expected_commit,
-        runner,
-        sentinel=sentinel,
-        fetch=False,
-    )
-    if checkout_error is not None:
-        return InstallResult(name, "failed", None, checkout_error)
-    return _finalize_install(
-        name, repo_url, install_dir, lockfile_path, runner,
-        pack=pack, pack_ref=pack_ref, expected_commit=expected_commit, sentinel=sentinel,
-    )
+        work_dir = Path(tempfile.mkdtemp(prefix=".vibecomfy-restore-", dir=root.parent))
+    except OSError as exc:
+        return InstallResult(name, "failed", None, f"failed to create checkout staging: {_error_text(exc)}")
+    staged = work_dir / "checkout"
+    previous = work_dir / "previous"
+    published = False
+    result: InstallResult | None = None
+    try:
+        runner(["git", "clone", "--no-checkout", "--", repo_url, str(staged)],
+               check=True, capture_output=True, text=True)
+        verified_head, checkout_error = _checkout_ref_and_verify(
+            name, repo_url, staged, checkout_ref or expected_commit or "HEAD", expected_commit, runner,
+            sentinel=sentinel, fetch=checkout_ref is not None or expected_commit is not None,
+            verify_origin=True,
+        )
+        if checkout_error is not None:
+            result = InstallResult(name, "failed", None, checkout_error)
+        else:
+            # The old checkout stays live until the new checkout is verified.
+            # Never withdraw an unexpected destination or symlink.
+            if install_dir.is_symlink() or install_dir.exists() != replace_existing:
+                raise FileExistsError(f"node install destination changed during staging: {install_dir}")
+            sentinel.write(phase="publish", name=name, repo_url=repo_url, install_dir=install_dir)
+            if replace_existing:
+                install_dir.rename(previous)
+            staged.rename(install_dir)
+            published = True
+            result = _finalize_install(
+                name, repo_url, install_dir, lockfile_path, runner,
+                pack=pack, pack_ref=pack_ref, expected_commit=verified_head, sentinel=sentinel,
+                restore_entry=restore_entry,
+            )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        result = InstallResult(name, "failed", None, _error_text(exc) or f"failed to install {name}")
+    finally:
+        succeeded = result is not None and result.status == "installed"
+        if not succeeded:
+            if published:
+                # Withdraw the failed candidate; for a replacement, restore
+                # the previous directory. A fresh failure leaves no pack.
+                install_dir.rename(staged)
+            if previous.exists():
+                if not install_dir.exists() and not install_dir.is_symlink():
+                    previous.rename(install_dir)
+                else:
+                    if result is not None:
+                        result = replace(result, error=f"{result.error}; previous checkout retained at {previous}")
+        # Never delete the previous checkout if rollback could not put it back.
+        if not succeeded and previous.exists():
+            if staged.exists():
+                shutil.rmtree(staged)
+        else:
+            shutil.rmtree(work_dir)
+    return result
 
 
 def _entry_has_dependencies(entry: LockEntry | None) -> bool:
@@ -580,30 +566,18 @@ def _refresh_existing(
             current_head,
             f"{install_dir} points at {current_origin}, expected {repo_url}; refusing to overwrite existing clone",
         )
-    if origin_changed:
-        try:
-            sentinel.write(phase="source", name=name, repo_url=repo_url, install_dir=install_dir)
-            runner(
-                ["git", "-C", str(install_dir), "remote", "set-url", "origin", repo_url],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-        except (OSError, subprocess.CalledProcessError) as exc:
-            return InstallResult(name, "failed", current_head, _error_text(exc) or f"failed to change source for {name}")
-    checkout_error = _checkout_ref_and_verify(
-        name,
-        repo_url,
-        install_dir,
-        checkout_ref,
-        expected_commit,
-        runner,
-        sentinel=sentinel,
-        fetch=True,
-        resolve_latest=resolve_latest,
-    )
-    if checkout_error is not None:
-        return InstallResult(name, "failed", None, checkout_error)
+    if origin_changed or checkout_ref is not None or expected_commit is not None or resolve_latest:
+        # A fresh staged clone would discard dirty files even with --force;
+        # the flag permits refreshing a lock, not deleting user modifications.
+        if dirty:
+            return InstallResult(name, "skipped_dirty", current_head,
+                                 f"{install_dir} has uncommitted changes; clean it before changing the checkout")
+        result = _install_pack_via_clone(
+            name, repo_url, pack, install_dir, lockfile_path, runner,
+            pack_ref=pack_ref, checkout_ref=checkout_ref, expected_commit=expected_commit,
+            sentinel=sentinel, replace_existing=True,
+        )
+        return replace(result, status="refreshed") if result.status == "installed" else result
     result = _finalize_install(
         name, repo_url, install_dir, lockfile_path, runner,
         pack=pack, pack_ref=pack_ref, expected_commit=expected_commit, sentinel=sentinel,
@@ -1073,43 +1047,50 @@ def _checkout_ref_and_verify(
     *,
     sentinel: _InstallSentinel,
     fetch: bool,
-    resolve_latest: bool = False,
     verify_origin: bool = False,
-) -> str | None:
+) -> tuple[str | None, str | None]:
     if verify_origin:
         origin = _git_origin(install_dir, runner)
         if origin is None or _normalize_git_remote(origin) != _normalize_git_remote(repo_url):
-            return f"approved node repository differs from staged checkout for {name}"
-    if checkout_ref is None and not (fetch and resolve_latest):
-        return None
+            return None, f"approved node repository differs from staged checkout for {name}"
+    if checkout_ref is None and expected_commit is None and not verify_origin:
+        return None, None
+    git = ["git", "-C", str(install_dir)]
+    checkout_target = expected_commit or checkout_ref
     try:
-        if fetch:
+        if fetch and checkout_target is not None:
             sentinel.write(phase="fetch", name=name, repo_url=repo_url, install_dir=install_dir)
-            # Do not let an existing checkout select the fetch source.
-            refspecs = ([checkout_ref] if verify_origin and checkout_ref is not None
-                        else ["HEAD", "+refs/heads/*:refs/remotes/origin/*"])
-            runner(["git", "-C", str(install_dir), "fetch", "--", repo_url, *refspecs],
-                   check=True, capture_output=True, text=True)
-        if checkout_ref is not None or resolve_latest:
-            checkout_target = checkout_ref or "FETCH_HEAD"
+            try:
+                runner([*git, "fetch", "--", repo_url, checkout_target],
+                       check=True, capture_output=True, text=True)
+            except subprocess.CalledProcessError as exc:
+                # Some servers reject an explicit SHA want even when it is
+                # reachable from an advertised tag. Fetch only that same
+                # approved repository's tags and still verify the exact SHA.
+                if expected_commit is None or not re.fullmatch(r"[0-9a-fA-F]{40}", expected_commit):
+                    raise
+                try:
+                    runner([*git, "fetch", "--", repo_url, "+refs/tags/*:refs/tags/*"],
+                           check=True, capture_output=True, text=True)
+                except (OSError, subprocess.CalledProcessError) as tag_exc:
+                    return None, (f"failed to fetch approved commit {expected_commit}: {_error_text(exc)}; "
+                                  f"approved tag fetch failed: {_error_text(tag_exc)}")
+        if checkout_target is not None:
             sentinel.write(phase="checkout", name=name, repo_url=repo_url, install_dir=install_dir)
-            runner(["git", "-C", str(install_dir), "checkout", checkout_target], check=True, capture_output=True, text=True)
+            runner([*git, "checkout", checkout_target], check=True, capture_output=True, text=True)
     except (OSError, subprocess.CalledProcessError) as exc:
-        return _error_text(exc) or f"failed to checkout {checkout_ref} for {name}"
-    if expected_commit is None:
-        return None
-    if verify_origin:
-        sentinel.write(phase="verification", name=name, repo_url=repo_url, install_dir=install_dir)
+        return None, _error_text(exc) or f"failed to checkout {checkout_ref} for {name}"
+    sentinel.write(phase="verification", name=name, repo_url=repo_url, install_dir=install_dir)
     head = _git_head(install_dir, runner)
     if head is None:
-        return f"failed to read git HEAD for {install_dir}"
-    if head != expected_commit:
-        return f"expected git HEAD {expected_commit} for {install_dir}, got {head}"
+        return None, f"failed to read git HEAD for {install_dir}"
+    if expected_commit is not None and head != expected_commit:
+        return None, f"expected git HEAD {expected_commit} for {install_dir}, got {head}"
     if verify_origin:
         origin = _git_origin(install_dir, runner)
         if origin is None or _normalize_git_remote(origin) != _normalize_git_remote(repo_url):
-            return f"approved node repository differs from staged checkout for {name}"
-    return None
+            return None, f"approved node repository differs from staged checkout for {name}"
+    return head, None
 def _looks_like_commit(value: str | None) -> bool:
     return bool(value is not None and re.fullmatch(r"[0-9a-fA-F]{7,40}", value))
 def _protected_runtime_packages() -> dict[str, str]:
@@ -1486,9 +1467,14 @@ def _git_porcelain(pack_dir: Path, runner: Runner) -> str | None: return _git(pa
 def _git_origin(pack_dir: Path, runner: Runner) -> str | None: return (_git(pack_dir, ["config", "--get", "remote.origin.url"], runner) or "").strip() or None
 def _git_head(pack_dir: Path, runner: Runner) -> str | None: return (_git(pack_dir, ["rev-parse", "HEAD"], runner) or "").strip() or None
 def _normalize_git_remote(value: str) -> str:
-    cleaned = value.strip()
-    # Only scheme and host are case-insensitive. In particular a path, .git
-    # suffix, trailing slash, userinfo or transport is not an alias for consent.
+    cleaned = value.strip().rstrip("/")
+    scp = re.fullmatch(r"git@([^/:]+):(.+)", cleaned)
+    if scp is not None:
+        cleaned = f"https://{scp.group(1)}/{scp.group(2)}"
+    if cleaned.endswith(".git"):
+        cleaned = cleaned[:-4]
+    # Preserve path case, userinfo and transport; only scheme and host
+    # are case insensitive (with the established scp-style Git alias).
     match = re.fullmatch(r"([A-Za-z][A-Za-z0-9+.-]*)://([^/?#]+)(.*)", cleaned)
     if match is None:
         return cleaned
