@@ -708,21 +708,28 @@ def test_cmd_nodes_restore_translates_results_to_exit_codes(
     expected_code: int,
 ) -> None:
     lockfile = tmp_path / "custom_nodes.lock"
-    lockfile.write_text("ExamplePack abc123 https://example.test/example.git\n", encoding="utf-8")
+    commit = "a" * 40
+    lockfile.write_text(f"ExamplePack {commit} https://example.test/example.git\n", encoding="utf-8")
+    from vibecomfy.node_approvals import approval_record
+    approvals = tmp_path / "approvals.json"
+    approvals.write_text(json.dumps([approval_record({"repo": "https://example.test/example.git",
+        "commit": commit}, placement_class="local")]))
 
-    def fake_restore_pack(entry):
+    def fake_restore_pack(entry, **kwargs):
         assert entry.name == "ExamplePack"
-        assert entry.git_commit_sha == "abc123"
+        assert entry.git_commit_sha == commit
+        assert kwargs["lockfile_path"] == lockfile
+        assert kwargs["placement_class"] == "local"
         return node_packs_install.InstallResult(
             name="ExamplePack",
             status=status,  # type: ignore[arg-type]
-            git_commit_sha="abc123" if status in {"installed", "refreshed"} else None,
+            git_commit_sha=commit if status in {"installed", "refreshed"} else None,
             error="restore issue" if status in {"skipped_dirty", "failed"} else None,
         )
 
     monkeypatch.setattr(node_packs_install, "restore_pack", fake_restore_pack)
 
-    code = _cmd_nodes_restore(argparse.Namespace(lockfile=str(lockfile)))
+    code = _cmd_nodes_restore(argparse.Namespace(lockfile=str(lockfile), approvals=str(approvals)))
 
     captured = capsys.readouterr()
     assert code == expected_code

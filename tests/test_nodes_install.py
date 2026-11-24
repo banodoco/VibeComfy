@@ -7,7 +7,7 @@ from typing import Sequence
 
 import pytest
 
-from vibecomfy.node_packs import LockEntry, read_lockfile
+from vibecomfy.node_packs import LockEntry, read_lockfile, write_lockfile
 from vibecomfy.node_packs import (
     install_pack,
     install_required_packs,
@@ -18,8 +18,15 @@ from vibecomfy.node_packs import (
 from vibecomfy.node_packs._install import _known_schema_classes, _resolve_node_index_path
 from vibecomfy.node_packs import CustomNodePack
 from vibecomfy.registry.pack_resolver import PackRef
+from vibecomfy.node_approvals import approval_record
 
 _VHS_CLASSES = ("VHS_LoadVideo", "VHS_VideoCombine")
+RESTORE_PIN = "a" * 40
+
+
+def _approvals(entry):
+    return [approval_record({"repo": entry.url, "commit": entry.git_commit_sha,
+        "requirements_txt": entry.requirements_txt, "pip_no_deps": list(entry.pip_no_deps)}, placement_class="local")]
 
 
 def _video_helper_entry(sha: str) -> LockEntry:
@@ -385,18 +392,20 @@ def test_batch_install_collects_all_pack_outcomes_and_preserves_force_and_restor
     install_root = tmp_path / "custom_nodes"
     existing = install_root / "ComfyUI-VideoHelperSuite"
     existing.mkdir(parents=True)
-    runner = PipPreflightRunner(sha="forcehead", porcelain=" M nodes.py\n")
+    shipped = {entry.name: entry for entry in read_lockfile()}
+    runner = PipPreflightRunner(sha=shipped["ComfyUI-VideoHelperSuite"].commit, porcelain="")
     packs = [
         CustomNodePack("ComfyUI-VideoHelperSuite", "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git", _VHS_CLASSES),
         CustomNodePack("ComfyUI-KJNodes", "https://github.com/kijai/ComfyUI-KJNodes.git", ("ImageResizeKJv2",), pip_packages=("matplotlib",)),
         CustomNodePack("ExamplePack", "https://example.test/example.git", ("ExampleNode",)),
     ]
-    restore_entry = LockEntry("ExamplePack", "pinnedsha", "https://example.test/example.git")
+    restore_entry = LockEntry("ExamplePack", RESTORE_PIN, "https://example.test/example.git")
 
     result = install_required_packs(
         packs,
         force=True,
         restore_entries=[restore_entry],
+        approvals=_approvals(restore_entry),
         install_root=install_root,
         lockfile_path=tmp_path / "custom_nodes.lock",
         runner=runner,
@@ -405,12 +414,12 @@ def test_batch_install_collects_all_pack_outcomes_and_preserves_force_and_restor
 
     assert result.ok is True
     assert [(item.name, item.status, item.git_commit_sha) for item in result.results] == [
-        ("ComfyUI-VideoHelperSuite", "refreshed", "forcehead"),
-        ("ComfyUI-KJNodes", "installed", "forcehead"),
-        ("ExamplePack", "installed", "pinnedsha"),
+        ("ComfyUI-VideoHelperSuite", "refreshed", shipped["ComfyUI-VideoHelperSuite"].commit),
+        ("ComfyUI-KJNodes", "installed", shipped["ComfyUI-KJNodes"].commit),
+        ("ExamplePack", "installed", RESTORE_PIN),
     ]
     assert ["git", "clone", "https://example.test/example.git", str(install_root / "ExamplePack")] in runner.calls
-    assert ["git", "-C", str(install_root / "ExamplePack"), "checkout", "pinnedsha"] in runner.calls
+    assert ["git", "-C", str(install_root / "ExamplePack"), "checkout", RESTORE_PIN] in runner.calls
 
 
 def test_batch_install_commit_ref_uses_restore_entry_and_writes_verified_pin(tmp_path: Path) -> None:
@@ -423,6 +432,7 @@ def test_batch_install_commit_ref_uses_restore_entry_and_writes_verified_pin(tmp
 
     result = install_required_packs(
         packs,
+        approvals=_approvals(LockEntry("ExamplePack", commit, "https://authored.example/example.git")),
         install_refs_by_name={
             "ExamplePack": PackRef(
                 slug="example-pack",
@@ -547,23 +557,14 @@ def test_batch_install_semver_ref_attempts_checkout_and_preserves_version_identi
         cm_cli_resolver=lambda _root, _runner: None,
     )
 
-    assert result.ok is True
+    assert result.ok is False
     assert [(item.name, item.status, item.git_commit_sha) for item in result.results] == [
-        ("ExamplePack", "installed", "tag-head"),
+        ("ExamplePack", "failed", None),
     ]
-    assert ["git", "-C", str(install_root / "ExamplePack"), "checkout", "v1.2.3"] in runner.calls
-    assert read_lockfile(tmp_path / "custom_nodes.lock") == [
-        LockEntry(
-            name="ExamplePack",
-            git_commit_sha="tag-head",
-            url="https://example.test/example.git",
-            slug="example-pack",
-            source="aux-git",
-            version="v1.2.3",
-            commit="tag-head",
-            class_set=("ExampleNode",),
-        )
-    ]
+    assert runner.calls == []
+    assert not (tmp_path / "custom_nodes.lock").exists()
+    assert result.results[0].error.startswith("needs_consent:")
+    assert "--add URL@REF" in result.results[0].error
 
 
 def test_batch_install_resolves_changed_authored_source_as_new_identity(
@@ -581,6 +582,7 @@ def test_batch_install_resolves_changed_authored_source_as_new_identity(
     runner = PipPreflightRunner(sha="pre-checkout-head", checkout_head=new_commit)
     result = install_required_packs(
         [pack],
+        approvals=_approvals(LockEntry("ExamplePack", new_commit, "https://new.example/example.git")),
         restore_entries=[lock],
         install_refs_by_name={
             "ExamplePack": PackRef(
@@ -623,16 +625,20 @@ def test_changed_authored_source_resolves_clean_existing_checkout_as_new_source(
         name="ExamplePack",
         slug="example-pack",
         url="https://old.example/example.git",
-        commit="oldhead",
+        commit="d" * 40,
     )
     runner = PipPreflightRunner(
-        sha="oldhead", porcelain="", origin_url="https://old.example/example.git"
+        sha=lock.commit, porcelain="", origin_url="https://old.example/example.git"
     )
     runner.checkout_head = "b" * 40
+    lockfile = tmp_path / "custom_nodes.lock"
+    write_lockfile([lock], lockfile)
+    before = lockfile.read_bytes()
 
     result = install_required_packs(
         [CustomNodePack("ExamplePack", lock.url or "", ("ExampleNode",))],
         restore_entries=[lock],
+        approvals=_approvals(LockEntry("ExamplePack", "b" * 40, "https://new.example/example.git")),
         install_refs_by_name={
             "ExamplePack": PackRef(
                 slug="example-pack",
@@ -647,17 +653,21 @@ def test_changed_authored_source_resolves_clean_existing_checkout_as_new_source(
         cm_cli_resolver=lambda _root, _runner: None,
     )
 
-    assert result.ok is True
-    assert result.results[0].status == "refreshed"
+    assert result.ok is False
+    assert result.results[0].status == "failed"
     assert [
         "git", "-C", str(install_dir), "remote", "set-url", "origin",
         "https://new.example/example.git",
-    ] in runner.calls
-    assert ["git", "-C", str(install_dir), "fetch", "origin"] in runner.calls
-    assert ["git", "-C", str(install_dir), "checkout", "b" * 40] in runner.calls
+    ] not in runner.calls
+    assert ["git", "-C", str(install_dir), "fetch", "origin"] not in runner.calls
+    assert ["git", "-C", str(install_dir), "checkout", "b" * 40] not in runner.calls
     [resolved] = read_lockfile(tmp_path / "custom_nodes.lock")
-    assert resolved.url == "https://new.example/example.git"
-    assert resolved.commit == "b" * 40
+    assert resolved.url == "https://old.example/example.git"
+    assert resolved.commit == lock.commit
+    assert lockfile.read_bytes() == before
+    assert result.results[0].error.startswith("conflict:")
+    assert f"remove {install_dir} or approve the new repository" in result.results[0].error
+    assert runner.calls == [["git", "-C", str(install_dir), "config", "--get", "remote.origin.url"]]
 
 
 def test_changed_authored_source_keeps_dirty_existing_checkout_safe(
@@ -667,11 +677,12 @@ def test_changed_authored_source_keeps_dirty_existing_checkout_safe(
     install_dir = install_root / "ExamplePack"
     install_dir.mkdir(parents=True)
     runner = PipPreflightRunner(
-        sha="oldhead", porcelain=" M nodes.py\n", origin_url="https://old.example/example.git"
+        sha="d" * 40, porcelain=" M nodes.py\n", origin_url="https://new.example/example.git"
     )
 
     result = install_required_packs(
         [CustomNodePack("ExamplePack", "https://old.example/example.git", ("ExampleNode",))],
+        approvals=_approvals(LockEntry("ExamplePack", "b" * 40, "https://new.example/example.git")),
         install_refs_by_name={
             "ExamplePack": PackRef(
                 slug="example-pack",
@@ -706,11 +717,14 @@ def test_removed_authored_version_does_not_reuse_versioned_lock(
         source="git",
         url="https://example.test/example.git",
         version="v1.0.0",
-        commit="oldhead",
+        commit="d" * 40,
     )
     runner = PipPreflightRunner(
-        sha="oldhead", checkout_head="newhead", porcelain="", origin_url=lock.url
+        sha=lock.commit, checkout_head="e" * 40, porcelain="", origin_url=lock.url
     )
+    lockfile = tmp_path / "custom_nodes.lock"
+    write_lockfile([lock], lockfile)
+    before = lockfile.read_bytes()
 
     result = install_required_packs(
         [CustomNodePack("ExamplePack", lock.url or "", ("ExampleNode",))],
@@ -726,13 +740,15 @@ def test_removed_authored_version_does_not_reuse_versioned_lock(
         cm_cli_resolver=lambda _root, _runner: None,
     )
 
-    assert result.ok is True
-    assert result.results[0].git_commit_sha == "newhead"
-    assert ["git", "-C", str(install_dir), "fetch", "origin"] in runner.calls
-    assert ["git", "-C", str(install_dir), "checkout", "FETCH_HEAD"] in runner.calls
+    assert result.ok is False
+    assert result.results[0].git_commit_sha is None
+    assert ["git", "-C", str(install_dir), "fetch", "origin"] not in runner.calls
+    assert ["git", "-C", str(install_dir), "checkout", "FETCH_HEAD"] not in runner.calls
     [resolved] = read_lockfile(tmp_path / "custom_nodes.lock")
-    assert resolved.version is None
-    assert resolved.commit == "newhead"
+    assert resolved.version == "v1.0.0"
+    assert resolved.commit == lock.commit
+    assert runner.calls == [] and lockfile.read_bytes() == before
+    assert result.results[0].error.startswith("needs_consent:") and "--add URL@REF" in result.results[0].error
 
 
 def test_authored_selector_without_url_does_not_reuse_resolved_source_lock(
@@ -747,9 +763,12 @@ def test_authored_selector_without_url_does_not_reuse_resolved_source_lock(
         slug="example-pack",
         source="git",
         url="https://old.example/example.git",
-        commit="oldhead",
+        commit="d" * 40,
     )
-    runner = PipPreflightRunner(sha="newhead")
+    runner = PipPreflightRunner(sha="e" * 40)
+    lockfile = tmp_path / "custom_nodes.lock"
+    write_lockfile([lock], lockfile)
+    before = lockfile.read_bytes()
 
     result = install_required_packs(
         [pack],
@@ -763,12 +782,14 @@ def test_authored_selector_without_url_does_not_reuse_resolved_source_lock(
         cm_cli_resolver=lambda _root, _runner: None,
     )
 
-    assert result.ok is True
-    assert ["git", "clone", pack.repo, str(tmp_path / "custom_nodes" / "ExamplePack")] in runner.calls
-    assert ["git", "-C", str(tmp_path / "custom_nodes" / "ExamplePack"), "checkout", "oldhead"] not in runner.calls
+    assert result.ok is False
+    assert ["git", "clone", pack.repo, str(tmp_path / "custom_nodes" / "ExamplePack")] not in runner.calls
+    assert ["git", "-C", str(tmp_path / "custom_nodes" / "ExamplePack"), "checkout", lock.commit] not in runner.calls
     [resolved] = read_lockfile(tmp_path / "custom_nodes.lock")
-    assert resolved.url == pack.repo
-    assert resolved.commit == "newhead"
+    assert resolved.url == lock.url
+    assert resolved.commit == lock.commit
+    assert runner.calls == [] and lockfile.read_bytes() == before
+    assert result.results[0].error.startswith("needs_consent:") and "--add URL@REF" in result.results[0].error
 
 
 def test_removing_commit_only_selector_does_not_reuse_its_generated_lock(
@@ -784,6 +805,7 @@ def test_removing_commit_only_selector_does_not_reuse_its_generated_lock(
     first_runner = PipPreflightRunner(sha=commit)
     first = install_required_packs(
         [pack],
+        approvals=_approvals(LockEntry("ExamplePack", commit, pack.repo)),
         install_refs_by_name={
             "ExamplePack": PackRef(
                 slug="example-pack", source="git", url=pack.repo, commit=commit
@@ -797,6 +819,7 @@ def test_removing_commit_only_selector_does_not_reuse_its_generated_lock(
     assert first.ok is True
     [pinned] = read_lockfile(lockfile)
     assert pinned.version == commit
+    before = lockfile.read_bytes()
     (install_root / "ExamplePack").mkdir(parents=True)
 
     second_runner = PipPreflightRunner(sha="latest-head")
@@ -812,13 +835,15 @@ def test_removing_commit_only_selector_does_not_reuse_its_generated_lock(
         cm_cli_resolver=lambda _root, _runner: None,
     )
 
-    assert second.ok is True
+    assert second.ok is False
     assert [
         "git", "-C", str(install_root / "ExamplePack"), "checkout", "FETCH_HEAD"
-    ] in second_runner.calls
+    ] not in second_runner.calls
     [latest] = read_lockfile(lockfile)
-    assert latest.version is None
-    assert latest.commit == "FETCH_HEAD"
+    assert latest.version == commit
+    assert latest.commit == commit
+    assert second_runner.calls == [] and lockfile.read_bytes() == before
+    assert second.results[0].error.startswith("needs_consent:") and "--add URL@REF" in second.results[0].error
 
 
 def test_batch_install_reuses_exact_lock_for_url_only_authored_ref(
@@ -831,14 +856,15 @@ def test_batch_install_reuses_exact_lock_for_url_only_authored_ref(
         slug="example-pack",
         source="git",
         url="https://example.test/example.git",
-        commit="lockedhead",
+        commit=RESTORE_PIN,
         class_set=("ExampleNode",),
     )
-    runner = PipPreflightRunner(sha="lockedhead", porcelain="", origin_url=lock.url)
+    runner = PipPreflightRunner(sha=RESTORE_PIN, porcelain="", origin_url=lock.url)
 
     result = install_required_packs(
         [CustomNodePack("ExamplePack", lock.url, ("ExampleNode",))],
         restore_entries=[lock],
+        approvals=_approvals(lock),
         install_refs_by_name={
             "ExamplePack": PackRef(
                 slug="example-pack", source="git", url=lock.url
@@ -1253,31 +1279,28 @@ def test_install_falls_back_to_clone_when_cm_cli_missing(tmp_path: Path) -> None
 
 def test_restore_clones_and_checks_out_pinned_sha(tmp_path: Path) -> None:
     runner = FakeRunner()
-    entry = LockEntry("ExamplePack", "pinnedsha", "https://example.test/example.git")
+    entry = LockEntry("ExamplePack", RESTORE_PIN, "https://example.test/example.git")
 
     result = restore_pack(
         entry,
+        approvals=_approvals(entry),
         install_root=tmp_path / "custom_nodes",
         lockfile_path=tmp_path / "custom_nodes.lock",
         runner=runner,
     )
 
     assert result.status == "installed"
-    assert result.git_commit_sha == "pinnedsha"
+    assert result.git_commit_sha == RESTORE_PIN
     assert runner.calls == [
         ["git", "clone", "https://example.test/example.git", str(tmp_path / "custom_nodes" / "ExamplePack")],
-        ["git", "-C", str(tmp_path / "custom_nodes" / "ExamplePack"), "checkout", "pinnedsha"],
+        ["git", "-C", str(tmp_path / "custom_nodes" / "ExamplePack"), "checkout", RESTORE_PIN],
         ["git", "-C", str(tmp_path / "custom_nodes" / "ExamplePack"), "rev-parse", "HEAD"],
     ]
 
 
 def test_restore_installs_known_pack_pip_dependencies(tmp_path: Path) -> None:
     runner = FakeRunner()
-    entry = LockEntry(
-        "ComfyUI-WanVideoWrapper",
-        "pinnedsha",
-        "https://github.com/kijai/ComfyUI-WanVideoWrapper.git",
-    )
+    entry = next(row for row in read_lockfile() if row.name == "ComfyUI-WanVideoWrapper")
 
     result = restore_pack(
         entry,
@@ -1299,18 +1322,19 @@ def test_restore_installs_known_pack_pip_dependencies(tmp_path: Path) -> None:
 def test_restore_existing_clean_dir_at_correct_sha_is_noop(tmp_path: Path) -> None:
     install_dir = tmp_path / "custom_nodes" / "ExamplePack"
     install_dir.mkdir(parents=True)
-    runner = FakeRunner(sha="pinnedsha", porcelain="")
-    entry = LockEntry("ExamplePack", "pinnedsha", "https://example.test/example.git")
+    runner = FakeRunner(sha=RESTORE_PIN, porcelain="", origin_url="https://example.test/example.git")
+    entry = LockEntry("ExamplePack", RESTORE_PIN, "https://example.test/example.git")
 
     result = restore_pack(
         entry,
+        approvals=_approvals(entry),
         install_root=tmp_path / "custom_nodes",
         lockfile_path=tmp_path / "custom_nodes.lock",
         runner=runner,
     )
 
     assert result.status == "refreshed"
-    assert result.git_commit_sha == "pinnedsha"
+    assert result.git_commit_sha == RESTORE_PIN
     assert not any(call[:4] == ["git", "-C", str(install_dir), "checkout"] for call in runner.calls)
 
 
@@ -1323,11 +1347,12 @@ def test_restore_recovers_legacy_sentinel_without_owner_metadata(tmp_path: Path)
     sentinel = install_root / ".vibecomfy-install-state" / "ExamplePack.json"
     sentinel.parent.mkdir()
     sentinel.write_text('{"complete": false, "phase": "verification"}\n', encoding="utf-8")
-    runner = FakeRunner(sha="pinnedsha", porcelain="")
-    entry = LockEntry("ExamplePack", "pinnedsha", "https://example.test/example.git")
+    runner = FakeRunner(sha=RESTORE_PIN, porcelain="", origin_url="https://example.test/example.git")
+    entry = LockEntry("ExamplePack", RESTORE_PIN, "https://example.test/example.git")
 
     result = restore_pack(
         entry,
+        approvals=_approvals(entry),
         install_root=install_root,
         lockfile_path=tmp_path / "custom_nodes.lock",
         runner=runner,
@@ -1335,7 +1360,7 @@ def test_restore_recovers_legacy_sentinel_without_owner_metadata(tmp_path: Path)
 
     # Sentinel without owner metadata is quarantined; restore proceeds.
     assert result.status == "refreshed"
-    assert result.git_commit_sha == "pinnedsha"
+    assert result.git_commit_sha == RESTORE_PIN
     assert not sentinel.exists()
     assert len(list(sentinel.parent.glob(".corrupt-*"))) >= 1
     assert len(runner.calls) >= 1
@@ -1350,11 +1375,12 @@ def test_restore_quarantines_corrupt_sentinel_and_proceeds(tmp_path: Path) -> No
     sentinel = install_root / ".vibecomfy-install-state" / "ExamplePack.json"
     sentinel.parent.mkdir()
     sentinel.write_text("{not json", encoding="utf-8")
-    runner = FakeRunner(sha="pinnedsha", porcelain="")
-    entry = LockEntry("ExamplePack", "pinnedsha", "https://example.test/example.git")
+    runner = FakeRunner(sha=RESTORE_PIN, porcelain="", origin_url="https://example.test/example.git")
+    entry = LockEntry("ExamplePack", RESTORE_PIN, "https://example.test/example.git")
 
     result = restore_pack(
         entry,
+        approvals=_approvals(entry),
         install_root=install_root,
         lockfile_path=tmp_path / "custom_nodes.lock",
         runner=runner,
@@ -1362,7 +1388,7 @@ def test_restore_quarantines_corrupt_sentinel_and_proceeds(tmp_path: Path) -> No
 
     # Corrupt sentinel is quarantined; restore proceeds.
     assert result.status == "refreshed"
-    assert result.git_commit_sha == "pinnedsha"
+    assert result.git_commit_sha == RESTORE_PIN
     assert not sentinel.exists()
     assert len(list(sentinel.parent.glob(".corrupt-*"))) >= 1
     assert len(runner.calls) >= 1
@@ -1371,7 +1397,7 @@ def test_restore_quarantines_corrupt_sentinel_and_proceeds(tmp_path: Path) -> No
 def test_restore_keeps_sentinel_when_verification_head_mismatches(tmp_path: Path) -> None:
     install_root = tmp_path / "custom_nodes"
     runner = FakeRunner(sha="wrongsha")
-    entry = LockEntry("ExamplePack", "pinnedsha", "https://example.test/example.git")
+    entry = LockEntry("ExamplePack", RESTORE_PIN, "https://example.test/example.git")
 
     def run_without_checkout_side_effect(
         args: Sequence[str],
@@ -1390,6 +1416,7 @@ def test_restore_keeps_sentinel_when_verification_head_mismatches(tmp_path: Path
 
     result = restore_pack(
         entry,
+        approvals=_approvals(entry),
         install_root=install_root,
         lockfile_path=tmp_path / "custom_nodes.lock",
         runner=run_without_checkout_side_effect,
@@ -1398,7 +1425,7 @@ def test_restore_keeps_sentinel_when_verification_head_mismatches(tmp_path: Path
     sentinel = install_root / ".vibecomfy-install-state" / "ExamplePack.json"
     payload = json.loads(sentinel.read_text(encoding="utf-8"))
     assert result.status == "failed"
-    assert "expected git HEAD pinnedsha" in (result.error or "")
+    assert f"expected git HEAD {RESTORE_PIN}" in (result.error or "")
     assert payload["phase"] == "verification"
 
 
@@ -1406,13 +1433,14 @@ def test_restore_existing_dirty_dir_returns_skipped(tmp_path: Path) -> None:
     install_dir = tmp_path / "custom_nodes" / "ExamplePack"
     install_dir.mkdir(parents=True)
     lockfile = tmp_path / "custom_nodes.lock"
-    original = "ExamplePack pinnedsha https://example.test/example.git\n"
+    original = f"ExamplePack {RESTORE_PIN} https://example.test/example.git\n"
     lockfile.write_text(original, encoding="utf-8")
-    runner = FakeRunner(porcelain=" M nodes.py\n")
-    entry = LockEntry("ExamplePack", "pinnedsha", "https://example.test/example.git")
+    runner = FakeRunner(porcelain=" M nodes.py\n", origin_url="https://example.test/example.git")
+    entry = LockEntry("ExamplePack", RESTORE_PIN, "https://example.test/example.git")
 
     result = restore_pack(
         entry,
+        approvals=_approvals(entry),
         install_root=tmp_path / "custom_nodes",
         lockfile_path=lockfile,
         runner=runner,
@@ -1601,12 +1629,16 @@ def test_declared_patch_restore_and_doctor(tmp_path: Path, monkeypatch, capsys) 
     entry = LockEntry("ExamplePack", head, "https://example.test/repo.git",
                       source_sha256={"patched.py": hashlib.sha256(b"original\n").hexdigest()},
                       patches=(DeclaredPatch("patched.py", digest),))
-    result = restore_pack(entry, install_root=root)
+    result = restore_pack(entry, install_root=root, approvals=_approvals(entry))
     assert result.status == "refreshed" and result.verified_patches == 1
     from types import SimpleNamespace
     monkeypatch.setattr(nodes, "read_lockfile", lambda _: [entry])
-    monkeypatch.setattr(nodes.node_packs_install, "restore_pack", lambda _: result)
-    assert nodes._cmd_nodes_restore(SimpleNamespace(lockfile="unused")) == 0
+    monkeypatch.setattr(nodes.node_packs_install, "restore_pack", lambda _, **kwargs: result)
+    lockfile = tmp_path / "custom_nodes.lock"
+    lockfile.touch()
+    approvals = tmp_path / "approvals.json"
+    approvals.write_text(json.dumps(_approvals(entry)))
+    assert nodes._cmd_nodes_restore(SimpleNamespace(lockfile=str(lockfile), approvals=str(approvals))) == 0
     assert "declared patches verified: 1" in capsys.readouterr().out
     state = inspect_pack_install_state("ExamplePack", install_roots=[root], expected_head=head, entry=entry)
     assert state.state == "patched"
@@ -1617,17 +1649,17 @@ def test_declared_patch_restore_and_doctor(tmp_path: Path, monkeypatch, capsys) 
     assert any(w.code == "nodepack_lockfile_declared_patches_verified" for w in warnings)
 
     wrong = LockEntry("ExamplePack", head, entry.url, patches=(DeclaredPatch("patched.py", "0" * 64),))
-    assert restore_pack(wrong, install_root=root).status == "skipped_dirty"
+    assert restore_pack(wrong, install_root=root, approvals=_approvals(wrong)).status == "skipped_dirty"
     (pack / "other.py").write_text("changed\n")
-    assert restore_pack(entry, install_root=root).status == "skipped_dirty"
+    assert restore_pack(entry, install_root=root, approvals=_approvals(entry)).status == "skipped_dirty"
     git("checkout", "--", "other.py")
     (pack / "untracked").write_text("untracked")
-    assert restore_pack(entry, install_root=root).status == "skipped_dirty"
+    assert restore_pack(entry, install_root=root, approvals=_approvals(entry)).status == "skipped_dirty"
     (pack / "untracked").unlink()
     different = LockEntry("ExamplePack", "0" * 40, entry.url, patches=entry.patches)
-    refused = restore_pack(different, install_root=root)
+    refused = restore_pack(different, install_root=root, approvals=_approvals(different))
     assert refused.status == "skipped_dirty" and "patched.py" in refused.error
     undeclared = LockEntry("ExamplePack", head, entry.url)
-    refused = restore_pack(undeclared, install_root=root)
+    refused = restore_pack(undeclared, install_root=root, approvals=_approvals(undeclared))
     assert refused.status == "skipped_dirty"
-    assert refused.error == f"{pack} has uncommitted changes; restore refused"
+    assert refused.error == f"conflict: {pack} has uncommitted changes; restore refused; remove or clean {pack}, then retry"
