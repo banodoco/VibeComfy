@@ -40,7 +40,7 @@ def test_ui_version_and_selected_lock_commit_are_distinct():
         "pack": "fixture-pack", "repository": REPO,
         "recorded_versions": ["1.0.0"], "selected_commit": PIN,
         "selected_version_label": "2.0.0", "user_selected": False,
-        "relation": "unverified",
+        "relation": "different_version_label",
     }]
     # The selection and authored evidence must remain independent and unchanged.
     assert selected["commit"] == PIN
