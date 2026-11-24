@@ -38,10 +38,6 @@ def _request_workflow() -> VibeWorkflow:
     workflow.add_node("Integer", _id="2", uid="seed-node", value=7)
     workflow.add_node("EmptyImage", _id="3", uid="image-node",
                       width=512, height=512, batch_size=1, color=0)
-    # The authored edge below addresses output slot 0. Real source-backed
-    # templates retain this roster; the receipt's UI projection requires it.
-    workflow.nodes["3"].native_output_names = ["IMAGE"]
-    workflow.nodes["3"].native_output_types = ["IMAGE"]
     workflow.add_node("SaveImage", _id="4", uid="save-node", filename_prefix="authored")
     workflow.edges.append(VibeEdge("3", "0", "4", "images"))
     for name, node_id, field, value, kind in (
@@ -57,7 +53,7 @@ def _request_workflow() -> VibeWorkflow:
         filename_prefix="authored", expected_cardinality="one",
     )]
     workflow.metadata["output_prefix"] = "authored"
-    return workflow
+    return _retain_fixture_native_rosters(workflow)
 
 
 def _request_slots() -> tuple[ValueSlot, ...]:
@@ -141,36 +137,63 @@ def _assert_pair_equal(left, right, *, left_bytes: tuple[bytes, bytes] | None = 
     assert left.ui_sidecar["bind"]["custody_digest"] == right.ui_sidecar["bind"]["custody_digest"]
 
 
-def _target(workflow):
+def _target_row(class_type):
     from vibecomfy.porting.object_info import get_class
-    from vibecomfy.schema.provider import TargetSchemaProvider
+    # Integer's curated fallback contains only outputs. Its explicit fixture
+    # contract supplies the real scalar input as well as that output roster.
+    if class_type == "Integer":
+        return {
+            "input": {"required": {"value": ["INT", {"default": 0}]}},
+            "input_order": {"required": ["value"]}, "output": ["INT"],
+            "output_name": ["INT"], "output_is_list": [False], "output_node": False,
+        }
+    entry = get_class(class_type)
+    assert entry is not None, class_type
+    assert {"inputs", "input_order", "outputs"} <= entry.keys(), (
+        f"incomplete target fixture schema for {class_type}: {sorted(entry)}"
+    )
+    return {
+        "input": copy.deepcopy(entry["inputs"]),
+        "input_order": copy.deepcopy(entry["input_order"]),
+        "output": [item["type"] for item in entry["outputs"]],
+        "output_name": [item["name"] for item in entry["outputs"]],
+        "output_is_list": [item["is_list"] for item in entry["outputs"]],
+        "output_node": class_type == "SaveImage",
+    }
 
-    info = {}
-    for node in workflow.runtime_nodes().values():
-        # Integer is the same schema-less scalar used throughout the existing
-        # bundle tests. get_class can return its curated output-only fallback,
-        # so its target contract must not depend on an optional cache row.
-        if node.class_type == "Integer":
-            info["Integer"] = {
-                "input": {"required": {"value": ["INT", {"default": 0}]}},
-                "input_order": {"required": ["value"]}, "output": ["INT"],
-                "output_name": ["INT"], "output_is_list": [False], "output_node": False,
-            }
-        else:
-            entry = get_class(node.class_type)
-            assert entry is not None, node.class_type
-            assert {"inputs", "input_order", "outputs"} <= entry.keys(), (
-                f"incomplete target fixture schema for {node.class_type}: {sorted(entry)}"
-            )
-            info[node.class_type] = {
-                "input": copy.deepcopy(entry["inputs"]),
-                "input_order": copy.deepcopy(entry["input_order"]),
-                "output": [item["type"] for item in entry["outputs"]],
-                "output_name": [item["name"] for item in entry["outputs"]],
-                "output_is_list": [item["is_list"] for item in entry["outputs"]],
-                "output_node": node.class_type == "SaveImage",
-            }
+
+def _target(workflow):
+    from vibecomfy.schema.provider import TargetSchemaProvider
+    info = {node.class_type: _target_row(node.class_type) for node in workflow.runtime_nodes().values()}
     return TargetSchemaProvider.from_object_info(info, server_url="http://current-target.invalid:8188", model_availability="target")
+
+
+def _retain_fixture_native_rosters(workflow):
+    # Match the shipped ready-template carrier contract for EVERY fixture node,
+    # including literal-only inputs and an empty output roster on terminal nodes.
+    # The exact same get_class/Integer declarations also back approval below.
+    provider = _target(workflow)
+    for node in workflow.nodes.values():
+        schema = provider.get_schema(node.class_type)
+        assert schema is not None, f"missing native fixture schema: {node.class_type}"
+        node.native_input_names = list(schema.inputs)
+        node.native_input_types = [spec.type for spec in schema.inputs.values()]
+        node.native_input_optional = [not spec.required for spec in schema.inputs.values()]
+        assets = [spec.asset_kind for spec in schema.inputs.values()]
+        node.native_input_asset_kinds = assets if any(assets) else None
+        node.native_output_names = [spec.name for spec in schema.outputs]
+        node.native_output_types = [spec.type for spec in schema.outputs]
+        node.__post_init__()
+    for edge in workflow.edges:
+        source = workflow.nodes[edge.from_node]
+        target = workflow.nodes[edge.to_node]
+        assert source.native_output_names, f"missing source roster: {source.id}"
+        if str(edge.from_output).isdigit():
+            assert 0 <= int(edge.from_output) < len(source.native_output_names), edge
+        else:
+            assert edge.from_output in source.native_output_names, edge
+        assert edge.to_input in target.native_input_names, edge
+    return workflow
 
 
 @pytest.mark.parametrize("mode", ["bundle", "scratchpad", "ready_template"])
