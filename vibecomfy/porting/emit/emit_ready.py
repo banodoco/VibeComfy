@@ -1954,6 +1954,7 @@ def _source_bindings_for_emit(prepared: dict[str, Any], definitions: Any) -> dic
 
 def _prepare_source_layout(
     prepared: dict[str, Any], definitions: Any, *, bindings: dict[str, Any] | None = None,
+    structure: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Extract structural decisions; no literal or generated source is retained.
 
@@ -1966,13 +1967,15 @@ def _prepare_source_layout(
     ordering = _edges_in_with_subgraph_external_refs(
         prepared, nodes, prepared.get("ordering_edges_in", edges_in)
     )
-    groups = _build_section_groups(nodes, edges_in)
+    if structure is None:
+        structure = {
+            "node_order": _topological_node_order(nodes, ordering),
+            "sections": [[name, members] for name, members in _build_section_groups(nodes, edges_in).items()],
+        }
     if bindings is None:
         bindings = _source_bindings_for_emit(prepared, definitions)
     return {
-        "node_order": _topological_node_order(nodes, ordering),
-        # Pair lists retain the original insertion order across canonical JSON.
-        "sections": [[name, members] for name, members in groups.items()],
+        **structure,
         **bindings,
     }
 
@@ -2017,6 +2020,19 @@ def _source_layout_for_emit(
     # import a module or call a constructor.  Verify executable names against
     # the current registry before generated Python can reach staged execution.
     bindings = _source_bindings_for_emit(prepared, definitions)
+    current_structure: dict[str, Any] | None = None
+
+    def structural_witness() -> dict[str, Any]:
+        nonlocal current_structure
+        if current_structure is None:
+            # Re-derive ordering/grouping from this graph even on a cache hit.
+            # Membership alone permits a re-sealed, byte-changing permutation.
+            current_structure = {
+                "node_order": _topological_node_order(nodes, ordering),
+                "sections": [[name, members] for name, members in _build_section_groups(nodes, edges_in).items()],
+            }
+        return current_structure
+
     def validate_layout(layout: dict[str, Any]) -> None:
         if (len(layout["node_order"]) != len(nodes) or set(layout["node_order"]) != set(nodes)
                 or set(dict(layout["constructors"])) != set(nodes)):
@@ -2026,9 +2042,12 @@ def _source_layout_for_emit(
         if any(name not in _SECTION_ORDER or any(nid not in nodes for nid in members)
                for name, members in layout["sections"]):
             raise TemplateNotReusable("prepared emission layout has foreign sections")
+        if any(layout[name] != members for name, members in structural_witness().items()):
+            raise TemplateNotReusable("prepared emission ordering/grouping differs from the current graph")
 
     return emission_session.resolve(
-        signature, lambda: _prepare_source_layout(prepared, definitions, bindings=bindings),
+        signature, lambda: _prepare_source_layout(prepared, definitions, bindings=bindings,
+                                                 structure=structural_witness()),
         validate=validate_layout,
     )
 

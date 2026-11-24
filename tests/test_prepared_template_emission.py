@@ -463,10 +463,53 @@ def test_cached_bindings_cannot_authorize_imports_before_staging(
     assert b"foreign_module" not in warm.snapshot().to_bytes()
 
 
-def test_warm_template_is_not_an_approval_and_does_not_admit_stale_companion(tmp_path: Path) -> None:
+@pytest.mark.parametrize("field", ["node_order", "sections"])
+def test_resealed_valid_roster_permutation_is_rederived_before_emission(
+    tmp_path: Path, field: str,
+) -> None:
+    workflow = _workflow()
+    workflow.add_node("Integer", _id="2", uid="second-independent-integer", value=9)
+    template = prepare_template(workflow, _slots(), key_context=_context())
+    cold = fill_template(template, {"seed": 7}, current_key_inputs=_current(template))
+    _emit(cold.workflow, tmp_path / "populate" / "workflow.py", "bundle", session=cold.emission)
+    record = cold.snapshot().to_record()
+    changed = 0
+    for row in record["payload"]["layouts"]:
+        layout = row["layout"]
+        if field == "node_order" and len(layout[field]) > 1:
+            layout[field].reverse()  # Independent nodes: still topologically valid.
+            changed += 1
+        elif field == "sections":
+            for _, members in layout[field]:
+                if len(members) > 1:
+                    members.reverse()  # Same groups/membership, different byte order.
+                    changed += 1
+    assert changed > 0
+    resealed = PreparedTemplate.from_bytes(_seal(record))
+    warm = fill_template(resealed, {"seed": 7}, current_key_inputs=_current(resealed))
+    full = _emit(workflow, tmp_path / "full" / "workflow.py", "bundle")
+    published = _emit(warm.workflow, tmp_path / "warm" / "workflow.py", "bundle", session=warm.emission)
+    _assert_pair_equal(full, published)
+    assert any((event.outcome, event.reason) == ("recompute", "entry_invalid")
+               for event in warm.emission.events)
+
+
+def test_warm_template_is_not_an_approval_and_does_not_admit_stale_companion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import vibecomfy.porting.emit.emit_ready as renderer
+
     template = prepare_template(_workflow(), _slots(), key_context=_context())
-    filled = fill_template(template, {"seed": 7}, current_key_inputs=_current(template))
+    cold = fill_template(template, {"seed": 7}, current_key_inputs=_current(template))
+    _emit(cold.workflow, tmp_path / "populate" / "workflow.py", "bundle", session=cold.emission)
+    filled = fill_template(cold.snapshot(), {"seed": 7}, current_key_inputs=_current(template))
+
+    def bypassed(*args, **kwargs):
+        pytest.fail("approval guard must be exercised after an actual cached-layout hit")
+
+    monkeypatch.setattr(renderer, "_prepare_source_layout", bypassed)
     bundle = _emit(filled.workflow, tmp_path / "workflow.py", "bundle", session=filled.emission)
+    assert filled.emission.events and all(event.outcome == "hit" for event in filled.emission.events)
     receipt = bundle.compile()
     bundle.workflow.set_input("seed", 8)
     with pytest.raises(WorkflowBundleError, match="revision is stale"):

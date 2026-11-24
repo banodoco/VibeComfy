@@ -34,7 +34,7 @@ from dataclasses import dataclass, fields, is_dataclass
 from functools import lru_cache
 from typing import Any, Callable, Mapping, Sequence, TYPE_CHECKING
 
-from vibecomfy.testing.canonical import canonical_bytes, canonical_digest
+from vibecomfy.testing.canonical import canonical_bytes as _canonical_bytes
 
 if TYPE_CHECKING:
     from vibecomfy.workflow import VibeWorkflow
@@ -71,6 +71,19 @@ class TemplateKeyChanged(TemplateNotReusable):
     def __init__(self, name: str) -> None:
         self.input = name
         super().__init__(f"prepared template input changed: {name}", reason=f"key_changed:{name}")
+
+
+def canonical_bytes(value: Any) -> bytes:
+    """Keep non-UTF-8 strings at this optional representation boundary."""
+    try:
+        return _canonical_bytes(value)
+    except UnicodeError as exc:
+        raise TemplateNotReusable("prepared data contains a non-UTF-8 string",
+                                  reason="value_not_utf8") from exc
+
+
+def canonical_digest(value: Any) -> str:
+    return hashlib.sha256(canonical_bytes(value)).hexdigest()
 
 
 @dataclass(frozen=True, slots=True)
@@ -169,7 +182,7 @@ def _check_key_record(inputs: Any) -> None:
     if not isinstance(values["vibecomfy_version"], str) or not values["vibecomfy_version"]:
         raise TemplateNotReusable("missing VibeComfy version witness")
     for name in ("compiler_identity", "source_provenance", "role_plan"):
-        if values[name] is None or values[name] == "" or values[name] == {}:
+        if values[name] is None or values[name] == "" or values[name] == {} or values[name] == []:
             raise TemplateNotReusable(f"missing current {name} witness")
     canonical_bytes(inputs)  # refuses non-JSON / non-finite identity inputs
 
@@ -414,13 +427,17 @@ def _check_value(slot: ValueSlot, value: Any) -> None:
         # The existing Comfy emitter can interpret this top-level shape as a
         # graph reference.  It has no unambiguous literal witness here, so even
         # a JSON socket with this shape takes the ordinary full-preparation path.
-        raise TemplateNotReusable(f"slot {slot.name!r} has an unwitnessed graph-link shape")
+        raise TemplateNotReusable(f"slot {slot.name!r} has an unwitnessed graph-link shape",
+                                  reason="value_graph_link")
 
 
 def _check_literal(value: Any, depth: int = 0) -> None:
     if depth > _MAX_DEPTH:
         raise ValueError("prepared slot value exceeds nesting bound")
-    if value is None or type(value) in (str, int, bool):
+    if type(value) is str:
+        canonical_bytes(value)  # reject a lone surrogate before a renderer sees it
+        return
+    if value is None or type(value) in (int, bool):
         return
     if type(value) is float and math.isfinite(value):
         return
@@ -429,7 +446,8 @@ def _check_literal(value: Any, depth: int = 0) -> None:
             _check_literal(item, depth + 1)
         return
     if type(value) is dict and all(type(key) is str for key in value):
-        for item in value.values():
+        for key, item in value.items():
+            _check_literal(key, depth + 1)
             _check_literal(item, depth + 1)
         return
     raise ValueError("prepared slot values must be finite plain JSON")
@@ -578,8 +596,9 @@ class EmissionSession:
     Each staged/final emitter request selects its layout by its *current*
     projected structure/options.  An unseen layout is a recorded miss and
     recompute, never a guessed reuse.  The Agent translates these events into
-    its cache counters.  Only a cached-layout validation refusal is converted
-    into a miss; fresh preparation and product errors keep their normal path.
+    its cache counters. A fresh layout that cannot be represented, or exceeds
+    the bounded table, still renders through full preparation but is not stored.
+    Errors from the actual renderer/preparation callable keep their normal path.
     """
 
     def __init__(self, layouts: list[dict[str, Any]],
@@ -588,6 +607,7 @@ class EmissionSession:
         self._layouts = {canonical_digest(row["signature"]): _json_copy(row) for row in layouts}
         self.events: list[LayoutEvent] = []
         self._on_event = on_event
+        self.no_store_reason: str | None = None
 
     def _event(self, outcome: str, reason: str | None = None) -> None:
         event = LayoutEvent(outcome, reason)
@@ -616,13 +636,25 @@ class EmissionSession:
         self._event("miss", reason)
         self._event("recompute", reason)
         layout = prepare()
-        if validate is not None:
-            validate(layout)
         row = {"signature": signature, "layout": layout}
-        _check_layouts([row])
+        try:
+            if validate is not None:
+                validate(layout)
+            _check_layouts([row])
+            copied = _json_copy(row)
+        except TemplateNotReusable:
+            # This is the current renderer's full result, not cached authority.
+            # A cache-only representation check cannot fail the product request.
+            self.no_store_reason = "layout_not_reusable"
+            self._event("miss", self.no_store_reason)
+            self._event("recompute", self.no_store_reason)
+            return layout
         if len(self._layouts) >= _MAX_LAYOUTS:
-            raise TemplateNotReusable("too many structural emission layouts for one template")
-        self._layouts[key] = _json_copy(row)
+            self.no_store_reason = "layout_capacity"
+            self._event("miss", self.no_store_reason)
+            self._event("recompute", self.no_store_reason)
+            return layout
+        self._layouts[key] = copied
         return layout
 
     def records(self) -> list[dict[str, Any]]:
@@ -637,6 +669,9 @@ class FilledTemplate:
 
     def snapshot(self) -> PreparedTemplate:
         """Capture learned layouts after successful emission, never current values."""
+        if self.emission.no_store_reason is not None:
+            raise TemplateNotReusable("current full emission must not be stored",
+                                      reason=self.emission.no_store_reason)
         record = self._template.to_record()
         record["payload"]["layouts"] = self.emission.records()
         return PreparedTemplate.from_bytes(_seal(record["key_inputs"], record["payload"]))
@@ -674,9 +709,11 @@ def fill_template(template: PreparedTemplate, values: Mapping[str, Any], *,
                   on_layout_event: Callable[[LayoutEvent], None] | None = None) -> FilledTemplate:
     """Check the current key and bind a fresh, detached workflow on every call.
 
-    The caller recomputes the structure from the decoded recipe under its
-    freshly verified source/slot witness.  Copying stored key_inputs without
-    observing the current compiler/source/role/target is not a valid use.
+    The recipe structure digest is an integrity check, not an independent fresh
+    source witness. Source-skipping callers must freshly bind the complete
+    builder/helper/data closure and structural inputs in source_provenance;
+    already-built callers compare their current masked structure. Copying the
+    stored source/compiler/role/target inputs cannot authorize reuse.
     Cache-boundary decoding errors are TemplateNotReusable; invalid current
     values and workflow refusals keep their normal errors and must not be
     swallowed as a cache failure.

@@ -45,6 +45,9 @@ def _slots() -> tuple[ValueSlot, ...]:
 
 
 def _current(template: PreparedTemplate, **changed) -> list:
+    # Fixture compiler/source inputs are explicitly fixed above. This digest
+    # checks recipe integrity; production freshness needs the whole current
+    # builder/helper/data closure, not a copied source_provenance key field.
     context = _context()
     context.update(changed)
     return key_record(structure=template.structure_digest, **context)
@@ -163,12 +166,84 @@ def test_link_shaped_json_slot_requires_full_preparation(value) -> None:
     template = prepare_template(_workflow(), slots, key_context=_context())
     with pytest.raises(TemplateNotReusable, match="unwitnessed graph-link shape") as error:
         fill_template(template, {"seed": value}, current_key_inputs=_current(template))
-    assert error.value.reason == "entry_invalid"
+    assert error.value.reason == "value_graph_link"
     changed = _workflow()
     changed.nodes["1"].inputs["value"] = value
     changed.inputs["seed"].value = value
     with pytest.raises(TemplateNotReusable, match="unwitnessed graph-link shape"):
         prepare_template(changed, slots, key_context=_context())
+    # A request-only representation limitation did not invalidate the recipe.
+    assert fill_template(template, {"seed": 19}, current_key_inputs=_current(template)).workflow.inputs["seed"].value == 19
+
+
+@pytest.mark.parametrize("value", ["\ud800", {"\udfff": "key"}, {"value": "\ud800"}])
+def test_lone_surrogates_have_a_typed_representation_refusal(value) -> None:
+    slots = (ValueSlot("seed", _slots()[0].paths),)
+    template = prepare_template(_workflow(), slots, key_context=_context())
+    with pytest.raises(TemplateNotReusable) as error:
+        fill_template(template, {"seed": value}, current_key_inputs=_current(template))
+    assert error.value.reason == "value_not_utf8"
+    workflow = _workflow()
+    workflow.metadata["unmasked"] = value
+    with pytest.raises(TemplateNotReusable) as error:
+        prepare_template(workflow, slots, key_context=_context())
+    assert error.value.reason == "value_not_utf8"
+    with pytest.raises(TemplateNotReusable) as error:
+        key_record(structure=template.structure_digest, **{**_context(), "role_plan": {"model": value}})
+    assert error.value.reason == "value_not_utf8"
+
+
+def test_empty_role_plan_list_is_not_a_current_witness() -> None:
+    with pytest.raises(TemplateNotReusable, match="missing current role_plan witness"):
+        prepare_template(_workflow(), _slots(), key_context={**_context(), "role_plan": []})
+
+
+def _layout_fixture() -> dict:
+    return {"node_order": ["1"], "sections": [], "imports": [],
+            "constructors": [["1", [None, None]]]}
+
+
+def test_layout_capacity_keeps_full_emission_available_without_storage() -> None:
+    template = prepare_template(_workflow(), _slots(), key_context=_context())
+    filled = fill_template(template, {"seed": 7}, current_key_inputs=_current(template))
+    for shape in range(32):
+        filled.emission.resolve({"shape": shape}, _layout_fixture)
+    retained = filled.emission.records()
+    prepared = []
+
+    def full():
+        prepared.append(True)
+        return _layout_fixture()
+
+    assert filled.emission.resolve({"shape": "overflow"}, full) == _layout_fixture()
+    assert prepared == [True]
+    assert filled.emission.records() == retained
+    assert [(event.outcome, event.reason) for event in filled.emission.events][-2:] == [
+        ("miss", "layout_capacity"), ("recompute", "layout_capacity")]
+    with pytest.raises(TemplateNotReusable) as error:
+        filled.snapshot()
+    assert error.value.reason == "layout_capacity"
+
+
+@pytest.mark.parametrize("failure", ["validation", "record_shape"])
+def test_unrepresentable_fresh_layout_is_full_emission_not_a_request_error(failure) -> None:
+    template = prepare_template(_workflow(), _slots(), key_context=_context())
+    filled = fill_template(template, {"seed": 7}, current_key_inputs=_current(template))
+    fresh = _layout_fixture()
+    if failure == "record_shape":
+        fresh["current_renderer_only"] = True
+
+    def validate(layout):
+        if failure == "validation":
+            raise TemplateNotReusable("current full result is outside the cache contract")
+
+    assert filled.emission.resolve({"shape": 1}, lambda: fresh, validate=validate) is fresh
+    assert filled.emission.records() == []
+    assert [(event.outcome, event.reason) for event in filled.emission.events][-2:] == [
+        ("miss", "layout_not_reusable"), ("recompute", "layout_not_reusable")]
+    with pytest.raises(TemplateNotReusable) as error:
+        filled.snapshot()
+    assert error.value.reason == "layout_not_reusable"
 
 
 @pytest.mark.parametrize("value", [True, "19", None, 1.5, float("nan")])
