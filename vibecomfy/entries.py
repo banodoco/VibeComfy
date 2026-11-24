@@ -120,6 +120,22 @@ def draft_entry(workflow: Any, entry_id: str, *, bundle: str = "bundle", input_a
     return _validate({"id": entry_id, "kind": kind, "modes": modes, "bundle": bundle, "needs": needs, "binds": binds, "defaults": {}})
 
 
+def entry_added_node_refs(entry: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Read earlier explicit --add declarations from the current canonical entry.
+
+    These rows are source requirements, never evidence of consent. The Agent
+    uses this same read boundary for replacement preflight and publication.
+    Do not copy every inferred pack from the old graph into a new graph.
+    """
+    from vibecomfy.security.provenance import Provenance
+    from vibecomfy.workflow_bundle import load_bundle
+
+    workflow = load_bundle(Path(entry["bundle"]) / "workflow.py",
+                           trust=Provenance.USER_CONFIRMED).workflow
+    return [dict(ref) for ref in workflow.requirements.custom_node_refs
+            if ref.get("entry_add") is True]
+
+
 def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | None = None, *, replace: bool = False, add: Iterable[str] = (),
                     added_node_refs: Iterable[Mapping[str, Any]] = ()) -> dict[str, Any]:
     """Import a complete bundle; explicitly replace an entry by swapping its manifest.
@@ -138,19 +154,22 @@ def import_as_entry(source: str | Path, entry_id: str, directory: str | Path | N
     root = Path(directory).expanduser() if directory is not None else entries_dir()
     destination = root / entry_id
     replacing = destination.exists() or destination.is_symlink()
+    retained_refs = []
     if replacing:
         if not replace:
             raise FileExistsError(f"entry already exists: {destination}")
         entry_file = destination / "entry.json"
         if destination.is_symlink() or not destination.is_dir() or entry_file.is_symlink() or not entry_file.is_file():
             raise FileExistsError(f"not a replaceable entry: {destination}")
-        if load_entry(entry_file)["id"] != entry_id:
+        previous = load_entry(entry_file)
+        if previous["id"] != entry_id:
             raise ValueError(f"entry id does not match destination: {destination}")
+        retained_refs = entry_added_node_refs(previous)
     source_path = Path(source).expanduser()
     is_json = source_path.is_file() and source_path.suffix.lower() == ".json"
     # Agent preflight may supply its already-resolved declarations so the
     # approved identity is exactly the one written, even if a branch moved.
-    refs = [*added_node_refs, *resolve_added_node_refs(add)]
+    refs = [*retained_refs, *added_node_refs, *resolve_added_node_refs(add)]
     artifacts = import_workflow_bytes(source_path.read_bytes(), workflow_id=entry_id, infer_inputs=True,
                                       added_node_refs=refs) if is_json else None
     root.mkdir(parents=True, exist_ok=True)
