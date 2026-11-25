@@ -58,7 +58,8 @@ class RecipeRunner:
                 self.head_reads.append((call, output.strip()))
             elif call[3:] == ["config", "--get", "remote.origin.url"]:
                 output = self.origin + "\n"
-            elif operation not in {"fetch", "status"}:
+            # This synthetic clean checkout has no unpushed work, stash or submodules.
+            elif operation not in {"fetch", "status", "rev-list", "for-each-ref", "submodule"}:
                 raise AssertionError(f"Unexpected git operation: {call}")
         elif call[1:5] == ["-I", "-m", "pip", "install"]:
             if "--help" in call:
