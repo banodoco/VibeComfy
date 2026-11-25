@@ -362,23 +362,28 @@ def _replacement_paths(paths: list[str], limit: int) -> str:
 def _replacement_status(install_dir: Path, runner: Runner) -> list[str] | None:
     """Return reasons the checkout cannot be discarded, or None on status failure.
 
-    Only ignored regular Python bytecode is regenerable. Local Git history,
-    stashes and submodule work are not visible in ordinary porcelain status.
+    Only ignored regular Python bytecode in the parent is regenerable. Inspect
+    every initialized gitlink as its own repository; status alone misses
+    history, stashes and index flags, and skips uninitialized gitlinks.
     """
-    try:
-        porcelain = _git_porcelain(install_dir, runner, include_ignored=True)
-    except UnicodeError:
+    porcelain = _git_porcelain(install_dir, runner, include_ignored=True)
+    if porcelain is None or (porcelain and not porcelain.endswith("\0")):
         return None
-    if porcelain is None:
-        return None
-    protected = []
-    ignored = []
+
+    protected: list[str] = []
+    groups: dict[tuple[str, str], list[str]] = {}
+    move = "move this work to a safe location outside the checkout, then retry"
+    repair = "move the checkout to a safe location or resolve the inspection failure before retrying"
+
+    def record(reason: str, path: str, action: str = move) -> None:
+        groups.setdefault((reason, action), []).append(path)
+
     dirty = False
-    for record in porcelain.split("\0"):
-        if not record:
+    for item in porcelain.split("\0"):
+        if not item:
             continue
-        if record.startswith("!! "):
-            relative = record[3:]
+        if item.startswith("!! "):
+            relative = item[3:]
             if relative.endswith((".pyc", ".pyo")):
                 path = install_dir / relative
                 try:
@@ -386,59 +391,119 @@ def _replacement_status(install_dir: Path, runner: Runner) -> list[str] | None:
                         continue
                 except OSError:
                     pass  # Uninspectable paths remain protected.
-            ignored.append(relative)
+            record("contains ignored user data", relative,
+                   "move these paths to a safe location outside the checkout, then retry")
         else:
             dirty = True
     if dirty:
         protected.append("has uncommitted changes; move or save them outside the checkout, then retry")
 
-    commits = _replacement_git(install_dir, ["rev-list", "HEAD", "--branches", "--tags",
-                                              "--not", "--remotes"], runner)
-    if commits is None:
-        protected.append("failed to inspect unpushed commits; move the checkout to a safe location "
-                         "or resolve the inspection failure before retrying")
-    elif commits.strip():
-        protected.append("contains unpushed commits; push them or move the checkout to a safe location, then retry")
+    def inspection_failure(prefix: str, probe: str) -> None:
+        if prefix:
+            record("failed to inspect submodule data", f"{prefix} ({probe})", repair)
+        else:
+            protected.append(f"failed to inspect {probe}; {repair}")
 
-    # for-each-ref succeeds with empty output for an absent stash. Unlike a
-    # blanket nonzero-is-absent check, this also detects broken-ref warnings.
-    stash = _replacement_git(install_dir, ["for-each-ref", "--format=%(refname)", "refs/stash"], runner)
-    if stash is None:
-        protected.append("failed to inspect stash; move the checkout to a safe location "
-                         "or resolve the inspection failure before retrying")
-    elif "refs/stash" in stash.splitlines():
-        protected.append("contains a stash (refs/stash); move the stash work to a safe checkout, then retry")
+    def inspect_history(directory: Path, prefix: str) -> None:
+        commits = _replacement_git(directory, ["rev-list", "HEAD", "--branches", "--tags",
+                                               "--not", "--remotes"], runner)
+        if commits is None:
+            inspection_failure(prefix, "unpushed commits")
+        elif commits.strip():
+            if prefix:
+                record("contains submodule unpushed commits", prefix,
+                       "push them or move the checkout to a safe location, then retry")
+            else:
+                protected.append("contains unpushed commits; push them or move the checkout to a safe location, then retry")
 
-    # foreach skips normally uninitialized submodules. For each initialized
-    # one, prefix its NUL-delimited status with its path relative to this root.
-    # Quiet suppresses Git's human-readable Entering lines, not status output.
-    submodules = _replacement_git(
-        install_dir, ["submodule", "--quiet", "foreach", "--recursive",
-                      "printf 'submodule:%s\\0' \"$displaypath\" && "
-                      "git status --porcelain --ignored --untracked-files=all -z"], runner,
-    )
-    paths = []
-    if submodules is None or (submodules and not submodules.endswith("\0")):
-        protected.append("failed to inspect submodule data; move the checkout to a safe location "
-                         "or resolve the inspection failure before retrying")
-    else:
-        submodule = None
-        for record in submodules.split("\0"):
-            if record.startswith("submodule:"):
-                submodule = record[len("submodule:"):]
-            elif record:
-                # Rename records may also include a second bare pathname.
-                relative = record[3:] if record[2:3] == " " else record
-                paths.append(f"{submodule}/{relative}" if submodule else relative)
-    # Share the ten-path budget, leaving room for both kinds of data.
-    ignored_limit = max(5, 10 - len(paths))
-    if ignored:
-        protected.insert(0, f"contains ignored user data: {_replacement_paths(ignored, ignored_limit)}; "
-                            "move these paths to a safe location outside the checkout, then retry")
-    if paths:
-        submodule_limit = 10 - min(len(ignored), ignored_limit)
-        protected.append(f"contains submodule data: {_replacement_paths(paths, submodule_limit)}; "
-                         "move this work to a safe location outside the checkout, then retry")
+        # An absent stash gives empty output; a broken ref warning is a failure.
+        stash = _replacement_git(directory, ["for-each-ref", "--format=%(refname)", "refs/stash"], runner)
+        if stash is None:
+            inspection_failure(prefix, "stash")
+        elif "refs/stash" in stash.splitlines():
+            if prefix:
+                record("contains submodule stash (refs/stash)", prefix,
+                       "move the stash work to a safe checkout, then retry")
+            else:
+                protected.append("contains a stash (refs/stash); move the stash work to a safe checkout, then retry")
+
+    def inspect_index(directory: Path, prefix: str) -> None:
+        # Combine the -v flags and staged modes in a single NUL-delimited
+        # listing. Mode 160000 denotes a gitlink, including uninitialized ones.
+        index = _replacement_git(directory, ["ls-files", "-v", "--stage", "-z"], runner)
+        if index is None or (index and not index.endswith("\0")):
+            inspection_failure(prefix, "index flags and submodule paths")
+            return
+        gitlinks: dict[str, None] = {}
+        for item in index.split("\0"):
+            if not item:
+                continue
+            metadata, sep, relative = item.partition("\t")
+            fields = metadata.split()
+            if not sep or not relative or len(fields) != 4 or len(fields[0]) != 1:
+                inspection_failure(prefix, "index flags and submodule paths")
+                return
+            tag, mode, _, _ = fields
+            full_path = f"{prefix}/{relative}" if prefix else relative
+            if tag == "S" or tag.islower():
+                record("contains index flags (skip-worktree or assume-unchanged)", full_path,
+                       "clear the flags in the affected repository with git update-index --no-skip-worktree -- <path> "
+                       "and git update-index --no-assume-unchanged -- <path>, then save any edits before retrying")
+            if mode == "160000":
+                gitlinks[relative] = None
+
+        for relative in gitlinks:
+            subdir = directory / relative
+            full_path = f"{prefix}/{relative}" if prefix else relative
+            try:
+                try:
+                    subdir.lstat()
+                except FileNotFoundError:
+                    continue  # Absent gitlink worktree has no files to lose.
+                if subdir.is_symlink() or not subdir.is_dir():
+                    record("contains submodule data", full_path)
+                    continue
+                try:
+                    (subdir / ".git").lstat()
+                except FileNotFoundError:
+                    if next(subdir.iterdir(), None) is not None:
+                        record("contains nonempty uninitialized submodule directory", full_path)
+                    continue
+            except OSError:
+                inspection_failure(full_path, "submodule directory")
+                continue
+
+            # Do not accidentally inspect the parent when a .git marker is
+            # damaged or the directory is not a real submodule checkout.
+            if _replacement_git(subdir, ["rev-parse", "--show-prefix"], runner) not in ("", "\n"):
+                inspection_failure(full_path, "repository root")
+                continue
+            sub_status = _git_porcelain(subdir, runner, include_ignored=True)
+            if sub_status is None or (sub_status and not sub_status.endswith("\0")):
+                inspection_failure(full_path, "status")
+            else:
+                for item in sub_status.split("\0"):
+                    if item:
+                        # Include ignored paths and the second pathname of
+                        # rename records, as with the previous foreach probe.
+                        name = item[3:] if item[2:3] == " " else item
+                        record("contains submodule data", f"{full_path}/{name}")
+            inspect_history(subdir, full_path)
+            inspect_index(subdir, full_path)
+
+    inspect_history(install_dir, "")
+    inspect_index(install_dir, "")
+
+    # Share a ten-path budget across all reasons, reserving a representative
+    # for each group and reporting the exact omitted count for each.
+    limits = [0] * len(groups)
+    for _ in range(10):
+        for i, paths in enumerate(groups.values()):
+            if limits[i] < len(paths) and sum(limits) < 10:
+                limits[i] += 1
+    for ((reason, action), paths), limit in zip(groups.items(), limits):
+        shown = _replacement_paths(paths, limit) if limit else f"{len(paths)} paths (not shown)"
+        protected.append(f"{reason}: {shown}; {action}")
     return protected
 
 
@@ -1761,7 +1826,8 @@ def _git_porcelain(pack_dir: Path, runner: Runner, *, include_ignored: bool = Fa
     if include_ignored:
         # NUL delimiters avoid Git's quoted-path encoding, including spaces
         # and non-ASCII directory names. Other callers retain line porcelain.
-        args.extend(["--ignored", "--untracked-files=all", "-z"])
+        args.extend(["--ignored", "--untracked-files=all", "--ignore-submodules=none", "-z"])
+        return _replacement_git(pack_dir, args, runner)
     return _git(pack_dir, args, runner)
 def _git_origin(pack_dir: Path, runner: Runner) -> str | None: return (_git(pack_dir, ["config", "--get", "remote.origin.url"], runner) or "").strip() or None
 def _git_head(pack_dir: Path, runner: Runner) -> str | None: return (_git(pack_dir, ["rev-parse", "HEAD"], runner) or "").strip() or None

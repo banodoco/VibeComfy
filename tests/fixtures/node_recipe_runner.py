@@ -58,6 +58,8 @@ class RecipeRunner:
                 self.head_reads.append((call, output.strip()))
             elif call[3:] == ["config", "--get", "remote.origin.url"]:
                 output = self.origin + "\n"
+            elif call[3:] == ["ls-files", "-v", "--stage", "-z"]:
+                output = ""  # No flagged paths or gitlinks in this synthetic checkout.
             # This synthetic clean checkout has no unpushed work, stash or submodules.
             elif operation not in {"fetch", "status", "rev-list", "for-each-ref", "submodule"}:
                 raise AssertionError(f"Unexpected git operation: {call}")
