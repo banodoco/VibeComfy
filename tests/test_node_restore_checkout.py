@@ -644,3 +644,190 @@ def test_rs1b_3_pycache_non_bytecode_remains_protected(bytecode_checkout, with_n
         assert read_lockfile(lock) == [LockEntry("Pack", new, APPROVED)]
     assert not list(root.parent.glob(".vibecomfy-restore-*"))
 
+
+
+# RS1C.H1: protect Git-owned user work invisible to superproject status.
+def _rs1c_git_identity(runner, live):
+    runner.git("-C", str(live), "config", "user.name", "Offline fixture")
+    runner.git("-C", str(live), "config", "user.email", "offline@example.test")
+
+
+@pytest.mark.parametrize("local_ref", ["HEAD", "branch", "tag"])
+def test_rs1c_h1_unpushed_commit_preserved(bytecode_checkout, local_ref):
+    runner, root, lock, live, old, new = bytecode_checkout
+    _rs1c_git_identity(runner, live)
+    (live / "mywork.py").write_bytes(b"local committed work\n")
+    runner.git("-C", str(live), "add", "mywork.py")
+    runner.git("-C", str(live), "commit", "-m", "local work")
+    local_commit = runner.git("-C", str(live), "rev-parse", "HEAD")
+    if local_ref != "HEAD":
+        runner.git("-C", str(live), local_ref, "local-work", local_commit)
+        runner.git("-C", str(live), "checkout", "--detach", old)
+    live_head = runner.git("-C", str(live), "rev-parse", "HEAD")
+    assert runner.git("-C", str(live), "status", "--porcelain") == ""
+    assert local_commit in runner.git("-C", str(live), "rev-list", "HEAD",
+                                      "--branches", "--tags", "--not", "--remotes").splitlines()
+    runner.calls.clear()
+
+    result = _restore(root, lock, new, runner)
+
+    assert result.status == "skipped_dirty"
+    assert result.git_commit_sha == live_head
+    assert "unpushed commits" in result.error
+    assert "push" in result.error
+    assert not any(call[:2] == ["git", "clone"] for call in runner.calls)
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == live_head
+    assert runner.git("-C", str(live), "show", f"{local_commit}:mywork.py") == "local committed work"
+    if local_ref != "HEAD":
+        assert runner.git("-C", str(live), "rev-parse", "local-work") == local_commit
+    assert read_lockfile(lock) == [LockEntry("Pack", old, APPROVED)]
+    assert not list(root.parent.glob(".vibecomfy-restore-*"))
+
+
+@pytest.mark.parametrize("bytecode", [False, True], ids=["stash", "stash-and-bytecode"])
+def test_rs1c_h1_stash_preserved(bytecode_checkout, bytecode):
+    runner, root, lock, live, old, new = bytecode_checkout
+    _rs1c_git_identity(runner, live)
+    (live / "nodes.py").write_text("STASHED_WORK = True\n", encoding="utf-8")
+    runner.git("-C", str(live), "stash", "push", "-m", "local work")
+    stash = runner.git("-C", str(live), "rev-parse", "refs/stash")
+    if bytecode:
+        _write_bytecode(live)
+    assert runner.git("-C", str(live), "status", "--porcelain") == ""
+    runner.calls.clear()
+
+    result = _restore(root, lock, new, runner)
+
+    assert result.status == "skipped_dirty"
+    assert result.git_commit_sha == old
+    assert "stash" in result.error
+    assert "move" in result.error
+    assert "unpushed commits" not in result.error
+    assert "ignored user data" not in result.error
+    assert "__pycache__" not in result.error
+    assert ".pyc" not in result.error
+    assert ".pyo" not in result.error
+    assert not any(call[:2] == ["git", "clone"] for call in runner.calls)
+    assert runner.git("-C", str(live), "rev-parse", "refs/stash") == stash
+    assert runner.git("-C", str(live), "show", f"{stash}:nodes.py") == "STASHED_WORK = True"
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == old
+    assert read_lockfile(lock) == [LockEntry("Pack", old, APPROVED)]
+    assert not list(root.parent.glob(".vibecomfy-restore-*"))
+
+
+@pytest.mark.parametrize("with_data", [True, False], ids=["ignored-data", "clean-submodule"])
+def test_rs1c_h1_initialized_submodule_data(tmp_path, source, with_data):
+    runner, _, _ = source
+    sub = tmp_path / "sub-upstream"
+    sub.mkdir()
+    runner.git("-C", str(sub), "init", "-b", "main")
+    _rs1c_git_identity(runner, sub)
+    (sub / ".gitignore").write_text("data/\n", encoding="utf-8")
+    runner.git("-C", str(sub), "add", ".gitignore")
+    runner.git("-C", str(sub), "commit", "-m", "submodule")
+    upstream = runner.upstream
+    runner.git("-C", str(upstream), "submodule", "add", sub.as_uri(), "sub")
+    runner.git("-C", str(upstream), "commit", "-m", "add submodule")
+    old = runner.git("-C", str(upstream), "rev-parse", "HEAD")
+    (upstream / "nodes.py").write_text("NEW_PIN = True\n", encoding="utf-8")
+    runner.git("-C", str(upstream), "add", "nodes.py")
+    runner.git("-C", str(upstream), "commit", "-m", "new pin")
+    new = runner.git("-C", str(upstream), "rev-parse", "HEAD")
+    root, lock = tmp_path / "custom_nodes", tmp_path / "custom_nodes.lock"
+    assert _restore(root, lock, old, runner).status == "installed"
+    live = root / "Pack"
+    runner.git("-C", str(live), "submodule", "update", "--init", "--recursive")
+    data = live / "sub/data/subweights.bin"
+    if with_data:
+        data.parent.mkdir()
+        data.write_bytes(b"\x00\xfflocal submodule weights")
+        assert "!! data/" in runner.git("-C", str(live / "sub"), "status", "--porcelain", "--ignored")
+    assert runner.git("-C", str(live), "status", "--porcelain", "--ignored") == ""
+    runner.calls.clear()
+
+    result = _restore(root, lock, new, runner)
+
+    if with_data:
+        assert result.status == "skipped_dirty"
+        assert result.git_commit_sha == old
+        assert "submodule data" in result.error
+        assert "data/subweights.bin" in result.error
+        assert "move" in result.error
+        assert not any(call[:2] == ["git", "clone"] for call in runner.calls)
+        assert data.read_bytes() == b"\x00\xfflocal submodule weights"
+        assert runner.git("-C", str(live), "rev-parse", "HEAD") == old
+        assert read_lockfile(lock) == [LockEntry("Pack", old, APPROVED)]
+    else:
+        assert result.status == "refreshed"
+        assert result.git_commit_sha == new
+        assert result.error is None
+        assert read_lockfile(lock) == [LockEntry("Pack", new, APPROVED)]
+    assert not list(root.parent.glob(".vibecomfy-restore-*"))
+
+
+@pytest.mark.parametrize("same_pin", [True, False], ids=["same-pin", "new-pin"])
+def test_rs1c_h1_detached_without_local_refs_refreshes(bytecode_checkout, same_pin):
+    runner, root, lock, live, old, new = bytecode_checkout
+    runner.git("-C", str(live), "checkout", "--detach", old)
+    runner.git("-C", str(live), "branch", "-D", "main")
+    assert runner.git("-C", str(live), "for-each-ref", "refs/heads", "refs/tags") == ""
+    assert runner.git("-C", str(live), "rev-list", "HEAD", "--branches",
+                      "--tags", "--not", "--remotes") == ""
+    runner.calls.clear()
+
+    target = old if same_pin else new
+    result = _restore(root, lock, target, runner)
+
+    assert result.status == "refreshed"
+    assert result.git_commit_sha == target
+    assert result.error is None
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == target
+    assert read_lockfile(lock) == [LockEntry("Pack", target, APPROVED)]
+    assert any(call[:2] == ["git", "clone"] for call in runner.calls) is not same_pin
+    assert not list(root.parent.glob(".vibecomfy-restore-*"))
+
+
+def test_rs1c_h1_failed_ref_inspection_refuses_replacement(bytecode_checkout):
+    runner, root, lock, live, old, new = bytecode_checkout
+    # A syntactically valid ref to a missing object leaves the working tree
+    # clean but makes the revision walk fail. No subprocess is mocked.
+    broken = live / ".git/refs/heads/broken"
+    broken.write_text("1" * 40 + "\n", encoding="ascii")
+    assert runner.git("-C", str(live), "status", "--porcelain") == ""
+    inspection = runner(["git", "-C", str(live), "rev-list", "HEAD", "--branches",
+                         "--tags", "--not", "--remotes"],
+                        check=False, capture_output=True, text=True)
+    assert inspection.returncode != 0 or inspection.stderr
+    runner.calls.clear()
+
+    result = _restore(root, lock, new, runner)
+
+    assert result.status == "skipped_dirty"
+    assert result.git_commit_sha == old
+    assert "failed to inspect" in result.error
+    assert "unpushed commits" in result.error
+    assert "move" in result.error or "push" in result.error
+    assert not any(call[:2] == ["git", "clone"] for call in runner.calls)
+    assert broken.read_text(encoding="ascii") == "1" * 40 + "\n"
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == old
+    assert read_lockfile(lock) == [LockEntry("Pack", old, APPROVED)]
+    assert not list(root.parent.glob(".vibecomfy-restore-*"))
+
+
+def test_rs1c_h1_refusal_caps_ignored_paths(bytecode_checkout):
+    runner, root, lock, live, old, new = bytecode_checkout
+    (live / "cache").mkdir()
+    for i in range(13):
+        (live / "cache" / f"data-{i:02}.bin").write_bytes(b"user data")
+
+    result = _restore(root, lock, new, runner)
+
+    assert result.status == "skipped_dirty"
+    assert "cache/data-00.bin" in result.error
+    assert "cache/data-09.bin" in result.error
+    assert "cache/data-10.bin" not in result.error
+    assert "and 3 more" in result.error
+    assert all(path.read_bytes() == b"user data" for path in (live / "cache").iterdir())
+    assert len(list((live / "cache").iterdir())) == 13
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == old
+    assert read_lockfile(lock) == [LockEntry("Pack", old, APPROVED)]

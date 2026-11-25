@@ -342,11 +342,28 @@ def install_pack(
     )
 
 
-def _replacement_status(install_dir: Path, runner: Runner) -> list[str] | None:
-    """Return status records that cannot be discarded during replacement.
+def _replacement_git(install_dir: Path, args: list[str], runner: Runner) -> str | None:
+    """A failed command or Git warning is not evidence that work is absent."""
+    try:
+        result = runner(["git", "-C", str(install_dir), *args],
+                        check=True, capture_output=True, text=True)
+    except (OSError, subprocess.CalledProcessError, UnicodeError):
+        return None
+    if result.returncode != 0 or result.stderr or not isinstance(result.stdout, str):
+        return None
+    return result.stdout
 
-    Only ignored Python bytecode is regenerable. Never exempt tracked changes
-    or non-ignored files, even if their names look like bytecode.
+
+def _replacement_paths(paths: list[str], limit: int) -> str:
+    shown = ", ".join(path if path.isprintable() else repr(path) for path in paths[:limit])
+    return f"{shown} and {len(paths) - limit} more" if len(paths) > limit else shown
+
+
+def _replacement_status(install_dir: Path, runner: Runner) -> list[str] | None:
+    """Return reasons the checkout cannot be discarded, or None on status failure.
+
+    Only ignored regular Python bytecode is regenerable. Local Git history,
+    stashes and submodule work are not visible in ordinary porcelain status.
     """
     try:
         porcelain = _git_porcelain(install_dir, runner, include_ignored=True)
@@ -355,6 +372,8 @@ def _replacement_status(install_dir: Path, runner: Runner) -> list[str] | None:
     if porcelain is None:
         return None
     protected = []
+    ignored = []
+    dirty = False
     for record in porcelain.split("\0"):
         if not record:
             continue
@@ -367,7 +386,59 @@ def _replacement_status(install_dir: Path, runner: Runner) -> list[str] | None:
                         continue
                 except OSError:
                     pass  # Uninspectable paths remain protected.
-        protected.append(record)
+            ignored.append(relative)
+        else:
+            dirty = True
+    if dirty:
+        protected.append("has uncommitted changes; move or save them outside the checkout, then retry")
+
+    commits = _replacement_git(install_dir, ["rev-list", "HEAD", "--branches", "--tags",
+                                              "--not", "--remotes"], runner)
+    if commits is None:
+        protected.append("failed to inspect unpushed commits; move the checkout to a safe location "
+                         "or resolve the inspection failure before retrying")
+    elif commits.strip():
+        protected.append("contains unpushed commits; push them or move the checkout to a safe location, then retry")
+
+    # for-each-ref succeeds with empty output for an absent stash. Unlike a
+    # blanket nonzero-is-absent check, this also detects broken-ref warnings.
+    stash = _replacement_git(install_dir, ["for-each-ref", "--format=%(refname)", "refs/stash"], runner)
+    if stash is None:
+        protected.append("failed to inspect stash; move the checkout to a safe location "
+                         "or resolve the inspection failure before retrying")
+    elif "refs/stash" in stash.splitlines():
+        protected.append("contains a stash (refs/stash); move the stash work to a safe checkout, then retry")
+
+    # foreach skips normally uninitialized submodules. For each initialized
+    # one, prefix its NUL-delimited status with its path relative to this root.
+    # Quiet suppresses Git's human-readable Entering lines, not status output.
+    submodules = _replacement_git(
+        install_dir, ["submodule", "--quiet", "foreach", "--recursive",
+                      "printf 'submodule:%s\\0' \"$displaypath\" && "
+                      "git status --porcelain --ignored --untracked-files=all -z"], runner,
+    )
+    paths = []
+    if submodules is None or (submodules and not submodules.endswith("\0")):
+        protected.append("failed to inspect submodule data; move the checkout to a safe location "
+                         "or resolve the inspection failure before retrying")
+    else:
+        submodule = None
+        for record in submodules.split("\0"):
+            if record.startswith("submodule:"):
+                submodule = record[len("submodule:"):]
+            elif record:
+                # Rename records may also include a second bare pathname.
+                relative = record[3:] if record[2:3] == " " else record
+                paths.append(f"{submodule}/{relative}" if submodule else relative)
+    # Share the ten-path budget, leaving room for both kinds of data.
+    ignored_limit = max(5, 10 - len(paths))
+    if ignored:
+        protected.insert(0, f"contains ignored user data: {_replacement_paths(ignored, ignored_limit)}; "
+                            "move these paths to a safe location outside the checkout, then retry")
+    if paths:
+        submodule_limit = 10 - min(len(ignored), ignored_limit)
+        protected.append(f"contains submodule data: {_replacement_paths(paths, submodule_limit)}; "
+                         "move this work to a safe location outside the checkout, then retry")
     return protected
 
 
@@ -381,14 +452,8 @@ def _replacement_refusal(name: str, install_dir: Path, runner: Runner) -> Instal
     if protected is None:
         return InstallResult(name, "failed", head,
                              f"conflict: failed to inspect git status including ignored files for {install_dir}; replacement refused")
-    ignored = [record[3:] if record[3:].isprintable() else repr(record[3:])
-               for record in protected if record.startswith("!! ")]
-    if ignored:
-        return InstallResult(name, "skipped_dirty", head,
-                             f"conflict: {install_dir} contains ignored user data: {', '.join(ignored)}; "
-                             "move these paths to a safe location outside the checkout, then retry")
     return InstallResult(name, "skipped_dirty", head,
-                         f"conflict: {install_dir} has uncommitted changes; replacement refused")
+                         f"conflict: {install_dir} {'; '.join(protected)}")
 
 
 def _install_pack_via_clone(

@@ -102,6 +102,9 @@ class FakeRunner:
         if call[:4] == ["git", "-C", call[2], "rev-parse"]:
             self.head_reads.append((call, self.sha))
             return subprocess.CompletedProcess(call, 0, stdout=f"{self.sha}\n", stderr="")
+        if call[:2] == ["git", "-C"] and call[3] in {"rev-list", "for-each-ref", "submodule"}:
+            # The synthetic checkout has no local-only Git work.
+            return subprocess.CompletedProcess(call, 0, stdout="", stderr="")
         if call[:4] == ["git", "-C", call[2], "fetch"]:
             return subprocess.CompletedProcess(call, 0, stdout="", stderr="")
         if call[:4] == ["git", "-C", call[2], "checkout"]:
