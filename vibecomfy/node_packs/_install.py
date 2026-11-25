@@ -360,8 +360,6 @@ def _replacement_status(install_dir: Path, runner: Runner) -> list[str] | None:
             continue
         if record.startswith("!! "):
             relative = record[3:]
-            if "__pycache__" in relative.split("/")[:-1]:
-                continue
             if relative.endswith((".pyc", ".pyo")):
                 path = install_dir / relative
                 try:
