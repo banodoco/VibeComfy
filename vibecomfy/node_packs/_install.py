@@ -354,9 +354,9 @@ def _replacement_git(install_dir: Path, args: list[str], runner: Runner) -> str 
     return result.stdout
 
 
-def _replacement_paths(paths: list[str]) -> str:
-    shown = ", ".join(path if path.isprintable() else repr(path) for path in paths[:10])
-    return f"{shown} and {len(paths) - 10} more" if len(paths) > 10 else shown
+def _replacement_paths(paths: list[str], limit: int) -> str:
+    shown = ", ".join(path if path.isprintable() else repr(path) for path in paths[:limit])
+    return f"{shown} and {len(paths) - limit} more" if len(paths) > limit else shown
 
 
 def _replacement_status(install_dir: Path, runner: Runner) -> list[str] | None:
@@ -389,9 +389,6 @@ def _replacement_status(install_dir: Path, runner: Runner) -> list[str] | None:
             ignored.append(relative)
         else:
             dirty = True
-    if ignored:
-        protected.append(f"contains ignored user data: {_replacement_paths(ignored)}; "
-                         "move these paths to a safe location outside the checkout, then retry")
     if dirty:
         protected.append("has uncommitted changes; move or save them outside the checkout, then retry")
 
@@ -420,12 +417,12 @@ def _replacement_status(install_dir: Path, runner: Runner) -> list[str] | None:
                       "printf 'submodule:%s\\0' \"$displaypath\" && "
                       "git status --porcelain --ignored --untracked-files=all -z"], runner,
     )
+    paths = []
     if submodules is None or (submodules and not submodules.endswith("\0")):
         protected.append("failed to inspect submodule data; move the checkout to a safe location "
                          "or resolve the inspection failure before retrying")
     else:
         submodule = None
-        paths = []
         for record in submodules.split("\0"):
             if record.startswith("submodule:"):
                 submodule = record[len("submodule:"):]
@@ -433,9 +430,15 @@ def _replacement_status(install_dir: Path, runner: Runner) -> list[str] | None:
                 # Rename records may also include a second bare pathname.
                 relative = record[3:] if record[2:3] == " " else record
                 paths.append(f"{submodule}/{relative}" if submodule else relative)
-        if paths:
-            protected.append(f"contains submodule data: {_replacement_paths(paths)}; "
-                             "move this work to a safe location outside the checkout, then retry")
+    # Share the ten-path budget, leaving room for both kinds of data.
+    ignored_limit = max(5, 10 - len(paths))
+    if ignored:
+        protected.insert(0, f"contains ignored user data: {_replacement_paths(ignored, ignored_limit)}; "
+                            "move these paths to a safe location outside the checkout, then retry")
+    if paths:
+        submodule_limit = 10 - min(len(ignored), ignored_limit)
+        protected.append(f"contains submodule data: {_replacement_paths(paths, submodule_limit)}; "
+                         "move this work to a safe location outside the checkout, then retry")
     return protected
 
 
