@@ -458,3 +458,62 @@ def test_rs1b_3_ignored_data_created_during_staging_refuses_swap(ignored_checkou
     assert "config.local.json" in result.error
     _assert_ignored_data_live(runner, root, lock, live, old)
 
+
+def test_rs1b_3_refused_pin_change_can_retry_after_moving_data(ignored_checkout):
+    runner, root, lock, live, old, new = ignored_checkout
+    assert _restore(root, lock, new, runner).status == "skipped_dirty"
+    saved = root.parent / "saved-user-data"
+    saved.mkdir()
+    (live / "cache").rename(saved / "cache")
+    (live / "config.local.json").rename(saved / "config.local.json")
+
+    result = _restore(root, lock, new, runner)
+    assert result.status == "refreshed"
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == new != old
+    assert read_lockfile(lock) == [LockEntry("Pack", new, APPROVED)]
+    assert (saved / "cache/model.bin").read_bytes() == b"\x00\xfflocal model"
+    assert (saved / "config.local.json").read_bytes() == b'{"local":true}\n'
+    assert not list(root.parent.glob(".vibecomfy-restore-*"))
+
+
+def test_rs1b_3_unreadable_ignored_status_refuses_replacement(ignored_checkout):
+    runner, root, lock, live, old, new = ignored_checkout
+
+    def fail_ignored_status(args, **kwargs):
+        if "--ignored" in args:
+            raise subprocess.CalledProcessError(1, args, stderr="cannot inspect ignored files")
+        return runner(args, **kwargs)
+
+    result = _restore(root, lock, new, fail_ignored_status)
+    assert result.status == "failed"
+    assert "failed to inspect" in result.error
+    _assert_ignored_data_live(runner, root, lock, live, old)
+
+
+def test_rs1b_3_late_write_to_previous_tree_keeps_recoverable_backup(ignored_checkout, monkeypatch, caplog):
+    runner, root, lock, live, old, new = ignored_checkout
+    (live / "cache/model.bin").unlink()
+    (live / "cache").rmdir()
+    (live / "config.local.json").unlink()
+    write_lock = install.upsert_lockfile_entry
+
+    def write_during_finalize(*args, **kwargs):
+        # Simulate a process with an existing handle into the displaced tree.
+        [previous] = root.parent.glob(".vibecomfy-restore-*/previous")
+        (previous / "cache").mkdir()
+        (previous / "cache/model.bin").write_bytes(b"\x00\xfflocal model")
+        (previous / "config.local.json").write_bytes(b'{"local":true}\n')
+        return write_lock(*args, **kwargs)
+
+    monkeypatch.setattr(install, "upsert_lockfile_entry", write_during_finalize)
+    result = _restore(root, lock, new, runner)
+    assert result.status == "refreshed"
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == new
+    assert read_lockfile(lock) == [LockEntry("Pack", new, APPROVED)]
+    [previous] = root.parent.glob(".vibecomfy-restore-*/previous")
+    assert not previous.is_relative_to(root)
+    assert runner.git("-C", str(previous), "rev-parse", "HEAD") == old
+    assert (previous / "cache/model.bin").read_bytes() == b"\x00\xfflocal model"
+    assert (previous / "config.local.json").read_bytes() == b'{"local":true}\n'
+    assert str(previous) in caplog.text
+
