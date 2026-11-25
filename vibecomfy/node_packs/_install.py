@@ -5,6 +5,7 @@ import importlib.metadata
 import importlib.util, json, os, re, shutil, socket, subprocess, sys, tempfile, time
 import logging
 import shlex
+import stat
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Callable, Literal, Mapping, Protocol, Sequence
@@ -362,9 +363,9 @@ def _replacement_paths(paths: list[str], limit: int) -> str:
 def _replacement_status(install_dir: Path, runner: Runner) -> list[str] | None:
     """Return reasons the checkout cannot be discarded, or None on status failure.
 
-    Only ignored regular Python bytecode in the parent is regenerable. Inspect
-    every initialized gitlink as its own repository; status alone misses
-    history, stashes and index flags, and skips uninitialized gitlinks.
+    Only ignored regular Python bytecode with matching source is regenerable.
+    Inspect initialized gitlinks as repositories and orphan module gitdirs for
+    retained history and stashes; status alone cannot see that work.
     """
     porcelain = _git_porcelain(install_dir, runner, include_ignored=True)
     if porcelain is None or (porcelain and not porcelain.endswith("\0")):
@@ -378,19 +379,34 @@ def _replacement_status(install_dir: Path, runner: Runner) -> list[str] | None:
     def record(reason: str, path: str, action: str = move) -> None:
         groups.setdefault((reason, action), []).append(path)
 
+    def regenerable_bytecode(relative: str) -> bool:
+        path = install_dir / relative
+        if path.suffix not in (".pyc", ".pyo"):
+            return False
+        if path.parent.name == "__pycache__":
+            # A cache filename has a source stem, interpreter tag and
+            # optional optimization tag. Also accept an untagged cache file.
+            stem = path.stem
+            if re.search(r"\.opt-[^.]+$", stem):
+                stem = stem.rsplit(".", 1)[0]
+            stem = stem.rsplit(".", 1)[0]
+            source = path.parent.parent / f"{stem}.py"
+        else:
+            source = path.with_suffix(".py")
+        try:
+            return (stat.S_ISREG(path.lstat().st_mode)
+                    and stat.S_ISREG(source.lstat().st_mode))
+        except OSError:
+            return False
+
     dirty = False
     for item in porcelain.split("\0"):
         if not item:
             continue
         if item.startswith("!! "):
             relative = item[3:]
-            if relative.endswith((".pyc", ".pyo")):
-                path = install_dir / relative
-                try:
-                    if not path.is_symlink() and path.is_file():
-                        continue
-                except OSError:
-                    pass  # Uninspectable paths remain protected.
+            if regenerable_bytecode(relative):
+                continue
             record("contains ignored user data", relative,
                    "move these paths to a safe location outside the checkout, then retry")
         else:
@@ -404,28 +420,41 @@ def _replacement_status(install_dir: Path, runner: Runner) -> list[str] | None:
         else:
             protected.append(f"failed to inspect {probe}; {repair}")
 
-    def inspect_history(directory: Path, prefix: str) -> None:
-        commits = _replacement_git(directory, ["rev-list", "HEAD", "--branches", "--tags",
+    def inspect_history(directory: Path, prefix: str, *, orphan: Path | None = None) -> None:
+        # A deinitialised module has no worktree. Specify its Git directory
+        # explicitly and keep the history-only commands independent of any
+        # core.worktree path left behind by a removed ancestor worktree.
+        options = (["--git-dir", str(orphan), "--work-tree", str(directory.resolve())]
+                   if orphan is not None else [])
+        commits = _replacement_git(directory, [*options, "rev-list", "HEAD", "--branches", "--tags",
                                                "--not", "--remotes"], runner)
         if commits is None:
             inspection_failure(prefix, "unpushed commits")
         elif commits.strip():
-            if prefix:
+            if orphan is not None:
+                record("deinitialised submodule holds unpushed commits", prefix,
+                       "push them or move the module gitdir to a safe location, then retry")
+            elif prefix:
                 record("contains submodule unpushed commits", prefix,
                        "push them or move the checkout to a safe location, then retry")
             else:
                 protected.append("contains unpushed commits; push them or move the checkout to a safe location, then retry")
 
         # An absent stash gives empty output; a broken ref warning is a failure.
-        stash = _replacement_git(directory, ["for-each-ref", "--format=%(refname)", "refs/stash"], runner)
+        stash = _replacement_git(directory, [*options, "for-each-ref", "--format=%(refname)", "refs/stash"], runner)
         if stash is None:
             inspection_failure(prefix, "stash")
         elif "refs/stash" in stash.splitlines():
-            if prefix:
+            if orphan is not None:
+                record("deinitialised submodule holds a stash (refs/stash)", prefix,
+                       "move the stash work to a safe checkout, then retry")
+            elif prefix:
                 record("contains submodule stash (refs/stash)", prefix,
                        "move the stash work to a safe checkout, then retry")
             else:
                 protected.append("contains a stash (refs/stash); move the stash work to a safe checkout, then retry")
+
+    inspected_gitdirs: set[Path] = set()
 
     def inspect_index(directory: Path, prefix: str) -> None:
         # Combine the -v flags and staged modes in a single NUL-delimited
@@ -478,6 +507,17 @@ def _replacement_status(install_dir: Path, runner: Runner) -> list[str] | None:
             if _replacement_git(subdir, ["rev-parse", "--show-prefix"], runner) not in ("", "\n"):
                 inspection_failure(full_path, "repository root")
                 continue
+            gitdir_output = _replacement_git(subdir, ["rev-parse", "--absolute-git-dir"], runner)
+            try:
+                if gitdir_output is None:
+                    raise ValueError("missing gitdir")
+                gitdir = Path(gitdir_output.removesuffix("\n"))
+                if not gitdir.is_absolute():
+                    raise ValueError("non-absolute gitdir")
+                inspected_gitdirs.add(gitdir.resolve(strict=True))
+            except (OSError, RuntimeError, ValueError):
+                inspection_failure(full_path, "backing gitdir")
+                continue
             sub_status = _git_porcelain(subdir, runner, include_ignored=True)
             if sub_status is None or (sub_status and not sub_status.endswith("\0")):
                 inspection_failure(full_path, "status")
@@ -491,8 +531,51 @@ def _replacement_status(install_dir: Path, runner: Runner) -> list[str] | None:
             inspect_history(subdir, full_path)
             inspect_index(subdir, full_path)
 
+    def inspect_orphan_modules() -> None:
+        # Git stores modules by name (which can contain slashes); nested
+        # repositories have their own modules/ directory inside their gitdir.
+        # Walk only module namespaces, not object stores or refs.
+        pending = [(install_dir / ".git" / "modules", "")]
+        while pending:
+            modules, prefix = pending.pop()
+            try:
+                try:
+                    mode = modules.lstat().st_mode
+                except FileNotFoundError:
+                    continue  # A checkout or a module need not have children.
+                except NotADirectoryError:
+                    if not prefix:
+                        continue  # A linked checkout's .git is a file.
+                    raise
+                if not stat.S_ISDIR(mode):
+                    inspection_failure(prefix or ".git/modules", "module gitdirs")
+                    continue
+                for child in sorted(modules.iterdir()):
+                    name = f"{prefix}/{child.name}" if prefix else child.name
+                    if not stat.S_ISDIR(child.lstat().st_mode):
+                        inspection_failure(name, "module gitdir")
+                        continue
+                    entries = {entry.name: entry for entry in child.iterdir()}
+                    # HEAD or config can be damaged; still attempt the Git
+                    # probes rather than ignoring a recognizable repository.
+                    is_gitdir = (
+                        any(marker in entries and not stat.S_ISDIR(entries[marker].lstat().st_mode)
+                            for marker in ("HEAD", "config"))
+                        or {"objects", "refs"} <= entries.keys()
+                    )
+                    if not is_gitdir:
+                        pending.append((child, name))
+                        continue
+                    gitdir = child.resolve(strict=True)
+                    if gitdir not in inspected_gitdirs:
+                        inspect_history(install_dir, name, orphan=gitdir)
+                    pending.append((child / "modules", name))
+            except (OSError, RuntimeError, ValueError):
+                inspection_failure(prefix or ".git/modules", "module gitdirs")
+
     inspect_history(install_dir, "")
     inspect_index(install_dir, "")
+    inspect_orphan_modules()
 
     # Share a ten-path budget across all reasons, reserving a representative
     # for each group and reporting the exact omitted count for each.
