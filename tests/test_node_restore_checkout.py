@@ -362,3 +362,285 @@ def test_failed_replacement_lock_write_rolls_back_previous_checkout(tmp_path, so
     assert (live / "nodes.py").read_bytes() == original
     assert not lock.exists()
     assert not list(tmp_path.glob(".vibecomfy-restore-*"))
+
+
+@pytest.fixture
+def ignored_checkout(tmp_path, source):
+    runner, _, _ = source
+    upstream = runner.upstream
+    (upstream / ".gitignore").write_text("cache/\nconfig.local.json\n", encoding="utf-8")
+    runner.git("-C", str(upstream), "add", ".gitignore")
+    runner.git("-C", str(upstream), "commit", "-m", "ignore local user data")
+    old = runner.git("-C", str(upstream), "rev-parse", "HEAD")
+    (upstream / "nodes.py").write_text("NEW_PIN = True\n", encoding="utf-8")
+    runner.git("-C", str(upstream), "add", "nodes.py")
+    runner.git("-C", str(upstream), "commit", "-m", "new pin")
+    new = runner.git("-C", str(upstream), "rev-parse", "HEAD")
+    root, lock = tmp_path / "custom_nodes", tmp_path / "custom_nodes.lock"
+    assert _restore(root, lock, old, runner).status == "installed"
+    live = root / "Pack"
+    (live / "cache").mkdir()
+    (live / "cache/model.bin").write_bytes(b"\x00\xfflocal model")
+    (live / "config.local.json").write_bytes(b'{"local":true}\n')
+    assert runner.git("-C", str(live), "status", "--porcelain") == ""
+    assert "!! cache/" in runner.git("-C", str(live), "status", "--porcelain", "--ignored")
+    runner.calls.clear()
+    return runner, root, lock, live, old, new
+
+
+def _assert_ignored_data_live(runner, root, lock, live, old):
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == old
+    assert (live / "cache/model.bin").read_bytes() == b"\x00\xfflocal model"
+    assert (live / "config.local.json").read_bytes() == b'{"local":true}\n'
+    assert read_lockfile(lock) == [LockEntry("Pack", old, APPROVED)]
+    assert not list(root.parent.glob(".vibecomfy-restore-*"))
+
+
+def test_rs1b_3_pin_change_refuses_without_losing_ignored_data(ignored_checkout):
+    runner, root, lock, live, old, new = ignored_checkout
+    result = _restore(root, lock, new, runner)
+    assert result.status == "skipped_dirty"
+    assert result.git_commit_sha == old
+    assert "cache/model.bin" in result.error
+    assert "config.local.json" in result.error
+    assert not any(call[:2] == ["git", "clone"] for call in runner.calls)
+    _assert_ignored_data_live(runner, root, lock, live, old)
+
+
+def test_rs1b_3_explicit_force_cannot_discard_ignored_data(ignored_checkout):
+    runner, root, lock, live, old, new = ignored_checkout
+    result = install_pack(repo=APPROVED, install_root=root, lockfile_path=lock,
+                          force=True, runner=runner, checkout_ref=new, expected_commit=new)
+    assert result.status == "skipped_dirty"
+    assert result.git_commit_sha == old
+    assert "cache/model.bin" in result.error
+    assert "config.local.json" in result.error
+    _assert_ignored_data_live(runner, root, lock, live, old)
+
+
+def test_rs1b_3_same_pin_restore_keeps_ignored_data(ignored_checkout):
+    runner, root, lock, live, old, _ = ignored_checkout
+    result = _restore(root, lock, old, runner)
+    assert result.status == "refreshed"
+    assert result.git_commit_sha == old
+    _assert_ignored_data_live(runner, root, lock, live, old)
+
+
+def test_rs1b_3_failed_restore_keeps_ignored_data_live(ignored_checkout):
+    runner, root, lock, live, old, _ = ignored_checkout
+    result = _restore(root, lock, "0" * 40, runner)
+    assert result.status == "skipped_dirty"
+    assert "cache/model.bin" in result.error
+    assert "config.local.json" in result.error
+    _assert_ignored_data_live(runner, root, lock, live, old)
+
+
+def test_rs1b_3_ignored_data_created_during_staging_refuses_swap(ignored_checkout):
+    runner, root, lock, live, old, new = ignored_checkout
+    # Start clean, then simulate the running pack writing its data while the
+    # verified replacement is being cloned outside the live directory.
+    (live / "cache/model.bin").unlink()
+    (live / "cache").rmdir()
+    (live / "config.local.json").unlink()
+
+    def write_during_clone(args, **kwargs):
+        result = runner(args, **kwargs)
+        if list(args)[:2] == ["git", "clone"]:
+            (live / "cache").mkdir()
+            (live / "cache/model.bin").write_bytes(b"\x00\xfflocal model")
+            (live / "config.local.json").write_bytes(b'{"local":true}\n')
+        return result
+
+    result = _restore(root, lock, new, write_during_clone)
+    assert result.status == "skipped_dirty"
+    assert result.git_commit_sha == old
+    assert "cache/model.bin" in result.error
+    assert "config.local.json" in result.error
+    _assert_ignored_data_live(runner, root, lock, live, old)
+
+
+def test_rs1b_3_refused_pin_change_can_retry_after_moving_data(ignored_checkout):
+    runner, root, lock, live, old, new = ignored_checkout
+    assert _restore(root, lock, new, runner).status == "skipped_dirty"
+    saved = root.parent / "saved-user-data"
+    saved.mkdir()
+    (live / "cache").rename(saved / "cache")
+    (live / "config.local.json").rename(saved / "config.local.json")
+
+    result = _restore(root, lock, new, runner)
+    assert result.status == "refreshed"
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == new != old
+    assert read_lockfile(lock) == [LockEntry("Pack", new, APPROVED)]
+    assert (saved / "cache/model.bin").read_bytes() == b"\x00\xfflocal model"
+    assert (saved / "config.local.json").read_bytes() == b'{"local":true}\n'
+    assert not list(root.parent.glob(".vibecomfy-restore-*"))
+
+
+def test_rs1b_3_unreadable_ignored_status_refuses_replacement(ignored_checkout):
+    runner, root, lock, live, old, new = ignored_checkout
+
+    def fail_ignored_status(args, **kwargs):
+        if "--ignored" in args:
+            raise subprocess.CalledProcessError(1, args, stderr="cannot inspect ignored files")
+        return runner(args, **kwargs)
+
+    result = _restore(root, lock, new, fail_ignored_status)
+    assert result.status == "failed"
+    assert "failed to inspect" in result.error
+    _assert_ignored_data_live(runner, root, lock, live, old)
+
+
+def test_rs1b_3_late_write_to_previous_tree_keeps_recoverable_backup(ignored_checkout, monkeypatch, caplog):
+    runner, root, lock, live, old, new = ignored_checkout
+    (live / "cache/model.bin").unlink()
+    (live / "cache").rmdir()
+    (live / "config.local.json").unlink()
+    write_lock = install.upsert_lockfile_entry
+
+    def write_during_finalize(*args, **kwargs):
+        # Simulate a process with an existing handle into the displaced tree.
+        [previous] = root.parent.glob(".vibecomfy-restore-*/previous")
+        (previous / "cache").mkdir()
+        (previous / "cache/model.bin").write_bytes(b"\x00\xfflocal model")
+        (previous / "config.local.json").write_bytes(b'{"local":true}\n')
+        return write_lock(*args, **kwargs)
+
+    monkeypatch.setattr(install, "upsert_lockfile_entry", write_during_finalize)
+    result = _restore(root, lock, new, runner)
+    assert result.status == "refreshed"
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == new
+    assert read_lockfile(lock) == [LockEntry("Pack", new, APPROVED)]
+    [previous] = root.parent.glob(".vibecomfy-restore-*/previous")
+    assert not previous.is_relative_to(root)
+    assert runner.git("-C", str(previous), "rev-parse", "HEAD") == old
+    assert (previous / "cache/model.bin").read_bytes() == b"\x00\xfflocal model"
+    assert (previous / "config.local.json").read_bytes() == b'{"local":true}\n'
+    assert str(previous) in caplog.text
+
+
+@pytest.fixture
+def bytecode_checkout(tmp_path, source):
+    runner, _, _ = source
+    upstream = runner.upstream
+    (upstream / ".gitignore").write_text("__pycache__/\n*.pyc\n*.pyo\ncache/\n", encoding="utf-8")
+    runner.git("-C", str(upstream), "add", ".gitignore")
+    runner.git("-C", str(upstream), "commit", "-m", "ignore Python bytecode")
+    old = runner.git("-C", str(upstream), "rev-parse", "HEAD")
+    (upstream / "nodes.py").write_text("NEW_PIN = True\n", encoding="utf-8")
+    runner.git("-C", str(upstream), "add", "nodes.py")
+    runner.git("-C", str(upstream), "commit", "-m", "new pin")
+    new = runner.git("-C", str(upstream), "rev-parse", "HEAD")
+    root, lock = tmp_path / "custom_nodes", tmp_path / "custom_nodes.lock"
+    assert _restore(root, lock, old, runner).status == "installed"
+    return runner, root, lock, root / "Pack", old, new
+
+
+def _write_bytecode(live):
+    for relative in ("__pycache__/x.cpython-312.pyc",
+                     "nested folder/__pycache__/x.cpython-312.pyc",
+                     "loose.pyc", "loose.pyo"):
+        path = live / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"regenerable bytecode")
+
+
+@pytest.mark.parametrize("during_staging", [False, True], ids=["existing", "during-staging"])
+def test_rs1b_3_bytecode_only_allows_pin_update(bytecode_checkout, during_staging):
+    runner, root, lock, live, old, new = bytecode_checkout
+
+    def write_during_clone(args, **kwargs):
+        result = runner(args, **kwargs)
+        if list(args)[:2] == ["git", "clone"]:
+            _write_bytecode(live)
+        return result
+
+    if not during_staging:
+        _write_bytecode(live)
+        assert runner.git("-C", str(live), "status", "--porcelain") == ""
+        assert "!! __pycache__/" in runner.git("-C", str(live), "status", "--porcelain", "--ignored")
+    result = _restore(root, lock, new, write_during_clone if during_staging else runner)
+    assert result.status == "refreshed"
+    assert result.git_commit_sha == new != old
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == new
+    assert read_lockfile(lock) == [LockEntry("Pack", new, APPROVED)]
+    assert result.error is None
+    assert not list(root.parent.glob(".vibecomfy-restore-*"))
+
+
+def test_rs1b_3_bytecode_mixed_with_model_names_only_user_data(bytecode_checkout):
+    runner, root, lock, live, old, new = bytecode_checkout
+    _write_bytecode(live)
+    (live / "cache").mkdir()
+    (live / "cache/model.bin").write_bytes(b"local model")
+    result = _restore(root, lock, new, runner)
+    assert result.status == "skipped_dirty"
+    assert result.git_commit_sha == old
+    assert "cache/model.bin" in result.error
+    assert "__pycache__" not in result.error
+    assert "loose.pyc" not in result.error
+    assert "loose.pyo" not in result.error
+    assert (live / "cache/model.bin").read_bytes() == b"local model"
+    assert (live / "__pycache__/x.cpython-312.pyc").read_bytes() == b"regenerable bytecode"
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == old
+    assert read_lockfile(lock) == [LockEntry("Pack", old, APPROVED)]
+    assert not list(root.parent.glob(".vibecomfy-restore-*"))
+
+
+def test_rs1b_3_retained_backup_path_visible_in_result(bytecode_checkout, monkeypatch):
+    runner, root, lock, live, old, new = bytecode_checkout
+    _write_bytecode(live)
+    write_lock = install.upsert_lockfile_entry
+
+    def write_during_finalize(*args, **kwargs):
+        [previous] = root.parent.glob(".vibecomfy-restore-*/previous")
+        (previous / "cache").mkdir()
+        (previous / "cache/model.bin").write_bytes(b"late model")
+        return write_lock(*args, **kwargs)
+
+    monkeypatch.setattr(install, "upsert_lockfile_entry", write_during_finalize)
+    result = _restore(root, lock, new, runner)
+    assert result.status == "refreshed"
+    assert result.git_commit_sha == new
+    [previous] = root.parent.glob(".vibecomfy-restore-*/previous")
+    assert str(previous) in result.error
+    assert "not" in result.error and "automatically" in result.error
+    assert (previous / "cache/model.bin").read_bytes() == b"late model"
+    assert runner.git("-C", str(previous), "rev-parse", "HEAD") == old
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == new
+    assert read_lockfile(lock) == [LockEntry("Pack", new, APPROVED)]
+
+
+
+
+@pytest.mark.parametrize("with_notes", [True, False], ids=["notes-protected", "bytecode-only"])
+def test_rs1b_3_pycache_non_bytecode_remains_protected(bytecode_checkout, with_notes):
+    import py_compile
+
+    runner, root, lock, live, old, new = bytecode_checkout
+    cached = live / "__pycache__/nodes.pyc"
+    cached.parent.mkdir()
+    py_compile.compile(str(live / "nodes.py"), cfile=str(cached), doraise=True)
+    bytecode = cached.read_bytes()
+    notes = cached.parent / "notes.txt"
+    if with_notes:
+        notes.write_bytes(b"irreplaceable user notes\n")
+    assert runner.git("-C", str(live), "status", "--porcelain") == ""
+
+    result = _restore(root, lock, new, runner)
+    if with_notes:
+        assert result.status == "skipped_dirty"
+        assert result.git_commit_sha == old
+        assert "ignored user data: __pycache__/notes.txt; " in result.error
+        assert "nodes.pyc" not in result.error
+        assert notes.read_bytes() == b"irreplaceable user notes\n"
+        assert cached.read_bytes() == bytecode
+        assert runner.git("-C", str(live), "rev-parse", "HEAD") == old
+        assert read_lockfile(lock) == [LockEntry("Pack", old, APPROVED)]
+    else:
+        assert result.status == "refreshed"
+        assert result.git_commit_sha == new != old
+        assert result.error is None
+        assert runner.git("-C", str(live), "rev-parse", "HEAD") == new
+        assert read_lockfile(lock) == [LockEntry("Pack", new, APPROVED)]
+    assert not list(root.parent.glob(".vibecomfy-restore-*"))
+
