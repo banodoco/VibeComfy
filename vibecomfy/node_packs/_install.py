@@ -342,17 +342,49 @@ def install_pack(
     )
 
 
+def _replacement_status(install_dir: Path, runner: Runner) -> list[str] | None:
+    """Return status records that cannot be discarded during replacement.
+
+    Only ignored Python bytecode is regenerable. Never exempt tracked changes
+    or non-ignored files, even if their names look like bytecode.
+    """
+    try:
+        porcelain = _git_porcelain(install_dir, runner, include_ignored=True)
+    except UnicodeError:
+        return None
+    if porcelain is None:
+        return None
+    protected = []
+    for record in porcelain.split("\0"):
+        if not record:
+            continue
+        if record.startswith("!! "):
+            relative = record[3:]
+            if "__pycache__" in relative.split("/")[:-1]:
+                continue
+            if relative.endswith((".pyc", ".pyo")):
+                path = install_dir / relative
+                try:
+                    if not path.is_symlink() and path.is_file():
+                        continue
+                except OSError:
+                    pass  # Uninspectable paths remain protected.
+        protected.append(record)
+    return protected
+
+
 def _replacement_refusal(name: str, install_dir: Path, runner: Runner) -> InstallResult | None:
     # A normal dirty check deliberately excludes ignored files (including for
     # same-pin patch verification). A destructive replacement cannot do that.
-    porcelain = _git_porcelain(install_dir, runner, include_ignored=True)
-    if porcelain is not None and not porcelain.strip():
+    protected = _replacement_status(install_dir, runner)
+    if protected == []:
         return None
     head = _git_head(install_dir, runner)
-    if porcelain is None:
+    if protected is None:
         return InstallResult(name, "failed", head,
                              f"conflict: failed to inspect git status including ignored files for {install_dir}; replacement refused")
-    ignored = [line[3:] for line in porcelain.splitlines() if line.startswith("!! ")]
+    ignored = [record[3:] if record[3:].isprintable() else repr(record[3:])
+               for record in protected if record.startswith("!! ")]
     if ignored:
         return InstallResult(name, "skipped_dirty", head,
                              f"conflict: {install_dir} contains ignored user data: {', '.join(ignored)}; "
@@ -443,15 +475,17 @@ def _install_pack_via_clone(
         # failed inspection is not permission to delete. The retained tree
         # lives outside the custom-node search root.
         if previous.exists() and (
-            not succeeded or _git_porcelain(previous, runner, include_ignored=True) != ""
+            not succeeded or _replacement_status(previous, runner) != []
         ):
             if staged.exists():
                 shutil.rmtree(staged)
-            if succeeded:
-                logging.getLogger(__name__).warning(
-                    "Previous checkout for %s retained at %s: local data present or status unavailable",
-                    name, previous,
+            if succeeded and result is not None:
+                message = (
+                    f"Previous checkout for {name} retained at {previous}: local data present or status unavailable; "
+                    "this backup is not cleaned up automatically"
                 )
+                logging.getLogger(__name__).warning("%s", message)
+                result = replace(result, error=f"{result.error}; {message}" if result.error else message)
         else:
             shutil.rmtree(work_dir)
     return result
@@ -1662,7 +1696,9 @@ def _verified_declared_patches(pack_dir: Path, porcelain: str, entry: LockEntry,
 def _git_porcelain(pack_dir: Path, runner: Runner, *, include_ignored: bool = False) -> str | None:
     args = ["status", "--porcelain"]
     if include_ignored:
-        args.extend(["--ignored", "--untracked-files=all"])
+        # NUL delimiters avoid Git's quoted-path encoding, including spaces
+        # and non-ASCII directory names. Other callers retain line porcelain.
+        args.extend(["--ignored", "--untracked-files=all", "-z"])
     return _git(pack_dir, args, runner)
 def _git_origin(pack_dir: Path, runner: Runner) -> str | None: return (_git(pack_dir, ["config", "--get", "remote.origin.url"], runner) or "").strip() or None
 def _git_head(pack_dir: Path, runner: Runner) -> str | None: return (_git(pack_dir, ["rev-parse", "HEAD"], runner) or "").strip() or None
