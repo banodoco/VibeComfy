@@ -362,3 +362,99 @@ def test_failed_replacement_lock_write_rolls_back_previous_checkout(tmp_path, so
     assert (live / "nodes.py").read_bytes() == original
     assert not lock.exists()
     assert not list(tmp_path.glob(".vibecomfy-restore-*"))
+
+
+@pytest.fixture
+def ignored_checkout(tmp_path, source):
+    runner, _, _ = source
+    upstream = runner.upstream
+    (upstream / ".gitignore").write_text("cache/\nconfig.local.json\n", encoding="utf-8")
+    runner.git("-C", str(upstream), "add", ".gitignore")
+    runner.git("-C", str(upstream), "commit", "-m", "ignore local user data")
+    old = runner.git("-C", str(upstream), "rev-parse", "HEAD")
+    (upstream / "nodes.py").write_text("NEW_PIN = True\n", encoding="utf-8")
+    runner.git("-C", str(upstream), "add", "nodes.py")
+    runner.git("-C", str(upstream), "commit", "-m", "new pin")
+    new = runner.git("-C", str(upstream), "rev-parse", "HEAD")
+    root, lock = tmp_path / "custom_nodes", tmp_path / "custom_nodes.lock"
+    assert _restore(root, lock, old, runner).status == "installed"
+    live = root / "Pack"
+    (live / "cache").mkdir()
+    (live / "cache/model.bin").write_bytes(b"\x00\xfflocal model")
+    (live / "config.local.json").write_bytes(b'{"local":true}\n')
+    assert runner.git("-C", str(live), "status", "--porcelain") == ""
+    assert "!! cache/" in runner.git("-C", str(live), "status", "--porcelain", "--ignored")
+    runner.calls.clear()
+    return runner, root, lock, live, old, new
+
+
+def _assert_ignored_data_live(runner, root, lock, live, old):
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == old
+    assert (live / "cache/model.bin").read_bytes() == b"\x00\xfflocal model"
+    assert (live / "config.local.json").read_bytes() == b'{"local":true}\n'
+    assert read_lockfile(lock) == [LockEntry("Pack", old, APPROVED)]
+    assert not list(root.parent.glob(".vibecomfy-restore-*"))
+
+
+def test_rs1b_3_pin_change_refuses_without_losing_ignored_data(ignored_checkout):
+    runner, root, lock, live, old, new = ignored_checkout
+    result = _restore(root, lock, new, runner)
+    assert result.status == "skipped_dirty"
+    assert result.git_commit_sha == old
+    assert "cache/model.bin" in result.error
+    assert "config.local.json" in result.error
+    assert not any(call[:2] == ["git", "clone"] for call in runner.calls)
+    _assert_ignored_data_live(runner, root, lock, live, old)
+
+
+def test_rs1b_3_explicit_force_cannot_discard_ignored_data(ignored_checkout):
+    runner, root, lock, live, old, new = ignored_checkout
+    result = install_pack(repo=APPROVED, install_root=root, lockfile_path=lock,
+                          force=True, runner=runner, checkout_ref=new, expected_commit=new)
+    assert result.status == "skipped_dirty"
+    assert result.git_commit_sha == old
+    assert "cache/model.bin" in result.error
+    assert "config.local.json" in result.error
+    _assert_ignored_data_live(runner, root, lock, live, old)
+
+
+def test_rs1b_3_same_pin_restore_keeps_ignored_data(ignored_checkout):
+    runner, root, lock, live, old, _ = ignored_checkout
+    result = _restore(root, lock, old, runner)
+    assert result.status == "refreshed"
+    assert result.git_commit_sha == old
+    _assert_ignored_data_live(runner, root, lock, live, old)
+
+
+def test_rs1b_3_failed_restore_keeps_ignored_data_live(ignored_checkout):
+    runner, root, lock, live, old, _ = ignored_checkout
+    result = _restore(root, lock, "0" * 40, runner)
+    assert result.status == "skipped_dirty"
+    assert "cache/model.bin" in result.error
+    assert "config.local.json" in result.error
+    _assert_ignored_data_live(runner, root, lock, live, old)
+
+
+def test_rs1b_3_ignored_data_created_during_staging_refuses_swap(ignored_checkout):
+    runner, root, lock, live, old, new = ignored_checkout
+    # Start clean, then simulate the running pack writing its data while the
+    # verified replacement is being cloned outside the live directory.
+    (live / "cache/model.bin").unlink()
+    (live / "cache").rmdir()
+    (live / "config.local.json").unlink()
+
+    def write_during_clone(args, **kwargs):
+        result = runner(args, **kwargs)
+        if list(args)[:2] == ["git", "clone"]:
+            (live / "cache").mkdir()
+            (live / "cache/model.bin").write_bytes(b"\x00\xfflocal model")
+            (live / "config.local.json").write_bytes(b'{"local":true}\n')
+        return result
+
+    result = _restore(root, lock, new, write_during_clone)
+    assert result.status == "skipped_dirty"
+    assert result.git_commit_sha == old
+    assert "cache/model.bin" in result.error
+    assert "config.local.json" in result.error
+    _assert_ignored_data_live(runner, root, lock, live, old)
+
