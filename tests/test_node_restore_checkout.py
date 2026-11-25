@@ -831,3 +831,215 @@ def test_rs1c_h1_refusal_caps_ignored_paths(bytecode_checkout):
     assert len(list((live / "cache").iterdir())) == 13
     assert runner.git("-C", str(live), "rev-parse", "HEAD") == old
     assert read_lockfile(lock) == [LockEntry("Pack", old, APPROVED)]
+
+
+# RS1C delta: additional real-Git replacement witnesses.
+@pytest.fixture
+def rs1c2_submodule_checkout(tmp_path, source):
+    runner, _, _ = source
+    sub = tmp_path / "sub-upstream"
+    sub.mkdir()
+    runner.git("-C", str(sub), "init", "-b", "main")
+    _rs1c_git_identity(runner, sub)
+    (sub / "work.txt").write_bytes(b"upstream submodule work\n")
+    runner.git("-C", str(sub), "add", "work.txt")
+    runner.git("-C", str(sub), "commit", "-m", "submodule")
+    upstream = runner.upstream
+    runner.git("-C", str(upstream), "submodule", "add", sub.as_uri(), "sub")
+    runner.git("-C", str(upstream), "config", "-f", ".gitmodules",
+               "submodule.sub.ignore", "all")
+    runner.git("-C", str(upstream), "add", ".gitmodules")
+    runner.git("-C", str(upstream), "commit", "-m", "add submodule with ignore all")
+    old = runner.git("-C", str(upstream), "rev-parse", "HEAD")
+    (upstream / "nodes.py").write_bytes(b"NEW_PIN = True\n")
+    runner.git("-C", str(upstream), "add", "nodes.py")
+    runner.git("-C", str(upstream), "commit", "-m", "new pin")
+    new = runner.git("-C", str(upstream), "rev-parse", "HEAD")
+    root, lock = tmp_path / "custom_nodes", tmp_path / "custom_nodes.lock"
+    assert _restore(root, lock, old, runner).status == "installed"
+    return runner, root, lock, root / "Pack", old, new
+
+
+def _rs1c2_assert_refusal(checkout, result):
+    runner, root, lock, live, old, _ = checkout
+    assert result.status == "skipped_dirty"
+    assert result.git_commit_sha == old
+    assert not any(call[:2] == ["git", "clone"] for call in runner.calls)
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == old
+    assert read_lockfile(lock) == [LockEntry("Pack", old, APPROVED)]
+    assert not list(root.parent.glob(".vibecomfy-restore-*"))
+
+
+@pytest.mark.parametrize("work", ["branch", "tag", "stash", "head", "clean"])
+def test_rs1c2_submodule_history_and_ignore(rs1c2_submodule_checkout, work):
+    checkout = rs1c2_submodule_checkout
+    runner, root, lock, live, old, new = checkout
+    runner.git("-C", str(live), "submodule", "update", "--init", "--recursive")
+    sub = live / "sub"
+    _rs1c_git_identity(runner, sub)
+    recorded = runner.git("-C", str(sub), "rev-parse", "HEAD")
+    if work != "clean":
+        (sub / "work.txt").write_bytes(b"irreplaceable local work\n")
+        if work == "stash":
+            runner.git("-C", str(sub), "stash", "push", "-m", "local submodule work")
+            local = runner.git("-C", str(sub), "rev-parse", "refs/stash")
+        else:
+            runner.git("-C", str(sub), "add", "work.txt")
+            runner.git("-C", str(sub), "commit", "-m", "local submodule work")
+            local = runner.git("-C", str(sub), "rev-parse", "HEAD")
+            if work != "head":
+                runner.git("-C", str(sub), work, "local-work", local)
+                runner.git("-C", str(live), "submodule", "update", "--init")
+                assert runner.git("-C", str(sub), "rev-parse", "HEAD") == recorded
+    assert runner.git("-C", str(sub), "status", "--porcelain") == ""
+    assert runner.git("-C", str(live), "status", "--porcelain") == ""
+    if work == "head":
+        assert "sub" in runner.git("-C", str(live), "status", "--porcelain",
+                                   "--ignore-submodules=none")
+    runner.calls.clear()
+
+    result = _restore(root, lock, new, runner)
+
+    if work == "clean":
+        assert result.status == "refreshed"
+        assert result.git_commit_sha == new
+        assert result.error is None
+        assert runner.git("-C", str(live), "rev-parse", "HEAD") == new
+        assert read_lockfile(lock) == [LockEntry("Pack", new, APPROVED)]
+        assert not list(root.parent.glob(".vibecomfy-restore-*"))
+        return
+    _rs1c2_assert_refusal(checkout, result)
+    assert "submodule" in result.error and "sub" in result.error
+    assert ("stash" if work == "stash" else "unpushed commits") in result.error
+    if work == "head":
+        assert "uncommitted changes" in result.error
+    assert runner.git("-C", str(sub), "show", f"{local}:work.txt") == "irreplaceable local work"
+    if work in {"branch", "tag"}:
+        assert runner.git("-C", str(sub), "rev-parse", "local-work") == local
+    elif work == "stash":
+        assert runner.git("-C", str(sub), "rev-parse", "refs/stash") == local
+    else:
+        assert runner.git("-C", str(sub), "rev-parse", "HEAD") == local
+        assert (sub / "work.txt").read_bytes() == b"irreplaceable local work\n"
+
+
+def test_rs1c2_failed_submodule_history_probe_is_protected(rs1c2_submodule_checkout):
+    checkout = rs1c2_submodule_checkout
+    runner, root, lock, live, _, new = checkout
+    runner.git("-C", str(live), "submodule", "update", "--init", "--recursive")
+    sub = live / "sub"
+    gitdir = Path(runner.git("-C", str(sub), "rev-parse", "--absolute-git-dir"))
+    broken = gitdir / "refs/heads/broken"
+    broken.write_text("1" * 40 + "\n", encoding="ascii")
+    assert runner.git("-C", str(sub), "status", "--porcelain") == ""
+    runner.calls.clear()
+
+    result = _restore(root, lock, new, runner)
+
+    _rs1c2_assert_refusal(checkout, result)
+    assert "failed to inspect" in result.error and "submodule" in result.error
+    assert "unpushed commits" in result.error
+    assert broken.read_text(encoding="ascii") == "1" * 40 + "\n"
+
+
+@pytest.mark.parametrize("flag", ["skip-worktree", "assume-unchanged", None],
+                         ids=["skip-worktree", "assume-unchanged", "pristine"])
+def test_rs1c2_hidden_tracked_edits(bytecode_checkout, flag):
+    checkout = bytecode_checkout
+    runner, root, lock, live, _, new = checkout
+    if flag:
+        runner.git("-C", str(live), "update-index", f"--{flag}", "--", "nodes.py")
+        (live / "nodes.py").write_bytes(b"irreplaceable hidden edit\n")
+    assert runner.git("-C", str(live), "status", "--porcelain") == ""
+    runner.calls.clear()
+
+    result = _restore(root, lock, new, runner)
+
+    if flag:
+        _rs1c2_assert_refusal(checkout, result)
+        assert "nodes.py" in result.error and flag in result.error
+        assert f"--no-{flag}" in result.error
+        assert (live / "nodes.py").read_bytes() == b"irreplaceable hidden edit\n"
+        tags = runner.git("-C", str(live), "ls-files", "-v", "--", "nodes.py")
+        assert tags.startswith("S " if flag == "skip-worktree" else "h ")
+    else:
+        assert result.status == "refreshed"
+        assert result.git_commit_sha == new and result.error is None
+        assert runner.git("-C", str(live), "rev-parse", "HEAD") == new
+        assert read_lockfile(lock) == [LockEntry("Pack", new, APPROVED)]
+        assert not list(root.parent.glob(".vibecomfy-restore-*"))
+
+
+@pytest.mark.parametrize("flag", ["skip-worktree", "assume-unchanged"])
+def test_rs1c2_hidden_submodule_edits(rs1c2_submodule_checkout, flag):
+    checkout = rs1c2_submodule_checkout
+    runner, root, lock, live, _, new = checkout
+    runner.git("-C", str(live), "submodule", "update", "--init")
+    sub = live / "sub"
+    runner.git("-C", str(sub), "update-index", f"--{flag}", "--", "work.txt")
+    (sub / "work.txt").write_bytes(b"irreplaceable hidden submodule edit\n")
+    assert runner.git("-C", str(sub), "status", "--porcelain") == ""
+    runner.calls.clear()
+
+    result = _restore(root, lock, new, runner)
+
+    _rs1c2_assert_refusal(checkout, result)
+    assert "sub/work.txt" in result.error and f"--no-{flag}" in result.error
+    assert (sub / "work.txt").read_bytes() == b"irreplaceable hidden submodule edit\n"
+
+
+@pytest.mark.parametrize("with_data", [True, False], ids=["hand-placed-data", "empty-directory"])
+def test_rs1c2_uninitialized_gitlink_directory(rs1c2_submodule_checkout, with_data):
+    checkout = rs1c2_submodule_checkout
+    runner, root, lock, live, _, new = checkout
+    sub = live / "sub"
+    assert sub.is_dir() and not (sub / ".git").exists()
+    assert not list(sub.iterdir())
+    if with_data:
+        (sub / "personal.txt").write_bytes(b"hand-placed work\n")
+    assert runner.git("-C", str(live), "status", "--porcelain") == ""
+    runner.calls.clear()
+
+    result = _restore(root, lock, new, runner)
+
+    if with_data:
+        _rs1c2_assert_refusal(checkout, result)
+        assert "uninitialized submodule" in result.error and "sub" in result.error
+        assert (sub / "personal.txt").read_bytes() == b"hand-placed work\n"
+    else:
+        assert result.status == "refreshed"
+        assert result.git_commit_sha == new and result.error is None
+        assert runner.git("-C", str(live), "rev-parse", "HEAD") == new
+        assert read_lockfile(lock) == [LockEntry("Pack", new, APPROVED)]
+        assert not list(root.parent.glob(".vibecomfy-restore-*"))
+
+
+def test_rs1c2_index_flag_paths_are_bounded(tmp_path, source):
+    runner, _, _ = source
+    upstream = runner.upstream
+    paths = [f"hidden-{i:02}.txt" for i in range(13)]
+    for path in paths:
+        (upstream / path).write_bytes(b"original\n")
+    runner.git("-C", str(upstream), "add", "--", *paths)
+    runner.git("-C", str(upstream), "commit", "-m", "tracked paths")
+    old = runner.git("-C", str(upstream), "rev-parse", "HEAD")
+    (upstream / "nodes.py").write_bytes(b"NEW_PIN = True\n")
+    runner.git("-C", str(upstream), "add", "nodes.py")
+    runner.git("-C", str(upstream), "commit", "-m", "new pin")
+    new = runner.git("-C", str(upstream), "rev-parse", "HEAD")
+    root, lock = tmp_path / "custom_nodes", tmp_path / "custom_nodes.lock"
+    assert _restore(root, lock, old, runner).status == "installed"
+    live = root / "Pack"
+    runner.git("-C", str(live), "update-index", "--skip-worktree", "--", *paths)
+    for path in paths:
+        (live / path).write_bytes(b"hidden user work\n")
+    assert runner.git("-C", str(live), "status", "--porcelain") == ""
+    runner.calls.clear()
+
+    result = _restore(root, lock, new, runner)
+
+    _rs1c2_assert_refusal((runner, root, lock, live, old, new), result)
+    assert all(path in result.error for path in paths[:10])
+    assert all(path not in result.error for path in paths[10:])
+    assert "and 3 more" in result.error
+    assert all((live / path).read_bytes() == b"hidden user work\n" for path in paths)
