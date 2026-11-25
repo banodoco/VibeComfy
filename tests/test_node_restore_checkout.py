@@ -523,7 +523,12 @@ def bytecode_checkout(tmp_path, source):
     runner, _, _ = source
     upstream = runner.upstream
     (upstream / ".gitignore").write_text("__pycache__/\n*.pyc\n*.pyo\ncache/\n", encoding="utf-8")
-    runner.git("-C", str(upstream), "add", ".gitignore")
+    # Each ignored bytecode fixture has a tracked matching source.
+    for relative in ("x.py", "nested folder/x.py", "loose.py"):
+        source_path = upstream / relative
+        source_path.parent.mkdir(parents=True, exist_ok=True)
+        source_path.write_text("VALUE = True\n", encoding="utf-8")
+    runner.git("-C", str(upstream), "add", ".gitignore", "x.py", "nested folder/x.py", "loose.py")
     runner.git("-C", str(upstream), "commit", "-m", "ignore Python bytecode")
     old = runner.git("-C", str(upstream), "rev-parse", "HEAD")
     (upstream / "nodes.py").write_text("NEW_PIN = True\n", encoding="utf-8")
@@ -1043,3 +1048,163 @@ def test_rs1c2_index_flag_paths_are_bounded(tmp_path, source):
     assert all(path not in result.error for path in paths[10:])
     assert "and 3 more" in result.error
     assert all((live / path).read_bytes() == b"hidden user work\n" for path in paths)
+
+
+# RS1C.N11: deinitialised submodules retain Git-owned data without worktrees.
+@pytest.mark.parametrize("work", ["branch", "stash", "broken-head", "clean"])
+def test_rs1c3_deinitialised_submodule(rs1c2_submodule_checkout, work):
+    checkout = rs1c2_submodule_checkout
+    runner, root, lock, live, _, new = checkout
+    runner.git("-C", str(live), "submodule", "update", "--init", "--recursive")
+    sub = live / "sub"
+    _rs1c_git_identity(runner, sub)
+    recorded = runner.git("-C", str(sub), "rev-parse", "HEAD")
+    gitdir = Path(runner.git("-C", str(sub), "rev-parse", "--absolute-git-dir"))
+    if work in {"branch", "stash"}:
+        (sub / "work.txt").write_bytes(b"irreplaceable deinitialised work\n")
+        if work == "branch":
+            runner.git("-C", str(sub), "add", "work.txt")
+            runner.git("-C", str(sub), "commit", "-m", "local submodule work")
+            ref = "refs/heads/local-work"
+            runner.git("-C", str(sub), "branch", "local-work")
+            runner.git("-C", str(sub), "checkout", "--detach", recorded)
+        else:
+            runner.git("-C", str(sub), "stash", "push", "-m", "local submodule work")
+            ref = "refs/stash"
+        saved = runner.git("-C", str(sub), "rev-parse", ref)
+    runner.git("-C", str(live), "submodule", "deinit", "-f", "--", "sub")
+    assert not list(sub.iterdir())
+    assert gitdir.is_dir()
+    if work == "broken-head":
+        (gitdir / "HEAD").write_bytes(b"invalid HEAD\n")
+        probe = runner(["git", "-C", str(live), "--git-dir", str(gitdir),
+                        "rev-list", "HEAD", "--branches", "--tags", "--not", "--remotes"],
+                       check=False, capture_output=True, text=True)
+        assert probe.returncode != 0 or probe.stderr
+    assert runner.git("-C", str(live), "status", "--porcelain") == ""
+    runner.calls.clear()
+
+    result = _restore(root, lock, new, runner)
+
+    if work == "clean":
+        assert result.status == "refreshed"
+        assert result.git_commit_sha == new and result.error is None
+        assert runner.git("-C", str(live), "rev-parse", "HEAD") == new
+        assert read_lockfile(lock) == [LockEntry("Pack", new, APPROVED)]
+        assert not list(root.parent.glob(".vibecomfy-restore-*"))
+        return
+    _rs1c2_assert_refusal(checkout, result)
+    assert "submodule" in result.error and "sub" in result.error
+    assert "move" in result.error
+    if work == "broken-head":
+        assert "failed to inspect" in result.error
+        assert (gitdir / "HEAD").read_bytes() == b"invalid HEAD\n"
+    else:
+        assert "deinitialised" in result.error
+        assert ("stash" if work == "stash" else "unpushed commits") in result.error
+        assert runner.git("-C", str(live), "--git-dir", str(gitdir),
+                          "rev-parse", ref) == saved
+        assert runner.git("-C", str(live), "--git-dir", str(gitdir),
+                          "show", f"{saved}:work.txt") == "irreplaceable deinitialised work"
+
+
+@pytest.mark.parametrize("deinit_parent", [False, True],
+                         ids=["initialised-parent", "deinitialised-parent"])
+def test_rs1c3_nested_deinitialised_submodule(tmp_path, source, deinit_parent):
+    runner, _, _ = source
+    leaf, middle = tmp_path / "leaf-upstream", tmp_path / "middle-upstream"
+    for repo in (leaf, middle):
+        repo.mkdir()
+        runner.git("-C", str(repo), "init", "-b", "main")
+        _rs1c_git_identity(runner, repo)
+        (repo / "work.txt").write_text("upstream\n", encoding="utf-8")
+        runner.git("-C", str(repo), "add", "work.txt")
+        runner.git("-C", str(repo), "commit", "-m", "initial")
+    runner.git("-C", str(middle), "submodule", "add", leaf.as_uri(), "leaf")
+    runner.git("-C", str(middle), "commit", "-m", "nested submodule")
+    upstream = runner.upstream
+    runner.git("-C", str(upstream), "submodule", "add", middle.as_uri(), "sub")
+    runner.git("-C", str(upstream), "commit", "-m", "add submodule")
+    old = runner.git("-C", str(upstream), "rev-parse", "HEAD")
+    (upstream / "nodes.py").write_text("NEW_PIN = True\n", encoding="utf-8")
+    runner.git("-C", str(upstream), "add", "nodes.py")
+    runner.git("-C", str(upstream), "commit", "-m", "new pin")
+    new = runner.git("-C", str(upstream), "rev-parse", "HEAD")
+    root, lock = tmp_path / "custom_nodes", tmp_path / "custom_nodes.lock"
+    assert _restore(root, lock, old, runner).status == "installed"
+    live = root / "Pack"
+    runner.git("-C", str(live), "submodule", "update", "--init", "--recursive")
+    nested = live / "sub/leaf"
+    _rs1c_git_identity(runner, nested)
+    recorded = runner.git("-C", str(nested), "rev-parse", "HEAD")
+    gitdir = Path(runner.git("-C", str(nested), "rev-parse", "--absolute-git-dir"))
+    (nested / "work.txt").write_bytes(b"nested local work\n")
+    runner.git("-C", str(nested), "add", "work.txt")
+    runner.git("-C", str(nested), "commit", "-m", "local work")
+    saved = runner.git("-C", str(nested), "rev-parse", "HEAD")
+    runner.git("-C", str(nested), "branch", "local-work")
+    runner.git("-C", str(nested), "checkout", "--detach", recorded)
+    runner.git("-C", str(live / "sub"), "submodule", "deinit", "-f", "--", "leaf")
+    if deinit_parent:
+        runner.git("-C", str(live), "submodule", "deinit", "-f", "--", "sub")
+    assert gitdir.is_dir()
+    assert not (nested / ".git").exists()
+    assert runner.git("-C", str(live), "status", "--porcelain") == ""
+    runner.calls.clear()
+
+    result = _restore(root, lock, new, runner)
+
+    _rs1c2_assert_refusal((runner, root, lock, live, old, new), result)
+    assert "sub/leaf" in result.error and "deinitialised" in result.error
+    assert "unpushed commits" in result.error and "move" in result.error
+    assert runner.git("-C", str(live), "--git-dir", str(gitdir),
+                      "rev-parse", "refs/heads/local-work") == saved
+    assert runner.git("-C", str(live), "--git-dir", str(gitdir),
+                      "show", f"{saved}:work.txt") == "nested local work"
+
+
+# RS1C.N3: a bytecode suffix is not sufficient evidence of regenerability.
+@pytest.mark.parametrize("relative", ["plugin.pyc", "__pycache__/plugin.cpython-312.pyc"],
+                         ids=["loose", "cache"])
+def test_rs1c3_sourceless_bytecode_refuses(bytecode_checkout, tmp_path, relative):
+    import py_compile
+
+    checkout = bytecode_checkout
+    runner, root, lock, live, _, new = checkout
+    source_path = tmp_path / "plugin.py"
+    source_path.write_text("IRREPLACEABLE = True\n", encoding="utf-8")
+    target = live / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    py_compile.compile(str(source_path), cfile=str(target), doraise=True)
+    source_path.unlink()
+    contents = target.read_bytes()
+    assert not (live / "plugin.py").exists()
+    assert runner.git("-C", str(live), "status", "--porcelain") == ""
+    runner.calls.clear()
+
+    result = _restore(root, lock, new, runner)
+
+    _rs1c2_assert_refusal(checkout, result)
+    assert "ignored user data" in result.error and relative in result.error
+    assert target.read_bytes() == contents
+
+
+@pytest.mark.parametrize("relative", ["nodes.pyc", "__pycache__/nodes.cpython-312.pyc"],
+                         ids=["loose", "cache"])
+def test_rs1c3_sourced_bytecode_refreshes(bytecode_checkout, relative):
+    import py_compile
+
+    runner, root, lock, live, _, new = bytecode_checkout
+    target = live / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    py_compile.compile(str(live / "nodes.py"), cfile=str(target), doraise=True)
+    assert runner.git("-C", str(live), "ls-files", "--", "nodes.py") == "nodes.py"
+    assert runner.git("-C", str(live), "status", "--porcelain") == ""
+
+    result = _restore(root, lock, new, runner)
+
+    assert result.status == "refreshed"
+    assert result.git_commit_sha == new and result.error is None
+    assert runner.git("-C", str(live), "rev-parse", "HEAD") == new
+    assert read_lockfile(lock) == [LockEntry("Pack", new, APPROVED)]
+    assert not list(root.parent.glob(".vibecomfy-restore-*"))
