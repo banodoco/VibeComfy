@@ -3,6 +3,7 @@ import contextvars
 import hashlib
 import importlib.metadata
 import importlib.util, json, os, re, shutil, socket, subprocess, sys, tempfile, time
+import logging
 import shlex
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -341,6 +342,25 @@ def install_pack(
     )
 
 
+def _replacement_refusal(name: str, install_dir: Path, runner: Runner) -> InstallResult | None:
+    # A normal dirty check deliberately excludes ignored files (including for
+    # same-pin patch verification). A destructive replacement cannot do that.
+    porcelain = _git_porcelain(install_dir, runner, include_ignored=True)
+    if porcelain is not None and not porcelain.strip():
+        return None
+    head = _git_head(install_dir, runner)
+    if porcelain is None:
+        return InstallResult(name, "failed", head,
+                             f"conflict: failed to inspect git status including ignored files for {install_dir}; replacement refused")
+    ignored = [line[3:] for line in porcelain.splitlines() if line.startswith("!! ")]
+    if ignored:
+        return InstallResult(name, "skipped_dirty", head,
+                             f"conflict: {install_dir} contains ignored user data: {', '.join(ignored)}; "
+                             "move these paths to a safe location outside the checkout, then retry")
+    return InstallResult(name, "skipped_dirty", head,
+                         f"conflict: {install_dir} has uncommitted changes; replacement refused")
+
+
 def _install_pack_via_clone(
     name: str,
     repo_url: str,
@@ -363,6 +383,8 @@ def _install_pack_via_clone(
     root = install_dir.parent.resolve()
     if root == root.parent:
         return InstallResult(name, "failed", None, "cannot stage node install outside the install root")
+    if replace_existing and (refusal := _replacement_refusal(name, install_dir, runner)) is not None:
+        return refusal
     sentinel.write(phase="clone", name=name, repo_url=repo_url, install_dir=install_dir)
     try:
         work_dir = Path(tempfile.mkdtemp(prefix=".vibecomfy-restore-", dir=root.parent))
@@ -382,6 +404,10 @@ def _install_pack_via_clone(
         )
         if checkout_error is not None:
             result = InstallResult(name, "failed", None, checkout_error)
+        elif replace_existing and (result := _replacement_refusal(name, install_dir, runner)) is not None:
+            # The old checkout may have acquired user data during the clone.
+            # Nothing has been published or installed, so a retry is safe.
+            sentinel.clear()
         else:
             # The old checkout stays live until the new checkout is verified.
             # Never withdraw an unexpected destination or symlink.
@@ -412,10 +438,20 @@ def _install_pack_via_clone(
                 else:
                     if result is not None:
                         result = replace(result, error=f"{result.error}; previous checkout retained at {previous}")
-        # Never delete the previous checkout if rollback could not put it back.
-        if not succeeded and previous.exists():
+        # Never delete a displaced tree if rollback could not put it back or
+        # a process wrote into it after the last pre-publication check. A
+        # failed inspection is not permission to delete. The retained tree
+        # lives outside the custom-node search root.
+        if previous.exists() and (
+            not succeeded or _git_porcelain(previous, runner, include_ignored=True) != ""
+        ):
             if staged.exists():
                 shutil.rmtree(staged)
+            if succeeded:
+                logging.getLogger(__name__).warning(
+                    "Previous checkout for %s retained at %s: local data present or status unavailable",
+                    name, previous,
+                )
         else:
             shutil.rmtree(work_dir)
     return result
@@ -1623,7 +1659,11 @@ def _verified_declared_patches(pack_dir: Path, porcelain: str, entry: LockEntry,
     return count
 
 
-def _git_porcelain(pack_dir: Path, runner: Runner) -> str | None: return _git(pack_dir, ["status", "--porcelain"], runner)
+def _git_porcelain(pack_dir: Path, runner: Runner, *, include_ignored: bool = False) -> str | None:
+    args = ["status", "--porcelain"]
+    if include_ignored:
+        args.extend(["--ignored", "--untracked-files=all"])
+    return _git(pack_dir, args, runner)
 def _git_origin(pack_dir: Path, runner: Runner) -> str | None: return (_git(pack_dir, ["config", "--get", "remote.origin.url"], runner) or "").strip() or None
 def _git_head(pack_dir: Path, runner: Runner) -> str | None: return (_git(pack_dir, ["rev-parse", "HEAD"], runner) or "").strip() or None
 def _normalize_git_remote(value: str) -> str:
