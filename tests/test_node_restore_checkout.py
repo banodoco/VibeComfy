@@ -609,3 +609,38 @@ def test_rs1b_3_retained_backup_path_visible_in_result(bytecode_checkout, monkey
     assert runner.git("-C", str(live), "rev-parse", "HEAD") == new
     assert read_lockfile(lock) == [LockEntry("Pack", new, APPROVED)]
 
+
+
+
+@pytest.mark.parametrize("with_notes", [True, False], ids=["notes-protected", "bytecode-only"])
+def test_rs1b_3_pycache_non_bytecode_remains_protected(bytecode_checkout, with_notes):
+    import py_compile
+
+    runner, root, lock, live, old, new = bytecode_checkout
+    cached = live / "__pycache__/nodes.pyc"
+    cached.parent.mkdir()
+    py_compile.compile(str(live / "nodes.py"), cfile=str(cached), doraise=True)
+    bytecode = cached.read_bytes()
+    notes = cached.parent / "notes.txt"
+    if with_notes:
+        notes.write_bytes(b"irreplaceable user notes\n")
+    assert runner.git("-C", str(live), "status", "--porcelain") == ""
+
+    result = _restore(root, lock, new, runner)
+    if with_notes:
+        assert result.status == "skipped_dirty"
+        assert result.git_commit_sha == old
+        assert "ignored user data: __pycache__/notes.txt; " in result.error
+        assert "nodes.pyc" not in result.error
+        assert notes.read_bytes() == b"irreplaceable user notes\n"
+        assert cached.read_bytes() == bytecode
+        assert runner.git("-C", str(live), "rev-parse", "HEAD") == old
+        assert read_lockfile(lock) == [LockEntry("Pack", old, APPROVED)]
+    else:
+        assert result.status == "refreshed"
+        assert result.git_commit_sha == new != old
+        assert result.error is None
+        assert runner.git("-C", str(live), "rev-parse", "HEAD") == new
+        assert read_lockfile(lock) == [LockEntry("Pack", new, APPROVED)]
+    assert not list(root.parent.glob(".vibecomfy-restore-*"))
+
