@@ -1,0 +1,148 @@
+{
+  "actions": [],
+  "bytes": {
+    "additional_disk": 0,
+    "capacity": null,
+    "download": 0,
+    "known_download": 0,
+    "unknown": []
+  },
+  "digest": "f6498495c5b33f6bf0bcb9d7548c63788c470b8a37074da2d9c17a8e4aa3c53d",
+  "gaps": [],
+  "inputs": {
+    "add": [],
+    "add_models": [
+      {
+        "name": "local-fixture.safetensors",
+        "sha256": "5da61e801c90cac519be51b5f581475ea8f5d387ebe719936ca2bd882be87daa",
+        "size_bytes": 36,
+        "subdir": "checkpoints",
+        "url": "http://127.0.0.1:8765/local-fixture.safetensors"
+      }
+    ],
+    "added_node_refs": [],
+    "approvals": []
+  },
+  "requirements": [
+    {
+      "action": {
+        "destination": "${TARGET}/ComfyUI/models/checkpoints/local-fixture.safetensors",
+        "kind": "none",
+        "requirement": "model:4a116ad8ed8cf95f659c",
+        "who": "agent"
+      },
+      "approval": {
+        "runtime_grant": "not_observed",
+        "state": "not_required"
+      },
+      "destination": "${TARGET}/ComfyUI/models/checkpoints/local-fixture.safetensors",
+      "id": "model:4a116ad8ed8cf95f659c",
+      "kind": "model",
+      "model": {
+        "name": "local-fixture.safetensors",
+        "sha256": "5da61e801c90cac519be51b5f581475ea8f5d387ebe719936ca2bd882be87daa",
+        "size_bytes": 36,
+        "subdir": "checkpoints",
+        "url": "http://127.0.0.1:8765/local-fixture.safetensors"
+      },
+      "observed": {
+        "sha256": "5da61e801c90cac519be51b5f581475ea8f5d387ebe719936ca2bd882be87daa",
+        "size_bytes": 36,
+        "state": "present"
+      },
+      "size_bytes": 36,
+      "source": {
+        "revision": null,
+        "sha256": "5da61e801c90cac519be51b5f581475ea8f5d387ebe719936ca2bd882be87daa",
+        "url": "http://127.0.0.1:8765/local-fixture.safetensors"
+      }
+    }
+  ],
+  "schema": "vibecomfy.requirements-plan.v1",
+  "target": {
+    "capacity_bytes": null,
+    "comfyui_root": "${TARGET}/ComfyUI",
+    "custom_nodes_root": "${TARGET}/ComfyUI/custom_nodes",
+    "location": "local",
+    "models_root": "${TARGET}/ComfyUI/models",
+    "owner": "astrid",
+    "placement_class": "local",
+    "python": "${PYTHON}",
+    "root": "${TARGET}"
+  },
+  "target_observed": {
+    "python": {
+      "executable": "${PYTHON_EXECUTABLE}",
+      "sha256": "${PYTHON_SHA256}",
+      "size_bytes": "${PYTHON_SIZE}",
+      "state": "present"
+    },
+    "root": {
+      "state": "present"
+    }
+  },
+  "workflow": {
+    "kind": "file",
+    "members": [
+      {
+        "name": "workflow.json",
+        "sha256": "a360b38ec83d2eb686bcdc4b41c1c6865d47a1a0377ee239c6bfc2fa4740f7eb",
+        "size_bytes": 130
+      }
+    ],
+    "semantic": {
+      "boundary_ports": [],
+      "default_variant": null,
+      "definitions": [],
+      "edges": [],
+      "id": "requirements-a360b38ec83d2eb686bcdc4b41c1c6865d47a1a0377ee239c6bfc2fa4740f7eb",
+      "inputs": [
+        {
+          "aliases": [],
+          "default": null,
+          "field": "ckpt_name",
+          "media_semantics": null,
+          "name": "model",
+          "node_id": "1",
+          "range": null,
+          "required": false,
+          "type": null
+        }
+      ],
+      "interfaces": {},
+      "nodes": [
+        {
+          "class_type": "CheckpointLoaderSimple",
+          "inputs": {
+            "ckpt_name": "local-fixture.safetensors"
+          },
+          "metadata": {},
+          "mode": "enabled",
+          "native_input_asset_kinds": null,
+          "native_input_names": null,
+          "native_input_optional": null,
+          "native_input_types": null,
+          "native_output_names": null,
+          "native_output_slots": null,
+          "native_output_types": null,
+          "scope_path": "",
+          "uid": "1",
+          "widgets": {}
+        }
+      ],
+      "outputs": [],
+      "requirements": {
+        "custom_nodes": [],
+        "missing_models": [],
+        "missing_nodes": [],
+        "models": [
+          "local-fixture.safetensors"
+        ],
+        "unsupported": []
+      },
+      "variants": {},
+      "version": "1.0",
+      "virtual_wires": {}
+    }
+  }
+}

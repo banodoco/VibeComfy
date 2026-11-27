@@ -1,0 +1,89 @@
+# P90 canonical requirements-plan fixtures
+
+These are read-only CPU fixtures for `tests/test_requirements_plan_golden.py`.
+They exercise the public `vibecomfy.requirements.plan` producer, the existing
+explicit-source ref resolver, P56 approval records, and actual local file reads.
+They do not install packages, execute `install.py`, download models, or run SAM.
+
+## Canonical unlisted SAM case
+
+`sam.workflow.api.json` is byte-for-byte the owner's workflow at:
+
+https://github.com/banodoco/astrid-dev/blob/21feb35007210df7bc23a03c6226e2c5873fdab1/plans/56-workflow-setup/evidence/sam-test-files/sam-audio-separation.api.json
+
+Its Git blob is `13895ffee92f7bd50e04ff5973253d961f18c87e`, size 1,392 bytes,
+and SHA-256 is `c230cd0f9c799d4c82f9a397d606da3c6e5b4b8f20554de87fe4cddcbf59199a`.
+
+`sam.ref.txt` records the existing resolver's plain `git ls-remote` response:
+`refs/heads/main` resolved to `3cfbd03da3019c7252ba13efd5694b1b2ff487e5`.
+`sam.source-inspection.json` was read from the complete exact upstream Git
+checkout of `ethanfel/ComfyUI-SAM-Audio` at that commit without importing code.
+Its tree is `49d98d76d13a010914bbe1c127ae290753b0ecd3` and contains 154,189 Git
+blob bytes. That count is not network transfer or required disk capacity.
+
+The pinned tree declares nine runtime dependencies in both `requirements.txt`
+and `pyproject.toml`. They remain unresolved package declarations. The three
+ordered `pip_no_deps` declarations in `sam.recipe.json` come from the canonical
+Dev fixture README and its reviewed source at the same SAM commit:
+
+https://github.com/banodoco/astrid-dev/blob/21feb35007210df7bc23a03c6226e2c5873fdab1/plans/56-workflow-setup/evidence/sam-test-files/README.md
+
+The recipe is explicitly supplied to the producer. Presence of `install.py`
+does not discover or authorize these actions. The plan reports its observed
+SHA-256 and `run: false`.
+
+The accepted VibeComfy base `55c3948212d23cf037fae8a4c6faad77d33e7279` has
+catalog knowledge about SAM but no reviewed SAM lock entry. The test empties
+the catalog and registry lists deliberately to prove the requested unlisted
+case. SAM's classes must be covered by the exact source evidence. A repository
+name alone does not cover them.
+
+The model name `facebook/sam-audio-large` remains an explicit unknown model
+source/destination in this minimal fixture. The producer does not infer
+`diffusion_models` or treat the catalog checkpoint hint as a complete byte
+budget. Immutable model declarations and target Hugging Face cache mapping
+would be additional bound inputs; this test cannot assert SAM is ready.
+Unknown package resolutions, item sizes, capacity and required disk remain
+unknown. The P56 warning is `code=07a48e72110d`; no approval or Runtime grant is
+claimed by this preview.
+
+The public node field is `approval.consent_code`; its P56 value and record hash
+are unchanged. The SAM expected-plan digest changes because that public field
+name is part of the canonical plan. The complete local fixture is unchanged.
+WS9 must replay both full fixtures through its real preview envelope and common
+blocked-error serializer without changing plan content or producer digests.
+
+## Local model-only case
+
+`local.workflow.api.json` selects one checkpoint. `local.model.json` declares
+its source and destination using the established `name`/`subdir` model shape.
+It deliberately does not use `target_path`, whose existing VibeComfy meaning
+selects assets under custom-node roots.
+
+`local-model-only-payload.bin` is 36 bytes of test data, not inference weights.
+Its SHA-256 is `5da61e801c90cac519be51b5f581475ea8f5d387ebe719936ca2bd882be87daa`.
+The test places those bytes at the selected temporary model destination before
+planning. HTTP is forbidden. A matching actual hash and size results in no
+transfer action; a one-byte change becomes a conflict with a new plan digest.
+
+## Expected JSON and portable bindings
+
+`sam.expected-plan.json` and `local.expected-plan.json` contain the complete
+hand-checked result shapes, with only these test-local bindings named:
+
+- `${TARGET}`: actual temporary selected root, including its destination paths.
+- `${PYTHON}`: actual selected interpreter path, preserving the venv spelling.
+- `${PYTHON_EXECUTABLE}`, `${PYTHON_SIZE}`, `${PYTHON_SHA256}`: the real
+  interpreter's resolved executable and independently verified bytes.
+
+The tests compare actual interpreter evidence to direct filesystem reads before
+naming those fields. They independently recompute the actual plan digest, then
+recompute a digest for the named fixture for full JSON comparison. The named
+fixtures are review documents, not runnable target descriptions or apply tokens.
+Their digests are:
+
+- SAM: `742426424e951083b122c769993afcd79c36425562b1c9cbe8115945183332bd`
+- Local: `f6498495c5b33f6bf0bcb9d7548c63788c470b8a37074da2d9c17a8e4aa3c53d`
+
+Expected output changes require review against the source and independent
+assertions. These files are not regenerated by the test run.

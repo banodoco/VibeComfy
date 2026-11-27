@@ -1,0 +1,7 @@
+{
+  "name": "local-fixture.safetensors",
+  "subdir": "checkpoints",
+  "size_bytes": 36,
+  "sha256": "5da61e801c90cac519be51b5f581475ea8f5d387ebe719936ca2bd882be87daa",
+  "url": "http://127.0.0.1:8765/local-fixture.safetensors"
+}

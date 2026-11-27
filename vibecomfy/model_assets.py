@@ -278,6 +278,8 @@ _MODEL_REFERENCE_FIELDS = frozenset({
 
 def referenced_model_requirements(
     workflow: VibeWorkflow, *, require_resolved: bool = False,
+    registry: Sequence[ModelEntry] | None = None,
+    models_root: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Build structured picker requirements at the authoring boundary.
 
@@ -285,7 +287,9 @@ def referenced_model_requirements(
     bundle publication and ready-manifest emission. Unresolved references stay
     explicit local records; manifest emission separately refuses them.
     """
-    resolved, unresolved = resolve_referenced_assets(workflow)
+    # Preview callers can explicitly select an offline registry and actual
+    # destination roots instead of inheriting host catalog/root defaults.
+    resolved, unresolved = resolve_referenced_assets(workflow, registry=registry, models_root=models_root)
     if require_resolved and unresolved:
         labels = ", ".join(
             f"{item.get('class_type', 'model')} {item.get('node_id', '?')}.{item.get('field', '?')}={item.get('value')!r}"
