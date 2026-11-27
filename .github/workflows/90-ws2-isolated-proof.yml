@@ -1,0 +1,79 @@
+name: 90-WS2 exact producer proof
+on:
+  push:
+    branches: ['proof/90-ws2-23f5506']
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  proof:
+    if: github.repository == 'banodoco/VibeComfy' && github.ref == 'refs/heads/proof/90-ws2-23f5506'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: banodoco/VibeComfy
+          ref: 23f5506b85ce2391ebc8d5daa46120979a8724c1
+          path: head
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: banodoco/astrid-dev
+          ref: 21feb35007210df7bc23a03c6226e2c5873fdab1
+          path: dev
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: astral-sh/setup-uv@v5
+      - name: Guard and prove exact sources
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/receipts"
+          exec > >(tee "$RUNNER_TEMP/receipts/proof.log") 2>&1
+          base=55c3948212d23cf037fae8a4c6faad77d33e7279
+          head=23f5506b85ce2391ebc8d5daa46120979a8724c1
+          guard() { test "$(gh api repos/banodoco/VibeComfy/pulls/224 --jq .head.sha)" = "$head" && test "$(gh api repos/banodoco/VibeComfy/git/ref/heads/release/16/plan-90 --jq .object.sha)" = "$base"; }
+          guard || { echo 'ENV: producer or plan ref changed before proof'; exit 3; }
+          test "$(git -C dev rev-parse HEAD)" = 21feb35007210df7bc23a03c6226e2c5873fdab1
+          cd head
+          test "$(git rev-parse HEAD)" = "$head"
+          test "$(git rev-parse "$base^{tree}")" = 4dc07e25872a5e04fe279304fd1741d802cb444e
+          test "$(git rev-parse "$head^{tree}")" = 09f65e69f4f9924f0890e7855f42c015987b858e
+          git worktree add --detach "$GITHUB_WORKSPACE/base" "$base"
+          for side in base head; do
+            root="$GITHUB_WORKSPACE/$side"; sha=$base; [ "$side" = head ] && sha=$head
+            cd "$root"
+            test "$(git rev-parse HEAD)" = "$sha"
+            test -z "$(git status --porcelain --untracked-files=all)"
+            echo "SIDE=$side COMMIT=$sha TREE=$(git rev-parse HEAD^{tree})"
+            sha256sum pyproject.toml uv.lock "$GITHUB_WORKSPACE/dev/env/vc-setup.sh" "$GITHUB_WORKSPACE/dev/env/vc-pytest.sh"
+            bash "$GITHUB_WORKSPACE/dev/env/vc-setup.sh" || exit 3
+            envroot="$root.env"
+            "$envroot/venv/bin/python" -c 'import sys,vibecomfy,vibecomfy.model_assets,vibecomfy.node_packs._install; print("python",sys.version); print("vibecomfy",vibecomfy.__file__); print("assets",vibecomfy.model_assets.__file__); print("installer",vibecomfy.node_packs._install.__file__)'
+            if [ "$side" = head ]; then "$envroot/venv/bin/python" -c 'import vibecomfy.requirements; print("requirements",vibecomfy.requirements.__file__)'; fi
+            free=$(df -Pk "$envroot/basetemp" | awk 'NR==2 {printf "%.0f",$4*1024}')
+            echo "FREE_BYTES_AFTER_SETUP=$free"
+            test "$free" -gt 2147483648 || { echo 'ENV: insufficient proof free space'; exit 3; }
+            args=(tests/test_pack_resolver.py tests/test_model_assets.py tests/test_node_restore_approval.py tests/test_entry_publication_transaction.py)
+            if [ "$side" = head ]; then args+=(tests/test_requirements_plan.py tests/test_requirements_plan_golden.py tests/test_requirements_sources.py tests/test_requirements_observation.py); fi
+            set +e
+            PYTEST_ADDOPTS=-rA bash "$GITHUB_WORKSPACE/dev/env/vc-pytest.sh" -q -p no:cacheprovider "${args[@]}" --junitxml="$RUNNER_TEMP/receipts/$side.xml"; rc=$?
+            set -e
+            echo "SIDE_RESULT=$side EXIT=$rc"
+            printf '%s\n' "$rc" > "$RUNNER_TEMP/receipts/$side.exit"
+          done
+          guard || { echo 'ENV: producer or plan ref changed after proof'; exit 3; }
+          test "$(cat "$RUNNER_TEMP/receipts/base.exit")" = 0 && test "$(cat "$RUNNER_TEMP/receipts/head.exit")" = 0
+      - name: Preserve receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: 90-ws2-proof-receipts
+          path: ${{ runner.temp }}/receipts/
+          if-no-files-found: warn
