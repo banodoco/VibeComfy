@@ -107,6 +107,8 @@ CORE_COMFY_CLASSES = frozenset(
         "PrimitiveString",
         "Reroute",
         "ResizeImageMaskNode",
+        # comfy_extras.nodes_audio at the shipped official 426f5eea pin.
+        "SaveAudio",
         "SaveAudioMP3",
         "SaveVideo",
         "SetLatentNoiseMask",
@@ -1063,14 +1065,19 @@ def _install_required_packs_impl(
 def missing_packs_for_workflow(
     workflow: VibeWorkflow, *, lockfile_path: Path | None = None,
     resolved_packs: Sequence[CustomNodePack] = (),
+    include_schema_known: bool = False,
 ) -> tuple[list[CustomNodePack], list[str]]:
     """Resolve requirements, optionally including caller-verified source trees.
 
     ``resolved_packs`` carries class evidence read from an exact selected tree;
     it does not add catalog entries, approve code, or inspect/write a target.
     A repository basename alone must never be supplied as class evidence.
+    Requirements planning sets ``include_schema_known``: authoring schemas
+    describe classes, not installation in the selected target. Other callers
+    keep the existing missing-schema behavior by default.
     """
-    missing_classes = missing_class_types_for_workflow(workflow)
+    missing_classes = (required_class_types_for_workflow(workflow) if include_schema_known
+                       else missing_class_types_for_workflow(workflow))
     packs = resolve_node_packs(missing_classes, lockfile_path=lockfile_path)
     portable = _portable_requirement_packs(workflow)
     all_packs = [*packs, *portable, *resolved_packs]
@@ -1276,7 +1283,15 @@ def _merge_declared_requirement_packs(
     return sorted(merged.values(), key=lambda pack: pack.name.lower())
 
 
-def missing_class_types_for_workflow(workflow: VibeWorkflow) -> set[str]: return {node.class_type for node in workflow.nodes.values()} - _known_schema_classes() - CORE_COMFY_CLASSES
+def required_class_types_for_workflow(workflow: VibeWorkflow) -> set[str]:
+    """Enumerate every required non-core class, regardless of authoring schemas."""
+    return {node.class_type for node in workflow.nodes.values()} - CORE_COMFY_CLASSES
+
+
+def missing_class_types_for_workflow(workflow: VibeWorkflow) -> set[str]:
+    return required_class_types_for_workflow(workflow) - _known_schema_classes()
+
+
 def _pack_by_name(name: str | None) -> CustomNodePack | None:
     """Look up the shipped catalog, never an implicit writable target lock."""
     return next((pack for pack in get_known_node_packs() if pack.name == name), None)

@@ -387,3 +387,56 @@ def test_explicit_same_shipped_pin_keeps_installers_legacy_packages(node_world, 
     assert item["approval"]["state"] == "reviewed"
     assert item["packages"][0]["requirement"] == "legacy==1"
     assert item["reviewed_lock_entry"]["pip_packages"] == ["legacy==1"]
+
+
+@pytest.mark.parametrize("catalog_available", [True, False])
+def test_schema_known_custom_class_is_required_on_empty_selected_target(
+    world, tmp_path, monkeypatch, catalog_available,
+):
+    from vibecomfy.node_packs import _defs, _install
+    from vibecomfy.requirements._input import read_workflow
+
+    source, target, _ = world
+    source.write_text(json.dumps({"1": {"class_type": "SAMAudioTextSeparator", "inputs": {}}}))
+    monkeypatch.chdir(tmp_path)
+    # This is authoring knowledge only. Nothing is installed in the target.
+    (tmp_path / "node_index.json").write_text(json.dumps([{"class_type": "SAMAudioTextSeparator"}]))
+    assert _install._known_schema_classes() == {"SAMAudioTextSeparator"}
+    built, _ = read_workflow(source)
+    assert not built.requirements.custom_nodes and not built.requirements.custom_node_refs
+    assert _install.missing_class_types_for_workflow(built) == set()
+    # Legacy callers retain their original authoring-schema semantics.
+    assert _install.missing_packs_for_workflow(built) == ([], [])
+    if not catalog_available:
+        monkeypatch.setattr(_defs, "get_known_node_packs", lambda **kwargs: ())
+        monkeypatch.setattr(_install, "get_known_node_packs", lambda **kwargs: ())
+    before = _snapshot(tmp_path)
+    result = plan(source, target=target)
+    assert _snapshot(tmp_path) == before
+    assert result["inputs"]["add"] == result["inputs"]["added_node_refs"] == []
+    if catalog_available:
+        node, = [row for row in result["requirements"] if row["kind"] == "node"]
+        assert node["source"] == {"repo": "https://github.com/ethanfel/ComfyUI-SAM-Audio.git", "commit": None}
+        assert node["destination"] == str(Path(target["custom_nodes_root"]) / "ComfyUI-SAM-Audio")
+        assert node["observed"]["state"] == "missing"
+        assert node["approval"]["state"] == "unknown"
+        assert node["approval"]["consent_code"] is None and "token" not in node["approval"]
+        assert any(gap["code"] == "node_identity_unresolved" for gap in result["gaps"])
+    else:
+        assert any(gap["code"] == "node_class_unresolved" and
+                   gap["requirement"] == "SAMAudioTextSeparator" for gap in result["gaps"])
+
+
+def test_shipped_core_audio_class_needs_no_custom_pack_or_authoring_schema(world, monkeypatch):
+    from vibecomfy.node_packs import _install
+
+    source, target, _ = world
+    source.write_text(json.dumps({"1": {"class_type": "SaveAudio", "inputs": {}}}))
+    evidence = Path(__file__).parents[1] / "vibecomfy/porting/cache/object_info/comfy_core@zz-official-426f5eea.json"
+    row = json.loads(evidence.read_text())["SaveAudio"]
+    assert row["pack"] == "comfy_core" and row["python_module"] == "comfy_extras.nodes_audio"
+    assert row["source_commit"] == "426f5eea52a7ece1dd599fff4cb6cd1f352ddd24"
+    monkeypatch.setattr(_install, "_known_schema_classes", lambda: set())
+    result = plan(source, target=target)
+    assert result["requirements"] == result["actions"] == []
+    assert not any(gap["code"] == "node_class_unresolved" for gap in result["gaps"])

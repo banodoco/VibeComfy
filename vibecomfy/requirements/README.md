@@ -54,6 +54,12 @@ The existing resolver freezes branch/tag declarations to a full commit. A
 source's exact Git tree supplies class/dependency evidence; a repository name
 alone is not evidence of implemented classes. No catalog entry is created.
 
+Every workflow-required non-core class participates in resolution, including
+classes known to the authoring schema provider or `node_index.json`. Schema
+knowledge cannot establish installation in the selected target. Catalog/source
+evidence resolves the required pack; target observation determines its state.
+Without source resolution, `node_class_unresolved` remains an explicit gap.
+
 `add_models` also accepts canonical model records with `name`, `subdir`, `url`,
 `sha256` and `size_bytes`. `target_path` retains its existing, distinct meaning:
 a file under `custom_nodes/<pack>/...` relative to the selected ComfyUI root.
@@ -100,8 +106,12 @@ need zero additional bytes but do not fabricate available capacity.
 `approvals` contains existing P56 records supplied through the Agent authority.
 The existing `approval_record`, `approval_matches` and `consent_token` functions
 remain canonical. The planner reports `needs_approval`, `reviewed`, or
-`record_matches`, preserving the exact `code=<token>` warning data. A matching
-record proves consistency, not current actor authorization;
+`record_matches`. Node `approval.consent_code` holds the unchanged public P56
+`consent_token(record)` value, or null for an unresolved identity. The existing
+`code=<value>` warning and approval-record hashes are unchanged. This field is
+not named `token`: Agent's general credential redaction must preserve the
+complete public plan and its producer digest without any exception or rehash. A matching record proves consistency, not
+current actor authorization;
 `runtime_grant: not_observed` is explicit. The planner has no grant API,
 transport, ledger or persistence path.
 
@@ -128,7 +138,11 @@ verifies commit/tree/blob identities and reads declarations without checking
 out or importing source. Local target observers hash real model/executable
 bytes and read Git state with optional locks, hooks and fsmonitor disabled.
 Configured content filters or redirected worktrees refuse observation before
-status can execute them. Installer sentinels are bound without cleanup.
+status can execute them. Gitlinks in either HEAD or the index return
+`git_submodules_unverified` with unknown state, including staged, deleted or
+unpopulated children. Status never recurses into child repositories; ignoring
+recursion is not accepted as evidence that a pack with gitlinks is clean.
+Installer sentinels are bound without cleanup.
 
 `tests/fixtures/requirements/README.md` identifies the canonical SAM and local
 model fixtures, source provenance, complete expected JSON and portable review

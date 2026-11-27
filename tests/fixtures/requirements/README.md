@@ -47,6 +47,12 @@ Unknown package resolutions, item sizes, capacity and required disk remain
 unknown. The P56 warning is `code=07a48e72110d`; no approval or Runtime grant is
 claimed by this preview.
 
+The public node field is `approval.consent_code`; its P56 value and record hash
+are unchanged. The SAM expected-plan digest changes because that public field
+name is part of the canonical plan. The complete local fixture is unchanged.
+WS9 must replay both full fixtures through its real preview envelope and common
+blocked-error serializer without changing plan content or producer digests.
+
 ## Local model-only case
 
 `local.workflow.api.json` selects one checkpoint. `local.model.json` declares
@@ -76,7 +82,7 @@ recompute a digest for the named fixture for full JSON comparison. The named
 fixtures are review documents, not runnable target descriptions or apply tokens.
 Their digests are:
 
-- SAM: `51dad55cfbc57570a8f22d89901cc54a461f416298a277a71bace6483c241a43`
+- SAM: `742426424e951083b122c769993afcd79c36425562b1c9cbe8115945183332bd`
 - Local: `f6498495c5b33f6bf0bcb9d7548c63788c470b8a37074da2d9c17a8e4aa3c53d`
 
 Expected output changes require review against the source and independent

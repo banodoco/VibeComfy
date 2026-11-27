@@ -277,3 +277,92 @@ def test_repository_worktree_redirection_is_refused(checkout, tmp_path):
     assert result["state"] == "unknown" and result["reason"] == "worktree_redirected"
     assert result["worktree"] == str(other.resolve()) and result["dirty"] is None
     assert tree_bytes(tmp_path) == before
+
+
+@pytest.mark.parametrize("filter_kind", ["clean", "process"])
+@pytest.mark.parametrize("gitlink_location", ["committed", "staged"])
+def test_public_preview_never_executes_child_only_git_filters(
+    checkout, tmp_path, monkeypatch, filter_kind, gitlink_location,
+):
+    from vibecomfy.requirements import plan
+    from vibecomfy.node_packs import _install
+
+    path, repo, _ = checkout
+    child_source = tmp_path / "child-source"
+    child_source.mkdir()
+    git(child_source, "init", "-q")
+    git(child_source, "config", "user.email", "fixture@example.test")
+    git(child_source, "config", "user.name", "Fixture")
+    (child_source / "node.py").write_text("# original child content\n", encoding="utf-8")
+    (child_source / ".gitattributes").write_text("node.py filter=fixture\n", encoding="utf-8")
+    git(child_source, "add", ".")
+    git(child_source, "commit", "-qm", "child source before filter configuration")
+    child_commit = git(child_source, "rev-parse", "HEAD")
+    git(path, "-c", "protocol.file.allow=always", "submodule", "add", "-q", str(child_source), "child")
+    if gitlink_location == "committed":
+        git(path, "commit", "-qam", "record child gitlink")
+    commit = git(path, "rev-parse", "HEAD")
+    child = path / "child"
+    marker = tmp_path / "CHILD_FILTER_EXECUTED"
+    command = f"printf invoked > {shlex.quote(str(marker))}; " + ("cat" if filter_kind == "clean" else "exit 1")
+    git(child, "config", f"filter.fixture.{filter_kind}", command)
+    tracked = child / "node.py"
+    previous = tracked.stat()
+    tracked.write_text("# modified child content\n", encoding="utf-8")
+    os.utime(tracked, ns=(previous.st_atime_ns, previous.st_mtime_ns + 2_000_000_000))
+    with pytest.raises(subprocess.CalledProcessError) as no_parent_filter:
+        git(path, "config", "--includes", "--get-regexp", r"^filter\..*\.(clean|process)$")
+    assert no_parent_filter.value.returncode == 1
+    assert not no_parent_filter.value.stdout and not no_parent_filter.value.stderr
+
+    # Positive control: these real child-only configurations are reachable by
+    # the original recursive status. No target code is otherwise executed.
+    subprocess.run(["git", "--no-optional-locks", "-c", "core.fsmonitor=false",
+                    "-c", "core.untrackedCache=false", "-c", f"core.hooksPath={os.devnull}",
+                    "-c", "status.submoduleSummary=false", "-C", str(path),
+                    "status", "--porcelain=v1", "--untracked-files=all",
+                    "--ignore-submodules=none", "-z"], capture_output=True, check=False,
+                   timeout=15, env=observe._git_environment())
+    assert marker.read_text() == "invoked"
+    marker.unlink()
+
+    source = tmp_path / "workflow.json"
+    source.write_text(json.dumps({"1": {"class_type": "FixtureNode", "inputs": {}}}))
+    target = {"placement_class": "local", "root": str(path.parent), "python": None,
+              "custom_nodes_root": str(path.parent), "owner": "human"}
+    ref = {"slug": path.name, "source": "git", "url": repo, "commit": commit,
+           "requirements_txt": None, "pip_no_deps": []}
+    evidence = {"repo": repo, "commit": commit, "tree": git(path, "rev-parse", "HEAD^{tree}"),
+                "class_names": ["FixtureNode"], "recipe": {"requirements_txt": None, "pip_no_deps": []},
+                "files": [], "packages": [], "dynamic_dependencies": [],
+                "submodules": ([{"path": "child", "commit": child_commit}]
+                               if gitlink_location == "committed" else [])}
+    monkeypatch.setattr(_install, "resolve_node_packs", lambda *a, **k: [])
+    monkeypatch.setattr(_install, "get_known_node_packs", lambda *a, **k: [])
+    before = tree_bytes(tmp_path)
+    result = plan(source, target=target, added_node_refs=[ref],
+                  source_inspector=lambda *a, **k: evidence)
+    assert not marker.exists(), "preview executed the checked-out child's Git filter"
+    assert tree_bytes(tmp_path) == before
+    item, = result["requirements"]
+    assert item["observed"]["state"] == "unknown"
+    assert item["observed"]["reason"] == "git_submodules_unverified"
+    assert item["observed"]["dirty"] is None
+    assert item["action"]["kind"] == "manual"
+    assert any(gap["code"] == "node_target_unknown" for gap in result["gaps"])
+
+
+@pytest.mark.parametrize("gitlink_location", ["index", "head", "both"])
+def test_unverified_gitlinks_never_become_a_clean_target(checkout, gitlink_location):
+    path, repo, commit = checkout
+    git(path, "update-index", "--add", "--cacheinfo", f"160000,{commit},vendor/child")
+    if gitlink_location != "index":
+        git(path, "commit", "-qm", "record unpopulated child")
+        commit = git(path, "rev-parse", "HEAD")
+    if gitlink_location == "head":
+        git(path, "update-index", "--force-remove", "vendor/child")
+    before = tree_bytes(path.parent)
+    result = observe.observe_node(str(path), repo=repo, commit=commit)
+    assert result["state"] == "unknown" and result["reason"] == "git_submodules_unverified"
+    assert result["dirty"] is None
+    assert tree_bytes(path.parent) == before

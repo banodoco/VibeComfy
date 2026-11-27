@@ -235,7 +235,12 @@ def observe_node(destination: str | None, *, repo: str | None, commit: str | Non
         ("filters", ["config", "--includes", "--get-regexp", r"^filter\..*\.(clean|process)$"]),
         ("repo", ["config", "--get", "remote.origin.url"]),
         ("commit", ["rev-parse", "HEAD"]),
-        ("changes", ["status", "--porcelain=v1", "--untracked-files=all", "--ignore-submodules=none", "-z"]),
+        ("index_entries", ["ls-files", "--stage", "-z"]),
+        ("head_entries", ["ls-tree", "-r", "-z", "HEAD"]),
+        # Never enter a child's independently configured repository. The
+        # gates above refuse gitlinks in either the index or HEAD; ignoring
+        # recursion here also prevents a newly staged child from running code.
+        ("changes", ["status", "--porcelain=v1", "--untracked-files=all", "--ignore-submodules=all", "-z"]),
     )
     for field, arguments in operations:
         try:
@@ -271,6 +276,13 @@ def observe_node(destination: str | None, *, repo: str | None, commit: str | Non
             result["filters_configured"] = True
             result["filter_config_sha256"] = hashlib.sha256(completed.stdout.encode("utf-8")).hexdigest()
             return {**result, "reason": "git_filters_configured"}
+        elif field in {"index_entries", "head_entries"}:
+            # These plumbing reads do not inspect child worktrees or run
+            # content filters. A parent's filter config says nothing about
+            # its children. Even an unpopulated or staged/deleted gitlink is
+            # unverified state, never evidence of a clean installed pack.
+            if any(entry.startswith("160000 ") for entry in completed.stdout.split("\0")):
+                return {**result, "reason": "git_submodules_unverified", "operation": field}
         elif field == "changes":
             result["dirty"] = bool(completed.stdout)
             result["changes"] = completed.stdout.split("\0")[:-1] if completed.stdout else []

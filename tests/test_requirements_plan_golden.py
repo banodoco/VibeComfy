@@ -204,10 +204,10 @@ def test_unlisted_sam_file_plan_is_exact_unapproved_and_read_only(tmp_path, monk
     assert node["action"]["python"] == target["python"]
     assert node["approval"]["state"] == "needs_approval"
     assert node["approval"]["runtime_grant"] == "not_observed"
-    assert node["approval"]["token"]
+    assert node["approval"]["consent_code"]
     assert node["approval"]["record"]["recipe_sha256"] == node["recipe_sha256"]
     assert node["recipe_sha256"] == "1d6c9c543fe0c5c9eda6154ab7c4ca324f4ead54be6868a87791e7d5b5d29894"
-    assert node["approval"]["token"] == "07a48e72110d"
+    assert node["approval"]["consent_code"] == "07a48e72110d"
     assert node["approval"]["record"]["approval_sha256"] == "07a48e72110debd82a07edd2872de1c80ee2f20b3418e59413cf75efb8fe495d"
     packages = node["packages"]
     assert len(packages) == 12  # Nine selected file requirements plus three explicit no-deps packages.
@@ -224,7 +224,7 @@ def test_unlisted_sam_file_plan_is_exact_unapproved_and_read_only(tmp_path, monk
                    item["requirement"] in {"SAMAudioPipelineLoader", "SAMAudioTextSeparator"}
                    for item in result["gaps"])
     consent = next(item for item in result["gaps"] if item["code"] == "node_code_unapproved")
-    assert consent["detail"] == {"consent": "code=" + node["approval"]["token"]}
+    assert consent["detail"] == {"consent": "code=" + node["approval"]["consent_code"]}
     assert consent["state"] == "unapproved" and consent["who"] == "human"
     assert node["size_bytes"] is None
     assert result["bytes"]["download"] is None
@@ -284,3 +284,34 @@ def test_local_model_observed_change_invalidates_same_input_plan(tmp_path, offli
     assert changed["requirements"][0]["observed"]["state"] == "conflict"
     assert changed["requirements"][0]["observed"]["reason"] == "hash_mismatch"
     assert any(row["code"] == "model_destination_conflict" for row in changed["gaps"])
+
+
+def test_public_sam_consent_code_preserves_p56_value_and_freshness(tmp_path, monkeypatch, offline):
+    from vibecomfy.node_approvals import approval_record, consent_token
+
+    target = _target(tmp_path)
+    _recorded_resolver(monkeypatch)
+    options = {"target": target, "add": [SAM_REPO + "@main"],
+               "added_node_refs": [_json("sam.recipe.json")], "source_inspector": _sam_inspector}
+    result = plan(FIXTURES / "sam.workflow.api.json", **options)
+    node, = [row for row in result["requirements"] if row["kind"] == "node"]
+    record = approval_record(node["node"], placement_class=target["placement_class"])
+    assert node["approval"]["record"] == record
+    assert node["approval"]["consent_code"] == consent_token(record) == "07a48e72110d"
+    assert "token" not in node["approval"]
+    assert node["approval"]["state"] == "needs_approval"
+    assert node["approval"]["runtime_grant"] == "not_observed"
+    assert any(row["detail"] == {"consent": "code=07a48e72110d"}
+               for row in result["gaps"] if row["code"] == "node_code_unapproved")
+    accepted = plan(FIXTURES / "sam.workflow.api.json", **options, approvals=[record])
+    accepted_node, = [row for row in accepted["requirements"] if row["kind"] == "node"]
+    assert accepted_node["approval"]["consent_code"] == node["approval"]["consent_code"]
+    assert accepted_node["approval"]["state"] == "record_matches"
+    assert accepted_node["approval"]["runtime_grant"] == "not_observed"
+    assert accepted["digest"] == _digest(accepted) and accepted["digest"] != result["digest"]
+    changed_options = {**options, "target": {**target, "placement_class": "attached"}}
+    changed = plan(FIXTURES / "sam.workflow.api.json", **changed_options, approvals=[record])
+    changed_node, = [row for row in changed["requirements"] if row["kind"] == "node"]
+    assert changed_node["approval"]["state"] == "needs_approval"
+    assert changed_node["approval"]["consent_code"] != node["approval"]["consent_code"]
+    assert changed["digest"] == _digest(changed) and changed["digest"] != accepted["digest"]

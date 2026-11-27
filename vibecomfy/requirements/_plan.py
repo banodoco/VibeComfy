@@ -149,7 +149,9 @@ def plan(
         except (OSError, ValueError, subprocess.SubprocessError) as exc:
             _gap(gaps, "source_tree_unavailable", ref.get("slug"), state=_error_state(exc))
 
-    packs, unresolved = missing_packs_for_workflow(built, resolved_packs=resolved_packs)
+    packs, unresolved = missing_packs_for_workflow(
+        built, resolved_packs=resolved_packs, include_schema_known=True,
+    )
     for class_type in unresolved:
         _gap(gaps, "node_class_unresolved", class_type)
     # Explicit sources remain requirements even if class extraction is partial.
@@ -238,17 +240,19 @@ def _node_requirement(name, ref, evidence, target, approvals, gaps, *, restore_e
     if evidence is not None and not any(key in ref for key in ("requirements_txt", "pip_no_deps")):
         recipe = canonical_recipe(evidence["recipe"])
     node = {"repo": ref.get("url"), "commit": ref.get("commit"), **recipe}
-    approval = {"state": "unknown", "record": None, "token": None, "runtime_grant": "not_observed"}
+    # The P56 value is a public consent code, not a credential. Keep its
+    # canonical computation while using a field safe for Agent redaction.
+    approval = {"state": "unknown", "record": None, "consent_code": None, "runtime_grant": "not_observed"}
     reviewed = None
     try:
         record = approval_record(node, placement_class=target["placement_class"])
         reviewed = reviewed_lock_entry(node)
-        approval.update(record=record, token=consent_token(record))
+        approval.update(record=record, consent_code=consent_token(record))
         approval["state"] = ("record_matches" if any(approval_matches(row, node, placement_class=target["placement_class"]) for row in approvals)
                              else "reviewed" if reviewed is not None else "needs_approval")
         if approval["state"] == "needs_approval":
             _gap(gaps, "node_code_unapproved", identity, state="unapproved", who="human",
-                 detail={"consent": "code=" + approval["token"]})
+                 detail={"consent": "code=" + approval["consent_code"]})
     except ValueError:
         _gap(gaps, "node_identity_unresolved", identity)
     packages = []
