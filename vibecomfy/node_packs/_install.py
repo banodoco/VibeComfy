@@ -1061,12 +1061,19 @@ def _install_required_packs_impl(
         preflight=preflight,
     )
 def missing_packs_for_workflow(
-    workflow: VibeWorkflow, *, lockfile_path: Path | None = None
+    workflow: VibeWorkflow, *, lockfile_path: Path | None = None,
+    resolved_packs: Sequence[CustomNodePack] = (),
 ) -> tuple[list[CustomNodePack], list[str]]:
+    """Resolve requirements, optionally including caller-verified source trees.
+
+    ``resolved_packs`` carries class evidence read from an exact selected tree;
+    it does not add catalog entries, approve code, or inspect/write a target.
+    A repository basename alone must never be supplied as class evidence.
+    """
     missing_classes = missing_class_types_for_workflow(workflow)
     packs = resolve_node_packs(missing_classes, lockfile_path=lockfile_path)
     portable = _portable_requirement_packs(workflow)
-    all_packs = [*packs, *portable]
+    all_packs = [*packs, *portable, *resolved_packs]
     covered = set().union(*(pack.classes for pack in all_packs)) if all_packs else set()
     unresolved = sorted(missing_classes - covered)
     return _merge_declared_requirement_packs(workflow, all_packs, lockfile_path=lockfile_path), unresolved

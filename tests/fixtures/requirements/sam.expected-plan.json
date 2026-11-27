@@ -1,0 +1,645 @@
+{
+  "actions": [
+    {
+      "destination": null,
+      "kind": "manual",
+      "requirement": "model:6a91e7b8f88cd1f67a97",
+      "who": "human"
+    },
+    {
+      "destination": "${TARGET}/ComfyUI/custom_nodes/ComfyUI-SAM-Audio",
+      "install_py": "never",
+      "kind": "restore_node",
+      "python": "${PYTHON}",
+      "requirement": "node:ComfyUI-SAM-Audio",
+      "who": "agent"
+    }
+  ],
+  "bytes": {
+    "additional_disk": null,
+    "capacity": null,
+    "download": null,
+    "known_download": 0,
+    "unknown": [
+      "model:6a91e7b8f88cd1f67a97",
+      "node:ComfyUI-SAM-Audio"
+    ]
+  },
+  "digest": "51dad55cfbc57570a8f22d89901cc54a461f416298a277a71bace6483c241a43",
+  "gaps": [
+    {
+      "code": "model_destination_unknown",
+      "requirement": "model:6a91e7b8f88cd1f67a97",
+      "state": "unknown",
+      "who": "human"
+    },
+    {
+      "code": "model_hash_unknown",
+      "requirement": "model:6a91e7b8f88cd1f67a97",
+      "state": "unknown",
+      "who": "agent"
+    },
+    {
+      "code": "model_observation_unknown",
+      "requirement": "model:6a91e7b8f88cd1f67a97",
+      "state": "unknown",
+      "who": "agent"
+    },
+    {
+      "code": "model_size_unknown",
+      "requirement": "model:6a91e7b8f88cd1f67a97",
+      "state": "unknown",
+      "who": "agent"
+    },
+    {
+      "code": "model_source_unknown",
+      "requirement": "model:6a91e7b8f88cd1f67a97",
+      "state": "unknown",
+      "who": "human"
+    },
+    {
+      "code": "node_code_unapproved",
+      "detail": {
+        "consent": "code=07a48e72110d"
+      },
+      "requirement": "node:ComfyUI-SAM-Audio",
+      "state": "unapproved",
+      "who": "human"
+    },
+    {
+      "code": "package_observation_unknown",
+      "requirement": "node:ComfyUI-SAM-Audio",
+      "state": "unknown",
+      "who": "agent"
+    },
+    {
+      "code": "package_resolution_unknown",
+      "requirement": "node:ComfyUI-SAM-Audio",
+      "state": "unknown",
+      "who": "agent"
+    },
+    {
+      "code": "required_disk_unknown",
+      "requirement": null,
+      "state": "unknown",
+      "who": "agent"
+    },
+    {
+      "code": "target_capacity_unknown",
+      "requirement": null,
+      "state": "unknown",
+      "who": "agent"
+    }
+  ],
+  "inputs": {
+    "add": [
+      "https://github.com/ethanfel/ComfyUI-SAM-Audio.git@main"
+    ],
+    "add_models": [],
+    "added_node_refs": [
+      {
+        "commit": "3cfbd03da3019c7252ba13efd5694b1b2ff487e5",
+        "pip_no_deps": [
+          "dacvae @ git+https://github.com/facebookresearch/dacvae.git@414c20785fc3a28373073ea8ef7a1316eeeaca6e",
+          "perception-models @ git+https://github.com/facebookresearch/perception_models.git@e72b6810b1133e1c879f2cc965d276eb73803f1f",
+          "sam-audio @ git+https://github.com/facebookresearch/sam-audio.git@bb4c6999d2677c7402360e426afc01ddfad6dce0"
+        ],
+        "requirements_txt": "requirements.txt",
+        "slug": "ComfyUI-SAM-Audio",
+        "source": "git",
+        "url": "https://github.com/ethanfel/ComfyUI-SAM-Audio.git"
+      }
+    ],
+    "approvals": []
+  },
+  "requirements": [
+    {
+      "action": {
+        "destination": null,
+        "kind": "manual",
+        "requirement": "model:6a91e7b8f88cd1f67a97",
+        "who": "human"
+      },
+      "approval": {
+        "runtime_grant": "not_observed",
+        "state": "not_required"
+      },
+      "destination": null,
+      "id": "model:6a91e7b8f88cd1f67a97",
+      "kind": "model",
+      "model": {
+        "name": "facebook/sam-audio-large",
+        "reference": {
+          "class_type": "SAMAudioPipelineLoader",
+          "field": "model_name",
+          "node_id": "1",
+          "unresolved": true,
+          "value": "facebook/sam-audio-large"
+        },
+        "sha256": null,
+        "size_bytes": null,
+        "subdir": null,
+        "url": null
+      },
+      "observed": {
+        "reason": "destination_unknown",
+        "sha256": null,
+        "size_bytes": null,
+        "state": "unknown"
+      },
+      "size_bytes": null,
+      "source": {
+        "revision": null,
+        "sha256": null,
+        "url": null
+      }
+    },
+    {
+      "action": {
+        "destination": "${TARGET}/ComfyUI/custom_nodes/ComfyUI-SAM-Audio",
+        "install_py": "never",
+        "kind": "restore_node",
+        "python": "${PYTHON}",
+        "requirement": "node:ComfyUI-SAM-Audio",
+        "who": "agent"
+      },
+      "approval": {
+        "record": {
+          "approval_sha256": "07a48e72110debd82a07edd2872de1c80ee2f20b3418e59413cf75efb8fe495d",
+          "identity": {
+            "commit": "3cfbd03da3019c7252ba13efd5694b1b2ff487e5",
+            "repo": "https://github.com/ethanfel/ComfyUI-SAM-Audio.git"
+          },
+          "placement_class": "local",
+          "recipe_sha256": "1d6c9c543fe0c5c9eda6154ab7c4ca324f4ead54be6868a87791e7d5b5d29894"
+        },
+        "runtime_grant": "not_observed",
+        "state": "needs_approval",
+        "token": "07a48e72110d"
+      },
+      "checkout_bytes": 154189,
+      "destination": "${TARGET}/ComfyUI/custom_nodes/ComfyUI-SAM-Audio",
+      "id": "node:ComfyUI-SAM-Audio",
+      "kind": "node",
+      "node": {
+        "commit": "3cfbd03da3019c7252ba13efd5694b1b2ff487e5",
+        "pip_no_deps": [
+          "dacvae @ git+https://github.com/facebookresearch/dacvae.git@414c20785fc3a28373073ea8ef7a1316eeeaca6e",
+          "perception-models @ git+https://github.com/facebookresearch/perception_models.git@e72b6810b1133e1c879f2cc965d276eb73803f1f",
+          "sam-audio @ git+https://github.com/facebookresearch/sam-audio.git@bb4c6999d2677c7402360e426afc01ddfad6dce0"
+        ],
+        "repo": "https://github.com/ethanfel/ComfyUI-SAM-Audio.git",
+        "requirements_txt": "requirements.txt"
+      },
+      "observed": {
+        "commit": null,
+        "dirty": null,
+        "repo": null,
+        "sentinel": {
+          "sha256": null,
+          "size_bytes": null,
+          "state": "absent"
+        },
+        "state": "missing"
+      },
+      "packages": [
+        {
+          "commit": null,
+          "immutable": false,
+          "observed": "unknown",
+          "origin": "requirements",
+          "requirement": "einops",
+          "sha256": null,
+          "size_bytes": null
+        },
+        {
+          "commit": null,
+          "immutable": false,
+          "observed": "unknown",
+          "origin": "requirements",
+          "requirement": "ftfy",
+          "sha256": null,
+          "size_bytes": null
+        },
+        {
+          "commit": null,
+          "immutable": false,
+          "observed": "unknown",
+          "origin": "requirements",
+          "requirement": "huggingface-hub",
+          "sha256": null,
+          "size_bytes": null
+        },
+        {
+          "commit": null,
+          "immutable": false,
+          "observed": "unknown",
+          "origin": "requirements",
+          "requirement": "regex",
+          "sha256": null,
+          "size_bytes": null
+        },
+        {
+          "commit": null,
+          "immutable": false,
+          "observed": "unknown",
+          "origin": "requirements",
+          "requirement": "safetensors",
+          "sha256": null,
+          "size_bytes": null
+        },
+        {
+          "commit": null,
+          "immutable": false,
+          "observed": "unknown",
+          "origin": "requirements",
+          "requirement": "timm",
+          "sha256": null,
+          "size_bytes": null
+        },
+        {
+          "commit": null,
+          "immutable": false,
+          "observed": "unknown",
+          "origin": "requirements",
+          "requirement": "torchdiffeq",
+          "sha256": null,
+          "size_bytes": null
+        },
+        {
+          "commit": null,
+          "immutable": false,
+          "observed": "unknown",
+          "origin": "requirements",
+          "requirement": "tqdm",
+          "sha256": null,
+          "size_bytes": null
+        },
+        {
+          "commit": null,
+          "immutable": false,
+          "observed": "unknown",
+          "origin": "requirements",
+          "requirement": "transformers>=4.54.0",
+          "sha256": null,
+          "size_bytes": null
+        },
+        {
+          "commit": "414c20785fc3a28373073ea8ef7a1316eeeaca6e",
+          "immutable": true,
+          "observed": "unknown",
+          "origin": "pip_no_deps",
+          "requirement": "dacvae @ git+https://github.com/facebookresearch/dacvae.git@414c20785fc3a28373073ea8ef7a1316eeeaca6e",
+          "sha256": null,
+          "size_bytes": null
+        },
+        {
+          "commit": "e72b6810b1133e1c879f2cc965d276eb73803f1f",
+          "immutable": true,
+          "observed": "unknown",
+          "origin": "pip_no_deps",
+          "requirement": "perception-models @ git+https://github.com/facebookresearch/perception_models.git@e72b6810b1133e1c879f2cc965d276eb73803f1f",
+          "sha256": null,
+          "size_bytes": null
+        },
+        {
+          "commit": "bb4c6999d2677c7402360e426afc01ddfad6dce0",
+          "immutable": true,
+          "observed": "unknown",
+          "origin": "pip_no_deps",
+          "requirement": "sam-audio @ git+https://github.com/facebookresearch/sam-audio.git@bb4c6999d2677c7402360e426afc01ddfad6dce0",
+          "sha256": null,
+          "size_bytes": null
+        }
+      ],
+      "recipe": {
+        "pip_no_deps": [
+          "dacvae @ git+https://github.com/facebookresearch/dacvae.git@414c20785fc3a28373073ea8ef7a1316eeeaca6e",
+          "perception-models @ git+https://github.com/facebookresearch/perception_models.git@e72b6810b1133e1c879f2cc965d276eb73803f1f",
+          "sam-audio @ git+https://github.com/facebookresearch/sam-audio.git@bb4c6999d2677c7402360e426afc01ddfad6dce0"
+        ],
+        "requirements_txt": "requirements.txt"
+      },
+      "recipe_sha256": "1d6c9c543fe0c5c9eda6154ab7c4ca324f4ead54be6868a87791e7d5b5d29894",
+      "restore_entry": null,
+      "size_bytes": null,
+      "source": {
+        "commit": "3cfbd03da3019c7252ba13efd5694b1b2ff487e5",
+        "repo": "https://github.com/ethanfel/ComfyUI-SAM-Audio.git"
+      },
+      "source_tree": {
+        "checkout_bytes": 154189,
+        "class_files": [
+          {
+            "classes": [
+              "SAMAudioPipelineLoader",
+              "SAMAudioSpanPrompt",
+              "SAMAudioSpanSeparator",
+              "SAMAudioTextSeparator",
+              "SAMAudioVideoSeparator",
+              "SAMAudioVisualSeparator"
+            ],
+            "git_blob": "a785c2c865abdade6dc0420b89f89d8f9b9c55c8",
+            "path": "nodes.py"
+          }
+        ],
+        "class_names": [
+          "SAMAudioPipelineLoader",
+          "SAMAudioSpanPrompt",
+          "SAMAudioSpanSeparator",
+          "SAMAudioTextSeparator",
+          "SAMAudioVideoSeparator",
+          "SAMAudioVisualSeparator"
+        ],
+        "commit": "3cfbd03da3019c7252ba13efd5694b1b2ff487e5",
+        "constraints": [],
+        "dynamic_dependencies": false,
+        "files": [
+          {
+            "content": "[project]\nname = \"comfyui-meta-sam-audio\"\nversion = \"0.4.0\"\ndescription = \"Native ComfyUI nodes for local Meta SAM-Audio sound separation\"\nreadme = \"README.md\"\nrequires-python = \">=3.11\"\nlicense = { file = \"LICENSE\" }\nauthors = [{ name = \"ComfyUI SAM-Audio contributors\" }]\ndependencies = [\n    \"einops\",\n    \"ftfy\",\n    \"huggingface-hub\",\n    \"regex\",\n    \"safetensors\",\n    \"timm\",\n    \"torchdiffeq\",\n    \"tqdm\",\n    \"transformers>=4.54.0\",\n]\n\n[project.urls]\nRepository = \"https://github.com/ethanfel/ComfyUI-SAM-Audio\"\nIssues = \"https://github.com/ethanfel/ComfyUI-SAM-Audio/issues\"\nUpstream = \"https://github.com/facebookresearch/sam-audio\"\n\n[project.optional-dependencies]\ntest = [\"pytest>=8\", \"ruff\"]\n\n[tool.comfy]\nPublisherId = \"ethanfel\"\nDisplayName = \"Meta SAM-Audio\"\nIcon = \"\"\n\n[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\n\n[tool.ruff]\ntarget-version = \"py311\"\nlint.select = [\"B\", \"E\", \"F\", \"I\", \"W\"]\nlint.ignore = [\"E501\"]\n",
+            "git_blob": "fe66f641105a4d25e6a339e6020c53b3e82809cb",
+            "path": "pyproject.toml",
+            "sha256": "0e8404f386ff7a26d7c0cb4164db0e9f4fde767a5a9c17b121e8542cbd7c27b3"
+          },
+          {
+            "content": "# Runtime-only dependencies. Meta's source packages are installed with --no-deps\n# by install.py so their training stacks cannot alter ComfyUI's core packages.\neinops\nftfy\nhuggingface-hub\nregex\nsafetensors\ntimm\ntorchdiffeq\ntqdm\ntransformers>=4.54.0\n",
+            "git_blob": "5e0d28c0c870c7914c1c6891984e421eb2765ee8",
+            "path": "requirements.txt",
+            "sha256": "9fbdb9b9fc38b81c181b12d0dd098fdc385d03b1fc3a229b4539ffdf8942bd83"
+          }
+        ],
+        "incomplete_class_files": [],
+        "install_py": {
+          "git_blob": "311f36373bf12eab7fee7ec3441a6959cf8be697",
+          "present": true,
+          "run": false,
+          "sha256": "0d6bde99599072f88704abb123f67bccd12017786843bea24da2496c5241b2d9"
+        },
+        "packages": [
+          "einops",
+          "ftfy",
+          "huggingface-hub",
+          "regex",
+          "safetensors",
+          "timm",
+          "torchdiffeq",
+          "tqdm",
+          "transformers>=4.54.0"
+        ],
+        "pyproject_packages": [
+          "einops",
+          "ftfy",
+          "huggingface-hub",
+          "regex",
+          "safetensors",
+          "timm",
+          "torchdiffeq",
+          "tqdm",
+          "transformers>=4.54.0"
+        ],
+        "recipe": {
+          "pip_no_deps": [],
+          "requirements_txt": "requirements.txt"
+        },
+        "repo": "https://github.com/ethanfel/ComfyUI-SAM-Audio.git",
+        "submodules": [],
+        "tree": "49d98d76d13a010914bbe1c127ae290753b0ecd3"
+      }
+    }
+  ],
+  "schema": "vibecomfy.requirements-plan.v1",
+  "target": {
+    "capacity_bytes": null,
+    "comfyui_root": "${TARGET}/ComfyUI",
+    "custom_nodes_root": "${TARGET}/ComfyUI/custom_nodes",
+    "location": "local",
+    "models_root": "${TARGET}/ComfyUI/models",
+    "owner": "astrid",
+    "placement_class": "local",
+    "python": "${PYTHON}",
+    "root": "${TARGET}"
+  },
+  "target_observed": {
+    "python": {
+      "executable": "${PYTHON_EXECUTABLE}",
+      "sha256": "${PYTHON_SHA256}",
+      "size_bytes": "${PYTHON_SIZE}",
+      "state": "present"
+    },
+    "root": {
+      "state": "present"
+    }
+  },
+  "workflow": {
+    "kind": "file",
+    "members": [
+      {
+        "name": "workflow.json",
+        "sha256": "c230cd0f9c799d4c82f9a397d606da3c6e5b4b8f20554de87fe4cddcbf59199a",
+        "size_bytes": 1392
+      }
+    ],
+    "semantic": {
+      "boundary_ports": [],
+      "default_variant": null,
+      "definitions": [],
+      "edges": [
+        {
+          "from_port": "0",
+          "from_uid": "1",
+          "scope_path": "",
+          "to_port": "pipeline",
+          "to_uid": "3"
+        },
+        {
+          "from_port": "0",
+          "from_uid": "2",
+          "scope_path": "",
+          "to_port": "audio",
+          "to_uid": "3"
+        },
+        {
+          "from_port": "0",
+          "from_uid": "3",
+          "scope_path": "",
+          "to_port": "audio",
+          "to_uid": "4"
+        },
+        {
+          "from_port": "1",
+          "from_uid": "3",
+          "scope_path": "",
+          "to_port": "audio",
+          "to_uid": "5"
+        }
+      ],
+      "id": "requirements-c230cd0f9c799d4c82f9a397d606da3c6e5b4b8f20554de87fe4cddcbf59199a",
+      "inputs": [
+        {
+          "aliases": [],
+          "default": null,
+          "field": "model_name",
+          "media_semantics": null,
+          "name": "model",
+          "node_id": "1",
+          "range": null,
+          "required": false,
+          "type": null
+        },
+        {
+          "aliases": [],
+          "default": null,
+          "field": "seed",
+          "media_semantics": null,
+          "name": "seed",
+          "node_id": "3",
+          "range": null,
+          "required": false,
+          "type": null
+        }
+      ],
+      "interfaces": {},
+      "nodes": [
+        {
+          "class_type": "SAMAudioPipelineLoader",
+          "inputs": {
+            "attention_backend": "pytorch",
+            "initial_device": "cpu",
+            "model_name": "facebook/sam-audio-large",
+            "precision": "auto"
+          },
+          "metadata": {},
+          "mode": "enabled",
+          "native_input_asset_kinds": null,
+          "native_input_names": null,
+          "native_input_optional": null,
+          "native_input_types": null,
+          "native_output_names": null,
+          "native_output_slots": [
+            0
+          ],
+          "native_output_types": null,
+          "scope_path": "",
+          "uid": "1",
+          "widgets": {}
+        },
+        {
+          "class_type": "LoadAudio",
+          "inputs": {
+            "audio": "input.wav"
+          },
+          "metadata": {},
+          "mode": "enabled",
+          "native_input_asset_kinds": null,
+          "native_input_names": null,
+          "native_input_optional": null,
+          "native_input_types": null,
+          "native_output_names": null,
+          "native_output_slots": [
+            0
+          ],
+          "native_output_types": null,
+          "scope_path": "",
+          "uid": "2",
+          "widgets": {}
+        },
+        {
+          "class_type": "SAMAudioTextSeparator",
+          "inputs": {
+            "chunk_duration": 10.0,
+            "chunk_overlap": 1.0,
+            "description": "man speaking",
+            "inference_steps": 32,
+            "predict_spans": false,
+            "reranking_candidates": 1,
+            "seed": 0
+          },
+          "metadata": {},
+          "mode": "enabled",
+          "native_input_asset_kinds": null,
+          "native_input_names": null,
+          "native_input_optional": null,
+          "native_input_types": null,
+          "native_output_names": null,
+          "native_output_slots": [
+            0,
+            1
+          ],
+          "native_output_types": null,
+          "scope_path": "",
+          "uid": "3",
+          "widgets": {}
+        },
+        {
+          "class_type": "SaveAudio",
+          "inputs": {
+            "filename_prefix": "audio/sam_target"
+          },
+          "metadata": {},
+          "mode": "enabled",
+          "native_input_asset_kinds": null,
+          "native_input_names": null,
+          "native_input_optional": null,
+          "native_input_types": null,
+          "native_output_names": null,
+          "native_output_slots": null,
+          "native_output_types": null,
+          "scope_path": "",
+          "uid": "4",
+          "widgets": {}
+        },
+        {
+          "class_type": "SaveAudio",
+          "inputs": {
+            "filename_prefix": "audio/sam_residual"
+          },
+          "metadata": {},
+          "mode": "enabled",
+          "native_input_asset_kinds": null,
+          "native_input_names": null,
+          "native_input_optional": null,
+          "native_input_types": null,
+          "native_output_names": null,
+          "native_output_slots": null,
+          "native_output_types": null,
+          "scope_path": "",
+          "uid": "5",
+          "widgets": {}
+        }
+      ],
+      "outputs": [
+        {
+          "artifact_kind": null,
+          "expected_cardinality": null,
+          "filename_prefix": null,
+          "mime_type": null,
+          "name": null,
+          "node_id": "4",
+          "output_type": "SaveAudio"
+        },
+        {
+          "artifact_kind": null,
+          "expected_cardinality": null,
+          "filename_prefix": null,
+          "mime_type": null,
+          "name": null,
+          "node_id": "5",
+          "output_type": "SaveAudio"
+        }
+      ],
+      "requirements": {
+        "custom_nodes": [],
+        "missing_models": [],
+        "missing_nodes": [
+          "SAMAudioPipelineLoader",
+          "SAMAudioTextSeparator"
+        ],
+        "models": [],
+        "unsupported": []
+      },
+      "variants": {},
+      "version": "1.0",
+      "virtual_wires": {}
+    }
+  }
+}
